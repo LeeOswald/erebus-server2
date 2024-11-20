@@ -1,0 +1,5 @@
+function(get_version_from_file VER_FILE_NAME VER_STRING)
+    file(READ ${VER_FILE_NAME} VERSION_RAW)
+    string(STRIP ${VERSION_RAW} VERSION_STRING_)
+    set(${VER_STRING} ${VERSION_STRING_} PARENT_SCOPE)
+endfunction()
