@@ -1,5 +1,7 @@
 #pragma once
 
+#include <erebus/system/erebus.hxx>
+
 #include <fmt/format.h>
 
 

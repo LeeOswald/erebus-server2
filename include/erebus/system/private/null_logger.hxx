@@ -1,17 +1,20 @@
-#include <erebus/log.hxx>
+#include <erebus/system/log.hxx>
+
+#include <boost/noncopyable.hpp>
+
 
 namespace Erp
 {
 
 class NullLogger
-    : public Log::ILog
+    : public Er::Log::ILog
     , public boost::noncopyable
 {
 public:
-    ~DummyLogger() = default;
-    DummyLogger() = default;
+    ~NullLogger() = default;
+    NullLogger() = default;
 
-    void write(Log::Record::Ptr) override
+    void write(Er::Log::Record::Ptr) override
     {
     }
 

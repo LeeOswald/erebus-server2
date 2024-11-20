@@ -1,7 +1,7 @@
 #pragma once
 
 #if !EREBUS_HXX_INCLUDED
-    #include <erebus/erebus.hxx>
+    #include <erebus/system/erebus.hxx>
 #endif
 
 
@@ -11,7 +11,7 @@
  * Sometimes we need a bool that has the same size on all platforms and across the wire.
  */
  
-enum class Bool: uint8_t 
+enum class Bool: std::uint8_t 
 {   
     False = 0,
     True = 1

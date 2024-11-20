@@ -16,10 +16,6 @@ message(STATUS "Determined Erebus server version ${ER_VERSION}")
 
 project(erebus-server VERSION ${ER_VERSION})
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT ER_DISABLE_DEBUG)
-    add_definitions(-DER_DEBUG=1)
-endif()
-
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     add_definitions(-DER_64=1)
 elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)

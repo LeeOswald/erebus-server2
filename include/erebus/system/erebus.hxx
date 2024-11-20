@@ -9,6 +9,11 @@
     #error Unknown platform bitness. Check your build configuration.
 #endif
 
+#if !defined(NDEBUG)
+    #define ER_DEBUG 1
+#else
+    #define ER_DEBUG 0
+#endif
 
 #if ER_WINDOWS
     #ifdef ER_SYSTEM_EXPORTS
@@ -24,6 +29,9 @@
 
 // absolutely necessary system headers go here
 #include <cstdint>
+#include <limits>
+#include <memory>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -45,4 +53,13 @@ ER_SYSTEM_EXPORT void finalize(Er::Log::ILog* log) noexcept;
 
 
 // all mush-have local stuff goes here
-#include <erebus/assert.hxx>
+#include <erebus/system/assert.hxx>
+
+// use std min/max
+#ifdef min
+#undef min
+#endif
+
+#ifdef max
+#undef max
+#endif

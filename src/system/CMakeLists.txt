@@ -1,13 +1,66 @@
+if(ER_WINDOWS)
+    set(PLATFORM_SOURCES
+        logger/win32_debugger_sink.cxx
+        system/win32_error.cxx
+        util/utf16_win32.cxx
+    )
+    
+    set(PLATFORM_HEADERS
+        ../../include/erebus/system/system/win32_error.hxx
+    )
+    
+elseif(ER_POSIX)
+    set(PLATFORM_SOURCES
+        
+    )
+    
+    set(PLATFORM_HEADERS
+        
+    )
+    
+endif()
+
 add_library(erebus-system SHARED
+    ../../include/erebus/system/assert.hxx
+    ../../include/erebus/system/autoptr.hxx
+    ../../include/erebus/system/binary.hxx
     ../../include/erebus/system/bool.hxx
+    ../../include/erebus/system/debug.hxx
+    ../../include/erebus/system/empty.hxx
     ../../include/erebus/system/erebus.hxx
+    ../../include/erebus/system/flags.hxx
     ../../include/erebus/system/format.hxx
+    ../../include/erebus/system/generic_handle.hxx
+    ../../include/erebus/system/log.hxx
+    ../../include/erebus/system/logger/simple_formatter.hxx
+    ../../include/erebus/system/property.hxx
+    ../../include/erebus/system/property_info.hxx
     ../../include/erebus/system/private/null_logger.hxx
+    ../../include/erebus/system/system/packed_time.hxx
+    ../../include/erebus/system/system/posix_error.hxx
+    ../../include/erebus/system/system/process.hxx
+    ../../include/erebus/system/system/thread.hxx
+    ../../include/erebus/system/util/errno.hxx
+    ../../include/erebus/system/util/null_mutex.hxx
+    ../../include/erebus/system/util/utf16.hxx
+    ${PLATFORM_HEADERS}
 )
 
 target_sources(erebus-system
 	PRIVATE
+        assert.cxx
+        debug.cxx
 		init.cxx
+        logger/async_logger.cxx
+        logger/file_sink.cxx
+        logger/ostream_sink.cxx
+        logger/simple_formatter.cxx
+        property.cxx
+        system/packed_time.cxx
+        system/posix_error.cxx
+        system/process.cxx
+        system/thread.cxx
+        ${PLATFORM_SOURCES}
 )
 
 target_link_libraries(erebus-system
@@ -15,3 +68,5 @@ target_link_libraries(erebus-system
 		fmt::fmt
         boost::boost
 )
+
+target_compile_definitions(erebus-system PRIVATE ER_SYSTEM_EXPORTS)
