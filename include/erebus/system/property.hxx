@@ -1,10 +1,510 @@
 #pragma once
 
-#include <erebus/erebus.hxx>
+#include <erebus/system/property_info.hxx>
 
 
 namespace Er
 {
     
+/**
+ * @brief An (almost) universal property
+ *
+ * Property that can be handled in a uniform way, accessed by scripts and marshaled through RPC
+ */
+
+struct ER_SYSTEM_EXPORT Property final
+{
+    ~Property()
+    {
+        _free();
+    }
+
+    constexpr Property() noexcept
+        : m_u()
+        , m_type()
+    {
+    }
+
+    Property(nullptr_t) = delete;
+
+    constexpr Property(Bool v, const PropertyInfo& info) noexcept
+        : m_u()
+        , m_type(PropertyType::Bool, &info)
+    {
+        ErAssert(info.type == PropertyType::Bool);
+        m_u.v_bool = v;
+    }
+
+    constexpr Property(std::int32_t v, const PropertyInfo& info) noexcept
+        : m_u()
+        , m_type(PropertyType::Int32, &info)
+    {
+        ErAssert(info.type == PropertyType::Int32);
+        m_u.v_int32 = v;
+    }
+
+    constexpr Property(std::uint32_t v, const PropertyInfo& info) noexcept
+        : m_u()
+        , m_type(PropertyType::UInt32, &info)
+    {
+        ErAssert(info.type == PropertyType::UInt32);
+        m_u.v_uint32 = v;
+    }
+
+    constexpr Property(std::int64_t v, const PropertyInfo& info) noexcept
+        : m_u(v)
+        , m_type(PropertyType::Int64, &info)
+    {
+        ErAssert(info.type == PropertyType::Int64);
+    }
+
+    constexpr Property(std::uint64_t v, const PropertyInfo& info) noexcept
+        : m_u(v)
+        , m_type(PropertyType::UInt64, &info)
+    {
+        ErAssert(info.type == PropertyType::UInt64);
+    }
+
+    constexpr Property(double v, const PropertyInfo& info) noexcept
+        : m_u(v)
+        , m_type(PropertyType::Double, &info)
+    {
+        ErAssert(info.type == PropertyType::Double);
+    }
+
+    Property(const std::string& v, const PropertyInfo& info)
+        : m_u(new std::string(v))
+        , m_type(PropertyType::String, &info)
+    {
+        ErAssert(info.type == PropertyType::String);
+    }
+
+    Property(std::string&& v, const PropertyInfo& info)
+        : m_u(new std::string(std::move(v)))
+        , m_type(PropertyType::String, &info)
+    {
+        ErAssert(info.type == PropertyType::String);
+    }
+
+    Property(const Binary& v, const PropertyInfo& info)
+        : m_u(new Binary(v))
+        , m_type(PropertyType::Binary, &info)
+    {
+        ErAssert(info.type == PropertyType::Binary);
+    }
+
+    Property(Binary&& v, const PropertyInfo& info)
+        : m_u(new Binary(std::move(v)))
+        , m_type(PropertyType::Binary, &info)
+    {
+        ErAssert(info.type == PropertyType::Binary);
+    }
+
+    Property(const BoolVector& v, const PropertyInfo& info)
+        : m_u(new BoolVector(v))
+        , m_type(PropertyType::Bools, &info)
+    {
+        ErAssert(info.type == PropertyType::Bools);
+    }
+
+    Property(BoolVector&& v, const PropertyInfo& info)
+        : m_u(new BoolVector(std::move(v)))
+        , m_type(PropertyType::Bools, &info)
+    {
+        ErAssert(info.type == PropertyType::Bools);
+    }
+
+    Property(const Int32Vector& v, const PropertyInfo& info)
+        : m_u(new Int32Vector(v))
+        , m_type(PropertyType::Int32s, &info)
+    {
+        ErAssert(info.type == PropertyType::Int32s);
+    }
+
+    Property(Int32Vector&& v, const PropertyInfo& info)
+        : m_u(new Int32Vector(std::move(v)))
+        , m_type(PropertyType::Int32s, &info)
+    {
+        ErAssert(info.type == PropertyType::Int32s);
+    }
+
+    Property(const UInt32Vector& v, const PropertyInfo& info)
+        : m_u(new UInt32Vector(v))
+        , m_type(PropertyType::UInt32s, &info)
+    {
+        ErAssert(info.type == PropertyType::UInt32s);
+    }
+
+    Property(UInt32Vector&& v, const PropertyInfo& info)
+        : m_u(new UInt32Vector(std::move(v)))
+        , m_type(PropertyType::UInt32s, &info)
+    {
+        ErAssert(info.type == PropertyType::UInt32s);
+    }
+
+    Property(const Int64Vector& v, const PropertyInfo& info)
+        : m_u(new Int64Vector(v))
+        , m_type(PropertyType::Int64s, &info)
+    {
+        ErAssert(info.type == PropertyType::Int64s);
+    }
+
+    Property(Int64Vector&& v, const PropertyInfo& info)
+        : m_u(new Int64Vector(std::move(v)))
+        , m_type(PropertyType::Int64s, &info)
+    {
+        ErAssert(info.type == PropertyType::Int64s);
+    }
+
+    Property(const UInt64Vector& v, const PropertyInfo& info)
+        : m_u(new UInt64Vector(v))
+        , m_type(PropertyType::UInt64s, &info)
+    {
+        ErAssert(info.type == PropertyType::UInt64s);
+    }
+
+    Property(UInt64Vector&& v, const PropertyInfo& info)
+        : m_u(new UInt64Vector(std::move(v)))
+        , m_type(PropertyType::UInt64s, &info)
+    {
+        ErAssert(info.type == PropertyType::UInt64s);
+    }
+
+    Property(const DoubleVector& v, const PropertyInfo& info)
+        : m_u(new DoubleVector(v))
+        , m_type(PropertyType::Doubles, &info)
+    {
+        ErAssert(info.type == PropertyType::Doubles);
+    }
+
+    Property(DoubleVector&& v, const PropertyInfo& info)
+        : m_u(new DoubleVector(std::move(v)))
+        , m_type(PropertyType::Doubles, &info)
+    {
+        ErAssert(info.type == PropertyType::Doubles);
+    }
+
+    Property(const StringVector& v, const PropertyInfo& info)
+        : m_u(new StringVector(v))
+        , m_type(PropertyType::Strings, &info)
+    {
+        ErAssert(info.type == PropertyType::Strings);
+    }
+
+    Property(StringVector&& v, const PropertyInfo& info)
+        : m_u(new StringVector(std::move(v)))
+        , m_type(PropertyType::Strings, &info)
+    {
+        ErAssert(info.type == PropertyType::Strings);
+    }
+
+    Property(const BinaryVector& v, const PropertyInfo& info)
+        : m_u(new BinaryVector(v))
+        , m_type(PropertyType::Binaries, &info)
+    {
+        ErAssert(info.type == PropertyType::Binaries);
+    }
+
+    Property(BinaryVector&& v, const PropertyInfo& info)
+        : m_u(new BinaryVector(std::move(v)))
+        , m_type(PropertyType::Binaries, &info)
+    {
+        ErAssert(info.type == PropertyType::Binaries);
+    }
+
+    friend constexpr void swap(Property& a, Property& b) noexcept
+    {
+        std::swap(a.m_type, b.m_type);
+        std::swap(a.m_u._largest, b.m_u._largest);
+    }
+
+    constexpr Property(const Property& other)
+        : m_u(NoInitialization{})
+        , m_type(NoInitialization{})
+    {
+        _clone(other);
+    }
+
+    Property& operator=(const Property& other)
+    {
+        Property tmp(other);
+        swap(tmp, *this);
+        return *this;
+    }
+
+    constexpr Property(Property&& other) noexcept
+        : Property()
+    {
+        swap(other, *this);
+    }
+
+    Property& operator=(Property&& other) noexcept
+    {
+        Property tmp(std::move(other));
+        swap(tmp, *this);
+        return *this;
+    }
+
+    [[nodiscard]] constexpr PropertyType type() const noexcept
+    {
+        return m_type.type();
+    }
+
+    [[nodiscard]] constexpr const PropertyInfo& info() const noexcept
+    {
+        return *m_type.info();
+    }
+
+    [[nodiscard]] constexpr bool empty() const noexcept
+    {
+        return m_type.empty();
+    }
+
+    [[nodiscard]] constexpr const Bool& getBool() const noexcept
+    {
+        ErAssert(type() == PropertyType::Bool);
+        return m_u.v_bool;
+    }
+
+    [[nodiscard]] constexpr const int32_t& getInt32() const noexcept
+    {
+        ErAssert(type() == PropertyType::Int32);
+        return m_u.v_int32;
+    }
+
+    [[nodiscard]] constexpr const uint32_t& getUInt32() const noexcept
+    {
+        ErAssert(type() == PropertyType::UInt32);
+        return m_u.v_uint32;
+    }
+
+    [[nodiscard]] constexpr const int64_t& getInt64() const noexcept
+    {
+        ErAssert(type() == PropertyType::Int64);
+        return m_u.v_int64;
+    }
+
+    [[nodiscard]] constexpr const uint64_t& getUInt64() const noexcept
+    {
+        ErAssert(type() == PropertyType::UInt64);
+        return m_u.v_uint64;
+    }
+
+    [[nodiscard]] constexpr const double& getDouble() const noexcept
+    {
+        ErAssert(type() == PropertyType::Double);
+        return m_u.v_double;
+    }
+
+    [[nodiscard]] constexpr const std::string& getString() const noexcept
+    {
+        ErAssert(type() == PropertyType::String);
+        ErAssert(m_u.v_string);
+        return *m_u.v_string;
+    }
+
+    [[nodiscard]] constexpr const Binary& getBinary() const noexcept
+    {
+        ErAssert(type() == PropertyType::Binary);
+        ErAssert(m_u.v_binary);
+        return *m_u.v_binary;
+    }
+
+    [[nodiscard]] constexpr const BoolVector& getBools() const noexcept
+    {
+        ErAssert(type() == PropertyType::Bools);
+        ErAssert(m_u.a_bool);
+        return *m_u.a_bool;
+    }
+
+    [[nodiscard]] constexpr const Int32Vector& getInt32s() const noexcept
+    {
+        ErAssert(type() == PropertyType::Int32s);
+        ErAssert(m_u.a_int32);
+        return *m_u.a_int32;
+    }
+
+    [[nodiscard]] constexpr const UInt32Vector& getUInt32s() const noexcept
+    {
+        ErAssert(type() == PropertyType::UInt32s);
+        ErAssert(m_u.a_uint32);
+        return *m_u.a_uint32;
+    }
+
+    [[nodiscard]] constexpr const Int64Vector& getInt64s() const noexcept
+    {
+        ErAssert(type() == PropertyType::Int64s);
+        ErAssert(m_u.a_int64);
+        return *m_u.a_int64;
+    }
+
+    [[nodiscard]] constexpr const UInt64Vector& getUInt64s() const noexcept
+    {
+        ErAssert(type() == PropertyType::UInt64s);
+        ErAssert(m_u.a_uint64);
+        return *m_u.a_uint64;
+    }
+
+    [[nodiscard]] constexpr const DoubleVector& getDoubles() const noexcept
+    {
+        ErAssert(type() == PropertyType::Doubles);
+        ErAssert(m_u.a_double);
+        return *m_u.a_double;
+    }
+
+    [[nodiscard]] constexpr const StringVector& getStrings() const noexcept
+    {
+        ErAssert(type() == PropertyType::Strings);
+        ErAssert(m_u.a_string);
+        return *m_u.a_string;
+    }
+
+    [[nodiscard]] constexpr const BinaryVector& getBinaries() const noexcept
+    {
+        ErAssert(type() == PropertyType::Binaries);
+        ErAssert(m_u.a_binary);
+        return *m_u.a_binary;
+    }
+
+    [[nodiscard]] constexpr bool operator==(const Property& other) const noexcept
+    {
+        return _eq(other);
+    }
+
+private:
+    static bool _allocatesStorage(PropertyType type) noexcept;
+    void _free() noexcept;
+    void _freeString() noexcept;
+    void _freeBinary() noexcept;
+    void _freeBoolV() noexcept;
+    void _freeInt32V() noexcept;
+    void _freeUInt32V() noexcept;
+    void _freeInt64V() noexcept;
+    void _freeUInt64V() noexcept;
+    void _freeDoubleV() noexcept;
+    void _freeStringV() noexcept;
+    void _freeBinaryV() noexcept;
+    void _clone(const Property& other);
+    void _cloneString(const Property& other);
+    void _cloneBinary(const Property& other);
+    void _cloneBoolV(const Property& other);
+    void _cloneInt32V(const Property& other);
+    void _cloneUInt32V(const Property& other);
+    void _cloneInt64V(const Property& other);
+    void _cloneUInt64V(const Property& other);
+    void _cloneDoubleV(const Property& other);
+    void _cloneStringV(const Property& other);
+    void _cloneBinaryV(const Property& other);
+    bool _eq(const Property& other) const noexcept;
+    bool _eqString(const Property& other) const noexcept;
+    bool _eqBinary(const Property& other) const noexcept;
+    bool _eqBoolV(const Property& other) const noexcept;
+    bool _eqInt32V(const Property& other) const noexcept;
+    bool _eqUInt32V(const Property& other) const noexcept;
+    bool _eqInt64V(const Property& other) const noexcept;
+    bool _eqUInt64V(const Property& other) const noexcept;
+    bool _eqDoubleV(const Property& other) const noexcept;
+    bool _eqStringV(const Property& other) const noexcept;
+    bool _eqBinaryV(const Property& other) const noexcept;
+
+    struct NoInitialization
+    {
+    };
+
+    union Storage
+    {
+        Bool v_bool;
+        int32_t v_int32;
+        uint32_t v_uint32;
+        int64_t v_int64;
+        uint64_t v_uint64;
+        double v_double;
+        void* _ptr;
+        std::string* v_string;
+        Binary* v_binary;
+        BoolVector* a_bool;
+        Int32Vector* a_int32;
+        UInt32Vector* a_uint32;
+        Int64Vector* a_int64;
+        UInt64Vector* a_uint64;
+        DoubleVector* a_double;
+        StringVector* a_string;
+        BinaryVector* a_binary;
+        uint64_t _largest; // must be the largest type
+
+        constexpr Storage(NoInitialization) noexcept
+        {
+        }
+
+        constexpr Storage() noexcept
+            : _largest(0)
+        {
+        }
+
+        constexpr Storage(double v) noexcept
+            : v_double(v)
+        {
+        }
+
+        constexpr Storage(int64_t v) noexcept
+            : v_int64(v)
+        {
+        }
+
+        constexpr Storage(uint64_t v) noexcept
+            : v_uint64(v)
+        {
+        }
+
+        constexpr Storage(void* v) noexcept
+            : _ptr(v)
+        {
+        }
+
+        // we don't have constructors for smaller types like int32 here
+        // because we have to zero-initialize higher bits of _largest in the default constructor anyway
+    } ;
+
+    static_assert(sizeof(Storage) == sizeof(Storage::_largest));
+
+    struct InfoAndType
+    {
+        std::uintptr_t ty;
+        static constexpr std::uintptr_t TypeMask = 0x20ULL; // 5 lower pointer bits
+
+        constexpr InfoAndType(NoInitialization) noexcept
+        {
+        }
+
+        constexpr InfoAndType(PropertyType type, const PropertyInfo* info) noexcept
+            : ty(reinterpret_cast<std::uintptr_t>(info) | static_cast<std::uintptr_t>(type))
+        {
+            ErAssert(reinterpret_cast<std::uintptr_t>(info) & TypeMask == 0); // misaligned PropertyInfo
+        }
+
+        constexpr InfoAndType() noexcept
+            : InfoAndType(PropertyType::Empty, &Unspecified::Empty)
+        {}
+
+        constexpr PropertyType type() const noexcept
+        {
+            return static_cast<PropertyType>(ty & ~TypeMask);
+        }
+
+        constexpr const PropertyInfo* info() const noexcept
+        {
+            return reinterpret_cast<const PropertyInfo*>(ty & TypeMask);
+        }
+
+        constexpr bool empty() const noexcept
+        {
+            return type() == PropertyType::Empty;
+        }
+    };
     
+    Storage m_u;
+    InfoAndType m_type;
+};
+
+
 } // namespace Er {}

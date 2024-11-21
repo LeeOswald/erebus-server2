@@ -56,6 +56,7 @@ target_sources(erebus-system
         logger/ostream_sink.cxx
         logger/simple_formatter.cxx
         property.cxx
+        property_info.cxx
         system/packed_time.cxx
         system/posix_error.cxx
         system/process.cxx
