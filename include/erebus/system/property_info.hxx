@@ -41,8 +41,8 @@ using UInt32Vector = std::vector<std::uint32_t>;
 using Int64Vector = std::vector<std::int64_t>;
 using UInt64Vector = std::vector<std::uint64_t>;
 using DoubleVector = std::vector<double>;
-using StringVector = std::vector<std::string>;
-using BinaryVector = std::vector<Binary>;
+using StringsVector = std::vector<std::string>;
+using BinariesVector = std::vector<Binary>;
 
 
 //
@@ -52,17 +52,29 @@ using BinaryVector = std::vector<Binary>;
 //
 struct ER_SYSTEM_EXPORT alignas(32) PropertyInfo final
 {
-    PropertyType type = PropertyType::Empty;
+    std::uint32_t id;
+    PropertyType type;
     std::string name;
     std::string readableName;
-    
-    constexpr PropertyInfo() noexcept = default;
 
-    constexpr PropertyInfo(PropertyType type, std::string_view name, std::string_view readableName)
-        : type(type)
+    virtual ~PropertyInfo()
+    {
+        unregisterProperty(this);
+    }
+    
+    PropertyInfo(PropertyType type, std::string_view name, std::string_view readableName)
+        : id(registerProperty(this))
+        , type(type)
         , name(name)
         , readableName(readableName)
-    {}
+    {
+    }
+
+private:
+    static std::uint32_t registerProperty(const PropertyInfo* info);
+    static void unregisterProperty(const PropertyInfo* info) noexcept;
+
+    Log::ILog* m_log;
 };
 
 

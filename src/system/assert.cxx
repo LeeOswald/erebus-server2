@@ -53,16 +53,14 @@ ER_SYSTEM_EXPORT void printFailedAssertion(std::source_location location, const 
 {
     if (++g_activeAssertions == 1)
     {
-        try
-        {
-            auto msg = formatFailedAssertion(std::move(location), expression);
+        auto msg = formatFailedAssertion(std::move(location), expression);
 
-            doPrintFailedAssertion(msg);
-        }
-        catch (...)
-        {
-            // nothing we can do here 
-        }
+        doPrintFailedAssertion(msg);
+    }
+    else
+    {
+        // we cannot afford nested assertions
+        std::abort();
     }
 
     --g_activeAssertions;

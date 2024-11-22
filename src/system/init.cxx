@@ -1,4 +1,4 @@
-#include <erebus/private/null_logger.hxx>
+#include <erebus/system/logger/null_logger.hxx>
 
 #include <atomic>
 
@@ -11,20 +11,20 @@ namespace
     
 std::atomic<long> g_initialized = 0;
 
-ILog* nullLogger() noexcept
+Er::Log::ILog* nullLogger() noexcept
 {
-    static Erp::NullLogger dummy;
+    static Er::NullLogger dummy;
     return &dummy;
 }
 
-ILog* g_logger = nullLogger();
+Er::Log::ILog* g_logger = nullLogger();
     
 } // namespace {}
 
 namespace Log
 {
 
-EREBUS_EXPORT Log::ILog* defaultLog() noexcept
+ER_SYSTEM_EXPORT Log::ILog* defaultLog() noexcept
 {
     return g_logger;
 }
@@ -38,10 +38,6 @@ ER_SYSTEM_EXPORT void initialize(Er::Log::ILog* log)
     {
         g_logger = log;
 
-        //Er::Private::initializeKnownProps();
-
-        //Er::ExceptionProps::Private::registerAll(log);
-
         //Er::initializeTypeRegistry(log);
     }
 }
@@ -51,10 +47,6 @@ ER_SYSTEM_EXPORT void finalize(Er::Log::ILog* log) noexcept
     if (g_initialized.fetch_sub(1, std::memory_order_acq_rel) == 1)
     {
         //Er::finalizeTypeRegistry();
-
-        //Er::ExceptionProps::Private::unregisterAll(log);
-        
-        //Er::Private::finalizeKnownProps();
 
         g_logger = nullLogger();
     }

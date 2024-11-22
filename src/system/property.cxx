@@ -212,14 +212,14 @@ void Property::_cloneStringV(const Property& other)
 {
     ErAssert(other.type() == PropertyType::Strings);
     ErAssert(other.m_u.a_string);
-    m_u.a_string = new StringVector(*other.m_u.a_string);
+    m_u.a_string = new StringsVector(*other.m_u.a_string);
 }
 
 void Property::_cloneBinaryV(const Property& other)
 {
     ErAssert(other.type() == PropertyType::Binaries);
     ErAssert(other.m_u.a_binary);
-    m_u.a_binary = new BinaryVector(*other.m_u.a_binary);
+    m_u.a_binary = new BinariesVector(*other.m_u.a_binary);
 }
 
 bool Property::_eq(const Property& other) const noexcept

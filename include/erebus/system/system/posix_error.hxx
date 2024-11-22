@@ -8,6 +8,4 @@ namespace Er::Util
 ER_SYSTEM_EXPORT std::string posixErrorToString(int e);
     
     
-} // namespace Util {}
-
-} // namespace Er {}
+} // namespace Er::Util {}

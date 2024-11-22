@@ -32,10 +32,10 @@ add_library(erebus-system SHARED
     ../../include/erebus/system/format.hxx
     ../../include/erebus/system/generic_handle.hxx
     ../../include/erebus/system/log.hxx
+    ../../include/erebus/system/logger/null_logger.hxx
     ../../include/erebus/system/logger/simple_formatter.hxx
     ../../include/erebus/system/property.hxx
     ../../include/erebus/system/property_info.hxx
-    ../../include/erebus/system/private/null_logger.hxx
     ../../include/erebus/system/system/packed_time.hxx
     ../../include/erebus/system/system/posix_error.hxx
     ../../include/erebus/system/system/process.hxx

@@ -1,4 +1,4 @@
-#include <erebus/log.hxx>
+#include <erebus/system/log.hxx>
 
 namespace Er::Log
 {

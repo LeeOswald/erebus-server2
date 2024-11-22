@@ -3,7 +3,7 @@
 #include <boost/noncopyable.hpp>
 
 
-namespace Erp
+namespace Er
 {
 
 class NullLogger
@@ -40,4 +40,4 @@ public:
 };
 
 
-} // namespace Erp {}
+} // namespace Er {}

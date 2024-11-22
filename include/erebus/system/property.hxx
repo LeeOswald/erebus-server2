@@ -19,7 +19,7 @@ struct ER_SYSTEM_EXPORT Property final
         _free();
     }
 
-    constexpr Property() noexcept
+    Property() noexcept
         : m_u()
         , m_type()
     {
@@ -27,7 +27,7 @@ struct ER_SYSTEM_EXPORT Property final
 
     Property(nullptr_t) = delete;
 
-    constexpr Property(Bool v, const PropertyInfo& info) noexcept
+    Property(Bool v, const PropertyInfo& info) noexcept
         : m_u()
         , m_type(PropertyType::Bool, &info)
     {
@@ -35,7 +35,7 @@ struct ER_SYSTEM_EXPORT Property final
         m_u.v_bool = v;
     }
 
-    constexpr Property(std::int32_t v, const PropertyInfo& info) noexcept
+    Property(std::int32_t v, const PropertyInfo& info) noexcept
         : m_u()
         , m_type(PropertyType::Int32, &info)
     {
@@ -43,7 +43,7 @@ struct ER_SYSTEM_EXPORT Property final
         m_u.v_int32 = v;
     }
 
-    constexpr Property(std::uint32_t v, const PropertyInfo& info) noexcept
+    Property(std::uint32_t v, const PropertyInfo& info) noexcept
         : m_u()
         , m_type(PropertyType::UInt32, &info)
     {
@@ -51,21 +51,21 @@ struct ER_SYSTEM_EXPORT Property final
         m_u.v_uint32 = v;
     }
 
-    constexpr Property(std::int64_t v, const PropertyInfo& info) noexcept
+    Property(std::int64_t v, const PropertyInfo& info) noexcept
         : m_u(v)
         , m_type(PropertyType::Int64, &info)
     {
         ErAssert(info.type == PropertyType::Int64);
     }
 
-    constexpr Property(std::uint64_t v, const PropertyInfo& info) noexcept
+    Property(std::uint64_t v, const PropertyInfo& info) noexcept
         : m_u(v)
         , m_type(PropertyType::UInt64, &info)
     {
         ErAssert(info.type == PropertyType::UInt64);
     }
 
-    constexpr Property(double v, const PropertyInfo& info) noexcept
+    Property(double v, const PropertyInfo& info) noexcept
         : m_u(v)
         , m_type(PropertyType::Double, &info)
     {
@@ -184,29 +184,29 @@ struct ER_SYSTEM_EXPORT Property final
         ErAssert(info.type == PropertyType::Doubles);
     }
 
-    Property(const StringVector& v, const PropertyInfo& info)
-        : m_u(new StringVector(v))
+    Property(const StringsVector& v, const PropertyInfo& info)
+        : m_u(new StringsVector(v))
         , m_type(PropertyType::Strings, &info)
     {
         ErAssert(info.type == PropertyType::Strings);
     }
 
-    Property(StringVector&& v, const PropertyInfo& info)
-        : m_u(new StringVector(std::move(v)))
+    Property(StringsVector&& v, const PropertyInfo& info)
+        : m_u(new StringsVector(std::move(v)))
         , m_type(PropertyType::Strings, &info)
     {
         ErAssert(info.type == PropertyType::Strings);
     }
 
-    Property(const BinaryVector& v, const PropertyInfo& info)
-        : m_u(new BinaryVector(v))
+    Property(const BinariesVector& v, const PropertyInfo& info)
+        : m_u(new BinariesVector(v))
         , m_type(PropertyType::Binaries, &info)
     {
         ErAssert(info.type == PropertyType::Binaries);
     }
 
-    Property(BinaryVector&& v, const PropertyInfo& info)
-        : m_u(new BinaryVector(std::move(v)))
+    Property(BinariesVector&& v, const PropertyInfo& info)
+        : m_u(new BinariesVector(std::move(v)))
         , m_type(PropertyType::Binaries, &info)
     {
         ErAssert(info.type == PropertyType::Binaries);
@@ -218,9 +218,9 @@ struct ER_SYSTEM_EXPORT Property final
         std::swap(a.m_u._largest, b.m_u._largest);
     }
 
-    constexpr Property(const Property& other)
-        : m_u(NoInitialization{})
-        , m_type(NoInitialization{})
+    Property(const Property& other)
+        : m_u(DontInit{})
+        , m_type(DontInit{})
     {
         _clone(other);
     }
@@ -232,7 +232,7 @@ struct ER_SYSTEM_EXPORT Property final
         return *this;
     }
 
-    constexpr Property(Property&& other) noexcept
+    Property(Property&& other) noexcept
         : Property()
     {
         swap(other, *this);
@@ -250,7 +250,7 @@ struct ER_SYSTEM_EXPORT Property final
         return m_type.type();
     }
 
-    [[nodiscard]] constexpr const PropertyInfo& info() const noexcept
+    [[nodiscard]] const PropertyInfo& info() const noexcept
     {
         return *m_type.info();
     }
@@ -352,21 +352,21 @@ struct ER_SYSTEM_EXPORT Property final
         return *m_u.a_double;
     }
 
-    [[nodiscard]] constexpr const StringVector& getStrings() const noexcept
+    [[nodiscard]] constexpr const StringsVector& getStrings() const noexcept
     {
         ErAssert(type() == PropertyType::Strings);
         ErAssert(m_u.a_string);
         return *m_u.a_string;
     }
 
-    [[nodiscard]] constexpr const BinaryVector& getBinaries() const noexcept
+    [[nodiscard]] constexpr const BinariesVector& getBinaries() const noexcept
     {
         ErAssert(type() == PropertyType::Binaries);
         ErAssert(m_u.a_binary);
         return *m_u.a_binary;
     }
 
-    [[nodiscard]] constexpr bool operator==(const Property& other) const noexcept
+    [[nodiscard]] bool operator==(const Property& other) const noexcept
     {
         return _eq(other);
     }
@@ -407,7 +407,7 @@ private:
     bool _eqStringV(const Property& other) const noexcept;
     bool _eqBinaryV(const Property& other) const noexcept;
 
-    struct NoInitialization
+    struct DontInit
     {
     };
 
@@ -428,11 +428,11 @@ private:
         Int64Vector* a_int64;
         UInt64Vector* a_uint64;
         DoubleVector* a_double;
-        StringVector* a_string;
-        BinaryVector* a_binary;
+        StringsVector* a_string;
+        BinariesVector* a_binary;
         uint64_t _largest; // must be the largest type
 
-        constexpr Storage(NoInitialization) noexcept
+        constexpr Storage(DontInit) noexcept
         {
         }
 
@@ -472,17 +472,17 @@ private:
         std::uintptr_t ty;
         static constexpr std::uintptr_t TypeMask = 0x20ULL; // 5 lower pointer bits
 
-        constexpr InfoAndType(NoInitialization) noexcept
+        constexpr InfoAndType(DontInit) noexcept
         {
         }
 
-        constexpr InfoAndType(PropertyType type, const PropertyInfo* info) noexcept
+        InfoAndType(PropertyType type, const PropertyInfo* info) noexcept
             : ty(reinterpret_cast<std::uintptr_t>(info) | static_cast<std::uintptr_t>(type))
         {
             ErAssert(reinterpret_cast<std::uintptr_t>(info) & TypeMask == 0); // misaligned PropertyInfo
         }
 
-        constexpr InfoAndType() noexcept
+        InfoAndType() noexcept
             : InfoAndType(PropertyType::Empty, &Unspecified::Empty)
         {}
 
@@ -491,7 +491,7 @@ private:
             return static_cast<PropertyType>(ty & ~TypeMask);
         }
 
-        constexpr const PropertyInfo* info() const noexcept
+        const PropertyInfo* info() const noexcept
         {
             return reinterpret_cast<const PropertyInfo*>(ty & TypeMask);
         }
@@ -506,5 +506,104 @@ private:
     InfoAndType m_type;
 };
 
+
+template <typename T>
+const T& get(const Property& v) noexcept;
+
+template <>
+[[nodiscard]] inline const Bool& get<>(const Property& v) noexcept
+{
+    return v.getBool();
+}
+
+template <>
+[[nodiscard]] inline const int32_t& get<>(const Property& v) noexcept
+{
+    return v.getInt32();
+}
+
+template <>
+[[nodiscard]] inline const uint32_t& get<>(const Property& v) noexcept
+{
+    return v.getUInt32();
+}
+
+template <>
+[[nodiscard]] inline const int64_t& get<>(const Property& v) noexcept
+{
+    return v.getInt64();
+}
+
+template <>
+[[nodiscard]] inline const uint64_t& get<>(const Property& v) noexcept
+{
+    return v.getUInt64();
+}
+
+template <>
+[[nodiscard]] inline const double& get<>(const Property& v) noexcept
+{
+    return v.getDouble();
+}
+
+template <>
+[[nodiscard]] inline const std::string& get<>(const Property& v) noexcept
+{
+    return v.getString();
+}
+
+template <>
+[[nodiscard]] inline const Binary& get<>(const Property& v) noexcept
+{
+    return v.getBinary();
+}
+
+template <>
+[[nodiscard]] inline const BoolVector& get<>(const Property& v) noexcept
+{
+    return v.getBools();
+}
+
+template <>
+[[nodiscard]] inline const Int32Vector& get<>(const Property& v) noexcept
+{
+    return v.getInt32s();
+}
+
+template <>
+[[nodiscard]] inline const UInt32Vector& get<>(const Property& v) noexcept
+{
+    return v.getUInt32s();
+}
+
+template <>
+[[nodiscard]] inline const Int64Vector& get<>(const Property& v) noexcept
+{
+    return v.getInt64s();
+}
+
+template <>
+[[nodiscard]] inline const UInt64Vector& get<>(const Property& v) noexcept
+{
+    return v.getUInt64s();
+}
+
+template <>
+[[nodiscard]] inline const DoubleVector& get<>(const Property& v) noexcept
+{
+    return v.getDoubles();
+}
+
+template <>
+[[nodiscard]] inline const StringsVector& get<>(const Property& v) noexcept
+{
+    return v.getStrings();
+}
+
+template <>
+[[nodiscard]] inline const BinariesVector& get<>(const Property& v) noexcept
+{
+    return v.getBinaries();
+}
 
 } // namespace Er {}
