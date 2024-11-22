@@ -3,7 +3,7 @@
 #include <erebus/system/erebus.hxx>
 
 #if ER_WINDOWS
-    #include <windows.h>
+#include <erebus/system/system/unwindows.h>
 #elif ER_POSIX
     #include <unistd.h>
 #endif
@@ -17,7 +17,7 @@ using Pid = uintptr_t;
 namespace CurrentProcess
 {
 
-ER_SYSTEM_EXPORT [[nodiscard]] Pid id() noexcept
+inline [[nodiscard]] Pid id() noexcept
 {
 #if ER_WINDOWS
     return static_cast<Pid>(::GetCurrentProcessId());

@@ -1,7 +1,7 @@
 #include <erebus/system/system/packed_time.hxx>
 
 #if ER_WINDOWS
-    #include <windows.h>
+    #include <erebus/system/system/unwindows.h>
 #elif ER_POSIX
     #include <sys/time.h>
 #endif

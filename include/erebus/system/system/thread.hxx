@@ -3,7 +3,7 @@
 #include <erebus/system/erebus.hxx>
 
 #if ER_WINDOWS
-    #include <windows.h>
+    #include <erebus/system/system/unwindows.h>
 #elif ER_POSIX
     #include <pthread.h>
 #endif
@@ -18,7 +18,7 @@ using Tid = uintptr_t;
 namespace CurrentThread
 {
 
-ER_SYSTEM_EXPORT [[nodiscard]] Tid id() noexcept
+inline [[nodiscard]] Tid id() noexcept
 {
 #if ER_POSIX
     return ::gettid();

@@ -3,7 +3,7 @@
 #include <erebus/system/erebus.hxx>
 
 #if ER_WINDOWS
-    #include <windows.h>
+    #include <erebus/system/system/unwindows.h>
 #elif ER_POSIX
     #include <unistd.h>
 #endif

@@ -1,5 +1,7 @@
 #include <erebus/system/log.hxx>
 
+#include <algorithm>
+
 namespace Er::Log
 {
 
