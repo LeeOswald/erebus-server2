@@ -371,6 +371,11 @@ struct ER_SYSTEM_EXPORT Property final
         return _eq(other);
     }
 
+    [[nodiscard]] std::string str() const
+    {
+        return _str();
+    }
+
 private:
     static bool _allocatesStorage(PropertyType type) noexcept;
     void _free() noexcept;
@@ -406,6 +411,24 @@ private:
     bool _eqDoubleV(const Property& other) const noexcept;
     bool _eqStringV(const Property& other) const noexcept;
     bool _eqBinaryV(const Property& other) const noexcept;
+    std::string _str() const;
+    std::string _strEmpty() const;
+    std::string _strBool() const;
+    std::string _strInt32() const;
+    std::string _strUInt32() const;
+    std::string _strInt64() const;
+    std::string _strUInt64() const;
+    std::string _strDouble() const;
+    std::string _strString() const;
+    std::string _strBinary() const;
+    std::string _strBoolV() const;
+    std::string _strInt32V() const;
+    std::string _strUInt32V() const;
+    std::string _strInt64V() const;
+    std::string _strUInt64V() const;
+    std::string _strDoubleV() const;
+    std::string _strStringV() const;
+    std::string _strBinaryV() const;
 
     struct DontInit
     {

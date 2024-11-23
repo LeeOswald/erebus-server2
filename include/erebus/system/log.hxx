@@ -276,8 +276,13 @@ private:
     Level m_highest;
 };
 
+//
+// per-thread default logger
+//
 
-ER_SYSTEM_EXPORT [[nodiscard]] ILog* defaultLog() noexcept;
+ER_SYSTEM_EXPORT [[nodiscard]] ILog* get() noexcept;
+ER_SYSTEM_EXPORT void set(ILog* log) noexcept;
+
 
 ER_SYSTEM_EXPORT [[nodiscard]] ILog::Ptr makeAsyncLogger();
 

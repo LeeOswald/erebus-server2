@@ -1,5 +1,6 @@
 #include <erebus/system/property.hxx>
 
+#include <sstream>
 
 namespace Er
 {
@@ -324,5 +325,265 @@ bool Property::_eqBinaryV(const Property& other) const noexcept
     return v1 == v2;
 }
 
+std::string Property::_str() const
+{
+    using StrFn = std::string (Property::*)() const;
+
+    static StrFn s_strFns[] =
+    {
+        &Property::_strEmpty,
+        &Property::_strBool,
+        &Property::_strInt32,
+        &Property::_strUInt32,
+        &Property::_strInt64,
+        &Property::_strUInt64,
+        &Property::_strDouble,
+        &Property::_strString,
+        &Property::_strBinary,
+        &Property::_strBoolV,
+        &Property::_strInt32V,
+        &Property::_strUInt32V,
+        &Property::_strInt64V,
+        &Property::_strUInt64V,
+        &Property::_strDoubleV,
+        &Property::_strStringV,
+        &Property::_strBinaryV
+    };
+
+    auto ty = type();
+    auto idx = static_cast<std::size_t>(ty);
+    ErAssert(idx < _countof(s_strFns));
+    return std::invoke(s_strFns[idx], *this);
+}
+
+std::string Property::_strEmpty() const
+{
+    return "[empty]";
+}
+
+std::string Property::_strBool() const
+{
+    auto v = getBool();
+    return (v == Bool::True) ? "True" : "False";
+}
+
+std::string Property::_strInt32() const
+{
+    auto v = getInt32();
+    return std::to_string(v);
+}
+
+std::string Property::_strUInt32() const
+{
+    auto v = getUInt32();
+    return std::to_string(v);
+}
+
+std::string Property::_strInt64() const
+{
+    auto v = getInt64();
+    return std::to_string(v);
+}
+
+std::string Property::_strUInt64() const
+{
+    auto v = getUInt64();
+    return std::to_string(v);
+}
+
+std::string Property::_strDouble() const
+{
+    auto& v = getDouble();
+    return std::to_string(v);
+}
+
+std::string Property::_strString() const
+{
+    return getString();
+}
+
+std::string Property::_strBinary() const
+{
+    auto& v = getBinary();
+    std::ostringstream ss;
+    ss << v;
+    return ss.str();
+}
+
+std::string Property::_strBoolV() const
+{
+    auto& a = getBools();
+    if (a.empty())
+        return "[]";
+
+    std::ostringstream ss;
+    ss << "[";
+    bool first = true;
+    for (auto v : a)
+    {
+        if (first)
+            first = false;
+        else
+            ss << ", ";
+
+        ss << ((v == Bool::True) ? "True" : "False");
+    }
+    ss << "]";
+    return ss.str();
+}
+
+std::string Property::_strInt32V() const
+{
+    auto& a = getInt32s();
+    if (a.empty())
+        return "[]";
+
+    std::ostringstream ss;
+    ss << "[";
+    bool first = true;
+    for (auto v : a)
+    {
+        if (first)
+            first = false;
+        else
+            ss << ", ";
+
+        ss << v;
+    }
+    ss << "]";
+    return ss.str();
+}
+
+std::string Property::_strUInt32V() const
+{
+    auto& a = getUInt32s();
+    if (a.empty())
+        return "[]";
+
+    std::ostringstream ss;
+    ss << "[";
+    bool first = true;
+    for (auto v : a)
+    {
+        if (first)
+            first = false;
+        else
+            ss << ", ";
+
+        ss << v;
+    }
+    ss << "]";
+    return ss.str();
+}
+
+std::string Property::_strInt64V() const
+{
+    auto& a = getInt64s();
+    if (a.empty())
+        return "[]";
+
+    std::ostringstream ss;
+    ss << "[";
+    bool first = true;
+    for (auto v : a)
+    {
+        if (first)
+            first = false;
+        else
+            ss << ", ";
+
+        ss << v;
+    }
+    ss << "]";
+    return ss.str();
+}
+
+std::string Property::_strUInt64V() const
+{
+    auto& a = getUInt64s();
+    if (a.empty())
+        return "[]";
+
+    std::ostringstream ss;
+    ss << "[";
+    bool first = true;
+    for (auto v : a)
+    {
+        if (first)
+            first = false;
+        else
+            ss << ", ";
+
+        ss << v;
+    }
+    ss << "]";
+    return ss.str();
+}
+
+std::string Property::_strDoubleV() const
+{
+    auto& a = getDoubles();
+    if (a.empty())
+        return "[]";
+
+    std::ostringstream ss;
+    ss << "[";
+    bool first = true;
+    for (auto v : a)
+    {
+        if (first)
+            first = false;
+        else
+            ss << ", ";
+
+        ss << v;
+    }
+    ss << "]";
+    return ss.str();
+}
+
+std::string Property::_strStringV() const
+{
+    auto& a = getStrings();
+    if (a.empty())
+        return "[]";
+
+    std::ostringstream ss;
+    ss << "[";
+    bool first = true;
+    for (auto& v : a)
+    {
+        if (first)
+            first = false;
+        else
+            ss << ", ";
+
+        ss << "\"" << v << "\"";
+    }
+    ss << "]";
+    return ss.str();
+}
+
+std::string Property::_strBinaryV() const
+{
+    auto& a = getBinaries();
+    if (a.empty())
+        return "[]";
+
+    std::ostringstream ss;
+    ss << "[";
+    bool first = true;
+    for (auto& v : a)
+    {
+        if (first)
+            first = false;
+        else
+            ss << ", ";
+
+        ss << "\"" << v << "\"";
+    }
+    ss << "]";
+    return ss.str();
+}
 
 } // namespace Er {}

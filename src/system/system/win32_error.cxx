@@ -1,18 +1,18 @@
-#include <erebus/system/autoptr.hxx>
+#include <erebus/system/util/autoptr.hxx>
 #include <erebus/system/system/win32_error.hxx>
 #include <erebus/system/util/utf16.hxx>
 
 
 
-namespace Er::Util
+namespace Er::System
 {
     
-ER_SYSTEM_EXPORT std::string win32ErrorToString(DWORD r, HMODULE module)
+std::string Win32ErrorProvider::win32ErrorToString(DWORD r, HMODULE module)
 {
     if (r == 0)
         return std::string();
 
-    AutoPtr<wchar_t, decltype([](void* ptr) { ::HeapFree(::GetProcessHeap(), 0, ptr); })> buffer;
+    Util::AutoPtr<wchar_t, decltype([](void* ptr) { ::HeapFree(::GetProcessHeap(), 0, ptr); })> buffer;
     auto cch = ::FormatMessageW(
         (module ? FORMAT_MESSAGE_FROM_HMODULE : FORMAT_MESSAGE_FROM_SYSTEM) | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_ALLOCATE_BUFFER,
         module,
@@ -36,9 +36,9 @@ ER_SYSTEM_EXPORT std::string win32ErrorToString(DWORD r, HMODULE module)
         }
     }
 
-    return utf16To8bit(CP_UTF8, s.data(), s.length());
+    return Util::utf16To8bit(CP_UTF8, s.data(), s.length());
 }
 
     
     
-} // namespace Er::Util {}
+} // namespace Er::System {}

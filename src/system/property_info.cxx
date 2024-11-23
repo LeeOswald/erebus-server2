@@ -1,4 +1,4 @@
-#include <erebus/system/property_info.hxx>
+#include <erebus/system/property.hxx>
 
 #include <atomic>
 #include <mutex>
@@ -102,6 +102,14 @@ void PropertyInfo::unregisterProperty(const PropertyInfo* info) noexcept
             r.properties.erase(it);
         }
     }
+}
+
+std::string PropertyInfo::format(const Property& prop) const
+{
+    if (!formatter)
+        return prop.str();
+
+    return formatter(prop);
 }
 
 

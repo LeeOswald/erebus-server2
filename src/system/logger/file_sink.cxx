@@ -1,6 +1,6 @@
 #include <erebus/system/log.hxx>
 #include <erebus/system/util/null_mutex.hxx>
-#include <erebus/system/generic_handle.hxx>
+#include <erebus/system/util/generic_handle.hxx>
 
 #include <filesystem>
 #include <mutex>

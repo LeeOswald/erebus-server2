@@ -37,29 +37,17 @@
 #include <utility>
 
 
+// all mush-have local stuff goes here
+#include <erebus/system/assert.hxx>
+
 namespace Er
 {
 
 namespace Log
 {
-    struct ILog;
-}
 
-ER_SYSTEM_EXPORT void initialize(Er::Log::ILog* log);
-ER_SYSTEM_EXPORT void finalize(Er::Log::ILog* log) noexcept;
+struct ILog;
 
+} // namespace Log {}
 
 } // namespace Er {}
-
-
-// all mush-have local stuff goes here
-#include <erebus/system/assert.hxx>
-
-// use std min/max
-#ifdef min
-#undef min
-#endif
-
-#ifdef max
-#undef max
-#endif

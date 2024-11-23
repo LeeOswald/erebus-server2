@@ -1,9 +1,9 @@
 #include <erebus/system/system/posix_error.hxx>
 
-namespace Er::Util
+namespace Er::System
 {
     
-ER_SYSTEM_EXPORT std::string posixErrorToString(int e)
+std::string PosixErrorProvider::posixErrorToString(int e)
 {
     constexpr size_t required = 256;
     char result[required];
@@ -21,4 +21,4 @@ ER_SYSTEM_EXPORT std::string posixErrorToString(int e)
 }
     
     
-} // namespace Er::Util {}
+} // namespace Er::System {}

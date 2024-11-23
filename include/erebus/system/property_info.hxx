@@ -3,6 +3,7 @@
 #include <erebus/system/binary.hxx>
 #include <erebus/system/bool.hxx>
 
+#include <functional>
 #include <vector>
 
 
@@ -45,6 +46,8 @@ using StringsVector = std::vector<std::string>;
 using BinariesVector = std::vector<Binary>;
 
 
+struct Property;
+
 //
 // Yes, we DO need that large alignment value
 // struct Property carries a pointer to PropertyInfo instance
@@ -52,12 +55,15 @@ using BinariesVector = std::vector<Binary>;
 //
 struct ER_SYSTEM_EXPORT alignas(32) PropertyInfo final
 {
+    using Formatter = std::function<std::string(const Property&)>;
+
     std::uint32_t id;
     PropertyType type;
     std::string name;
     std::string readableName;
+    Formatter formatter;
 
-    virtual ~PropertyInfo()
+    ~PropertyInfo()
     {
         unregisterProperty(this);
     }
@@ -69,6 +75,15 @@ struct ER_SYSTEM_EXPORT alignas(32) PropertyInfo final
         , readableName(readableName)
     {
     }
+
+    template <typename FormatterT>
+    PropertyInfo(PropertyType type, std::string_view name, std::string_view readableName, FormatterT&& formatter)
+        : PropertyInfo(type, name, readableName)
+        , formatter(std::forward<FormatterT>(formatter))
+    {
+    }
+
+    std::string format(const Property& prop) const;
 
 private:
     static std::uint32_t registerProperty(const PropertyInfo* info);
