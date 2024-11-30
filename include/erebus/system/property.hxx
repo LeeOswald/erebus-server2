@@ -218,18 +218,9 @@ struct ER_SYSTEM_EXPORT Property final
         std::swap(a.m_u._largest, b.m_u._largest);
     }
 
-    Property(const Property& other)
-        : m_u(DontInit{})
-        , m_type(DontInit{})
+    Property clone() const
     {
-        _clone(other);
-    }
-
-    Property& operator=(const Property& other)
-    {
-        Property tmp(other);
-        swap(tmp, *this);
-        return *this;
+        return Property(*this);
     }
 
     Property(Property&& other) noexcept
@@ -377,6 +368,20 @@ struct ER_SYSTEM_EXPORT Property final
     }
 
 private:
+    Property(const Property& other)
+        : m_u(DontInit{})
+        , m_type(DontInit{})
+    {
+        _clone(other);
+    }
+
+    Property& operator=(const Property& other)
+    {
+        Property tmp(other);
+        swap(tmp, *this);
+        return *this;
+    }
+
     static bool _allocatesStorage(PropertyType type) noexcept;
     void _free() noexcept;
     void _freeString() noexcept;

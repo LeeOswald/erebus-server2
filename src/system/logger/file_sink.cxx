@@ -99,7 +99,7 @@ public:
                 if (errno == EINTR)
                     continue;
 
-                ErThrowPosixError("Log file write failed", errno, Er::ExceptionProps::FileName(m_fileName));
+                ErThrowPosixError("Log file write failed", errno);
             }
             else
             {
@@ -110,7 +110,7 @@ public:
             DWORD wr = 0;
             if (!::WriteFile(m_file, data + written, available - written, &wr, nullptr))
             {
-                //ErThrowWin32Error("Log file write failed", ::GetLastError(), Er::ExceptionProps::FileName(m_fileName));
+                ErThrowWin32Error("Log file write failed", ::GetLastError());
             }
             else
             {
@@ -150,10 +150,10 @@ private:
 
 #if ER_POSIX
         if (!m_file.valid())
-            ErThrowPosixError("Log file could not be created", errno, Er::ExceptionProps::FileName(m_fileName));
+            ErThrowPosixError("Log file could not be created", errno);
 #elif ER_WINDOWS
-        //if (m_file == INVALID_HANDLE_VALUE)
-            //ErThrowWin32Error("Log file could not be created", ::GetLastError(), Er::ExceptionProps::FileName(m_fileName));
+        if (m_file == INVALID_HANDLE_VALUE)
+            ErThrowWin32Error("Log file could not be created", ::GetLastError());
 #endif
 
         m_currentSize = 0;

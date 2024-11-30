@@ -364,7 +364,7 @@ std::string Property::_strEmpty() const
 std::string Property::_strBool() const
 {
     auto v = getBool();
-    return (v == Bool::True) ? "True" : "False";
+    return v ? "True" : "False";
 }
 
 std::string Property::_strInt32() const
@@ -426,7 +426,7 @@ std::string Property::_strBoolV() const
         else
             ss << ", ";
 
-        ss << ((v == Bool::True) ? "True" : "False");
+        ss << (v ? "True" : "False");
     }
     ss << "]";
     return ss.str();

@@ -5,39 +5,33 @@
 namespace Er
 {
     
-template <typename Provider>
-class ErrorProvider;
 
+using ResultCode = std::int32_t;
 
-enum class Result : std::int32_t
+namespace Result
+{
+
+enum : std::int32_t
 {
     Ok = 0,
     Failure = -1,
     OutOfMemory = -2,
     Internal = -3,
+    AccessDenied = -4,
+    Timeout = -5,
+    Canceled = -6,
+    AlreadyExists = -8,
+    InvalidArgument = -9,
+    Unsupported = -10,
+    NotFound = -11,
+    InsufficientResources = -12,
+    SharingViolation = -13
 };
 
 
+} // namespace Result {}
 
-struct ER_SYSTEM_EXPORT ResultProvider
-{
-    using ErrorCode = Result;
 
-    [[nodiscard]] std::string resultToString(Result r);
-};
-
-template <>
-class ErrorProvider<ResultProvider>
-{
-    using Provider = ResultProvider;
-    using ErrorCode = typename Provider::ErrorCode;
-
-    template <typename... Args>
-    [[nodiscard]] auto format(Args... args)
-    {
-        return Provider::resultToString(std::forward<Args>(args)...);
-    }
-};
-
+ER_SYSTEM_EXPORT [[nodiscard]] const std::string& resultToString(ResultCode code);
 
 } // namespace Er {}

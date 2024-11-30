@@ -85,6 +85,8 @@ struct ER_SYSTEM_EXPORT alignas(32) PropertyInfo final
 
     std::string format(const Property& prop) const;
 
+    static const PropertyInfo* lookup(const std::string& name) noexcept;
+
 private:
     static std::uint32_t registerProperty(const PropertyInfo* info);
     static void unregisterProperty(const PropertyInfo* info) noexcept;

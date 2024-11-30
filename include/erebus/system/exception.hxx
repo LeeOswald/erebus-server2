@@ -19,15 +19,13 @@ class ER_SYSTEM_EXPORT Exception
     : public std::exception
 {
 public:
-    template <typename Message>
-    explicit Exception(std::source_location location, Message&& message) noexcept
-        : m_context(std::make_shared<Context>(location, std::forward<Message>(message)))
+    explicit Exception(std::source_location location, auto&& message) noexcept
+        : m_context(std::make_shared<Context>(location, std::forward<decltype(message)>(message)))
     {
     }
 
-    template <typename Message, typename Prop, typename... Props>
-    explicit Exception(std::source_location location, Message&& message, Prop&& prop, Props&&... props) noexcept
-        : m_context(std::make_shared<Context>(location, std::forward<Message>(message)), std::forward<Prop>(prop), std::forward<Props>(props)...)
+    explicit Exception(std::source_location location, auto&& message, auto&& prop, auto&&... props) noexcept
+        : m_context(std::make_shared<Context>(location, std::forward<decltype(message)>(message)), std::forward<decltype(prop)>(prop), std::forward<decltype(props)>(props)...)
     {
     }
 
@@ -36,17 +34,17 @@ public:
         return m_context->message.c_str();
     }
 
-    const std::string& message() const
+    const auto& message() const
     {
         return m_context->message;
     }
 
-    std::source_location location() const noexcept
+    auto location() const noexcept
     {
         return m_context->location;
     }
 
-    const std::vector<Property>& properties() const noexcept
+    const auto& properties() const noexcept
     {
         return m_context->properties;
     }
@@ -55,7 +53,7 @@ public:
         requires std::is_same_v<std::remove_cvref_t<Prop>, Property>
     Exception& add(Prop&& prop)
     {
-        m_context->addProp(std::forward<Prop>(prop));
+        m_context->addProp(std::forward<Prop>(prop), true);
         return *this;
     }
 
@@ -77,18 +75,16 @@ protected:
         std::string message;
         std::vector<Property> properties;
         
-        template <typename MessageT>
-        Context(std::source_location location, MessageT&& message)
+        Context(std::source_location location, auto&& message)
             : location(location)
-            , message(std::forward<MessageT>(message))
+            , message(std::forward<decltype(message)>(message))
         {
         }
 
-        template <typename MessageT, typename Prop, typename... Props>
-        Context(std::source_location location, MessageT&& message, Prop&& prop, Props&&... props)
-            : Context(location, std::forward<MessageT>(message), std::forward<Props>(props)...)
+        Context(std::source_location location, auto&& message, auto&& prop, auto&&... props)
+            : Context(location, std::forward<decltype(message)>(message), std::forward<decltype(props)>(props)...)
         {
-            addProp(std::forward<Prop>(prop), false);
+            addProp(std::forward<decltype(prop)>(prop), false);
         }
 
         template <typename Prop>
@@ -148,26 +144,101 @@ auto dispatchException(const std::exception_ptr& ep, ExceptionVisitor& visitor)
 }
 
 
+class exceptionStackIterator
+{
+public:
+    using value_type = std::exception_ptr;
+
+    exceptionStackIterator() noexcept = default;
+
+    exceptionStackIterator(std::exception_ptr exception) noexcept 
+        : m_exception(std::move(exception)) 
+    {}
+
+    exceptionStackIterator& operator++() noexcept
+    {
+        try
+        {
+            std::rethrow_exception(m_exception);
+        }
+        catch (const std::nested_exception& e)
+        {
+            m_exception = e.nested_ptr();
+        }
+        catch (...)
+        {
+            m_exception = {};
+        }
+        return *this;
+    }
+
+    std::exception_ptr operator*() const noexcept
+    {
+        return m_exception;
+    }
+
+private:
+    friend bool operator==(const exceptionStackIterator& a, const exceptionStackIterator& b) noexcept
+    {
+        return *a == *b;
+    }
+
+    friend bool operator!=(const exceptionStackIterator& a, const exceptionStackIterator& b) noexcept
+    {
+        return !(a == b);
+    }
+
+
+private:
+    std::exception_ptr m_exception;
+};
+
+
+class exceptionStackRange
+{
+public:
+    exceptionStackRange() noexcept = default;
+
+    exceptionStackRange(exceptionStackIterator begin, exceptionStackIterator end) noexcept 
+        : m_begin(std::move(begin))
+        , m_end(std::move(end)) 
+    {}
+
+    exceptionStackIterator begin() const noexcept
+    {
+        return m_begin;
+    }
+
+    exceptionStackIterator end() const noexcept
+    {
+        return m_end;
+    }
+
+private:
+    exceptionStackIterator m_begin;
+    exceptionStackIterator m_end;
+};
+
+
+inline exceptionStackRange makeExceptionStackRange(std::exception_ptr exception) noexcept
+{
+    return exceptionStackRange(exceptionStackIterator(std::move(exception)), exceptionStackIterator());
+}
+
+inline exceptionStackRange currentExceptionStack() noexcept
+{
+    return makeExceptionStackRange(std::current_exception());
+}
+
+
 namespace ExceptionProps
 {
 
 extern ER_SYSTEM_EXPORT const PropertyInfo Result;
+extern ER_SYSTEM_EXPORT const PropertyInfo DecodedError;
 
 } // namespace ExceptionProps {}
 
 
 } // namespace Er {}
 
-
-#define ErThrowPosixError(msg, err, ...) \
-    throw ::Er::Exception(std::source_location::current(), msg, ::Er::ExceptionProps::PosixErrorCode(int32_t(err)), ::Er::ExceptionProps::DecodedError(::Er::Util::posixErrorToString(err)), ##__VA_ARGS__)
-
-#if ER_WINDOWS
-
-#define ErThrowWin32Error(msg, err, ...) \
-    throw ::Er::Exception(std::source_location::current(), msg, ::Er::ExceptionProps::Win32ErrorCode(int32_t(err)), ::Er::ExceptionProps::DecodedError(::Er::Util::win32ErrorToString(err)), ##__VA_ARGS__)
-
-#endif
-
-#define ErThrow(msg, ...) \
-    throw ::Er::Exception(std::source_location::current(), msg, ##__VA_ARGS__)

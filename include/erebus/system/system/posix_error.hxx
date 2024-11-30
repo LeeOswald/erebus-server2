@@ -1,34 +1,27 @@
 #pragma once
 
 #include <erebus/system/result.hxx>
+#include <erebus/system/exception.hxx>
 
 namespace Er::System
 {
     
-struct ER_SYSTEM_EXPORT PosixErrorProvider
-{
-    using ErrorCode = int;
+ER_SYSTEM_EXPORT [[nodiscard]] std::string posixErrorToString(int code);
 
-    std::string posixErrorToString(int e);
-};
+ER_SYSTEM_EXPORT [[nodiscard]] std::optional<ResultCode> resultFromPosixError(int code) noexcept;
+
+ER_SYSTEM_EXPORT [[nodiscard]] Exception makePosixException(std::source_location location, std::string&& message, int code);
 
 } // namespace Er::System {}
 
-namespace Er
+
+namespace Er::ExceptionProps
 {
 
-template <>
-class ErrorProvider<System::PosixErrorProvider>
-{
-    using Provider = System::PosixErrorProvider;
-    using ErrorCode = typename Provider::ErrorCode;
+extern ER_SYSTEM_EXPORT const PropertyInfo PosixError;
 
-    template <typename... Args>
-    [[nodiscard]] auto format(Args... args)
-    {
-        return Provider::posixErrorToString(std::forward<Args>(args)...);
-    }
-};
+} // namespace Er::ExceptionProps {}
 
 
-} // namespace Er {}
+#define ErThrowPosixError(message, code) \
+    throw Er::makePosixException(std::source_location::current(), message, code)

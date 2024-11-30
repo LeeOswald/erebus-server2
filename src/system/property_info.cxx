@@ -1,6 +1,5 @@
 #include <erebus/system/property.hxx>
 
-#include <atomic>
 #include <mutex>
 #include <shared_mutex>
 #include <unordered_map>
@@ -31,39 +30,11 @@ struct Registry
     std::unordered_map<std::string, Registration> properties; // name -> info
 };
 
-//
-// we want the registry be available very early (while global/static PropertyInfo instances are being constructed)
-// and also very lately (until global/static PropertyInfo instances are all gone)
-// hence, and because of the initialization order indeterminacy, we cannot rely on, e.g., the C++ local static 
-// initialization related guarantees to create our Registry instance.
-// we use 'create on demand' approach instead
-//
-
-// std::atomic<T*> constructor is trivial
-std::atomic<Registry*> g_registry = nullptr;
 
 Registry& registry()
 {
-    auto existing = g_registry.load(std::memory_order_acquire);
-    if (!existing)
-    {
-        std::unique_ptr<Registry> r(new Registry{});
-        Registry* expected = nullptr;
-        if (g_registry.compare_exchange_strong(expected, r.get(), std::memory_order_acq_rel))
-        {
-            // we have successfully set our Registry instance
-            existing = r.release();
-        }
-        else
-        {
-            // someone has already set the Registry instance
-            // our instance will be destroyed
-            existing = g_registry.load(std::memory_order_relaxed);
-        }
-    }
-
-    ErAssert(existing);
-    return *existing;
+    static Registry* r = new Registry();
+    return *r;
 }
 
 
@@ -112,6 +83,17 @@ std::string PropertyInfo::format(const Property& prop) const
     return formatter(prop);
 }
 
+const PropertyInfo* PropertyInfo::lookup(const std::string& name) noexcept
+{
+    auto& r = registry();
+
+    std::shared_lock l(r.mutex);
+    auto it = r.properties.find(name);
+    if (it != r.properties.end())
+        return it->second.info;
+
+    return nullptr;
+}
 
 namespace Unspecified
 {

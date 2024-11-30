@@ -281,7 +281,7 @@ private:
 //
 
 ER_SYSTEM_EXPORT [[nodiscard]] ILog* get() noexcept;
-ER_SYSTEM_EXPORT void set(ILog* log) noexcept;
+ER_SYSTEM_EXPORT ILog* set(ILog* log) noexcept;
 
 
 ER_SYSTEM_EXPORT [[nodiscard]] ILog::Ptr makeAsyncLogger();

@@ -3,18 +3,46 @@
 namespace Er
 {
 
-std::string ResultProvider::resultToString(Result r)
+namespace
 {
-    switch (r)
+
+struct ResultMapping
+{
+    ResultCode code;
+    std::string message;
+};
+
+const ResultMapping g_resultMapping[] =
+{
+    { Result::Ok, "Success" },
+    { Result::Failure, "Failure" },
+    { Result::OutOfMemory, "Out of memory" },
+    { Result::Internal, "Internal error" },
+    { Result::AccessDenied, "Access denied" },
+    { Result::Timeout, "Timed out" },
+    { Result::Canceled, "Operation canceled" },
+    { Result::AlreadyExists, "Already exists" },
+    { Result::InvalidArgument, "Invalid argument" },
+    { Result::Unsupported, "Operation not supported" },
+    { Result::NotFound, "Not found" },
+    { Result::InsufficientResources, "Insufficient resources" },
+    { Result::SharingViolation, "Sharing violation" },
+};
+
+
+} // namespace {}
+
+
+ER_SYSTEM_EXPORT const std::string& resultToString(ResultCode code)
+{
+    for (auto& m : g_resultMapping)
     {
-    case Er::Result::Ok: return "Success";
-    case Er::Result::Failure: return "Failure";
-    case Er::Result::OutOfMemory: return "Out of memory";
-    case Er::Result::Internal: return "Internal error";
+        if (m.code == code)
+            return m.message;
     }
 
-    return "Unexpected error";
+    static std::string empty;
+    return empty;
 }
-
 
 } // namespace Er {}
