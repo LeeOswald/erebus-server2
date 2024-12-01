@@ -208,10 +208,7 @@ template <class... Args>
 void error(ISink* sink, std::string_view format, Args&&... args)
 {
     if (sink->level() <= Level::Error)
-    {
         write(sink, Level::Error, format, std::forward<Args>(args)...);
-        sink->flush();
-    }
 }
 
 template <class... Args>

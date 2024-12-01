@@ -55,14 +55,21 @@ public:
 
     void flush() override
     {
-        std::unique_lock l(m_mutexQueue);
-        
-        // issue an empty record to force flushing all sinks
-        m_queue.push_back(Record::Ptr{});
+        {
+            std::unique_lock l(m_mutexQueue);
+
+            // issue an empty record to force flushing all sinks
+            m_queue.push_back(Record::Ptr{});
+        }
+
         m_queueNotEmpty.notify_one();
 
-        auto stop = m_worker.get_stop_token();
-        m_queueEmpty.wait(l, stop, [this]() { return m_queue.empty(); });
+        {
+            auto stop = m_worker.get_stop_token();
+            
+            std::unique_lock l(m_mutexQueue);
+            m_queueEmpty.wait(l, stop, [this]() { return m_queue.empty(); });
+        }
     }
 
     void addSink(std::string_view name, ISink::Ptr sink) override
@@ -97,17 +104,22 @@ public:
     }
 
 private:
+    using RecordQueue = boost::circular_buffer<Record::Ptr>;
+
     void run(std::stop_token stop)
     {
         System::CurrentThread::setName("Logger");
 
-        std::vector<Record::Ptr> records;
-        records.reserve(MaxQueueSize);
-
         do
         {
+            RecordQueue q;
+
             {
                 std::unique_lock lw(m_mutexQueue);
+                
+                if (m_queue.empty())
+                    m_queueEmpty.notify_all();
+
                 m_queueNotEmpty.wait(lw, stop, [this]() { return !m_queue.empty(); });
 
                 if (m_sinkCount.load(std::memory_order_relaxed) < 1)
@@ -119,26 +131,19 @@ private:
                     continue;
                 }
 
-                while (!m_queue.empty())
-                {
-                    auto record = m_queue.front();
-                    records.push_back(record);
-                    m_queue.pop_front();
-                }
+                q.swap(m_queue);
             }
 
             // queue is now unlocked
-            if (!records.empty())
+            if (!q.empty())
             {
-                sendToSinks(records, stop);
-                records.clear();
+                sendToSinks(q, stop);
             }
 
-            m_queueEmpty.notify_all();
         } while (!stop.stop_requested());
     }
 
-    void sendToSinks(const std::vector<Record::Ptr>& records, std::stop_token stop)
+    void sendToSinks(const RecordQueue& records, std::stop_token stop)
     {
         std::unique_lock l(m_mutexSinks);
 
@@ -264,7 +269,7 @@ private:
     std::mutex m_mutexQueue;
     std::condition_variable_any m_queueNotEmpty;
     std::condition_variable_any m_queueEmpty;
-    boost::circular_buffer<Record::Ptr> m_queue;
+    RecordQueue m_queue;
     std::atomic<long> m_sinkCount;
     std::mutex m_mutexSinks;
     std::vector<SinkData> m_sinks;
