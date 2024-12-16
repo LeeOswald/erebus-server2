@@ -33,13 +33,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/a")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
-include(Debug)
+include(debug)
 
 # detect OS
 if(WIN32)
     set(ER_WINDOWS TRUE)
     add_definitions(-DER_WINDOWS=1)
-elseif(LINUX)
+elseif(UNIX AND NOT APPLE)
     set(ER_LINUX TRUE)
     set(ER_POSIX TRUE)
     add_definitions(-DER_LINUX=1)
