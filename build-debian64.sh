@@ -1,10 +1,13 @@
 #!/bin/bash
 
 mkdir -p build
-cd build
+conan install conan/debian-64/conanfile.txt --profile conan/debian-64/conanprofile.debug --output-folder=. --build=missing
+conan install conan/debian-64/conanfile.txt --profile conan/debian-64/conanprofile.release --output-folder=. --build=missing
+pushd build
 
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=../conan/debian-64/build/build/Release/generators/conan_toolchain.cmake  -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
+echo "PWD=[$(pwd)]"
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=$(pwd)/Release/generators/conan_toolchain.cmake  -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
 cmake --build . --config Release
-
+popd
 
 
