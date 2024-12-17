@@ -18,7 +18,7 @@ using Tid = uintptr_t;
 namespace CurrentThread
 {
 
-inline [[nodiscard]] Tid id() noexcept
+[[nodiscard]] inline Tid id() noexcept
 {
 #if ER_POSIX
     return ::gettid();

@@ -17,7 +17,7 @@ using Pid = uintptr_t;
 namespace CurrentProcess
 {
 
-inline [[nodiscard]] Pid id() noexcept
+[[nodiscard]] inline auto id() noexcept
 {
 #if ER_WINDOWS
     return static_cast<Pid>(::GetCurrentProcessId());
@@ -29,7 +29,7 @@ inline [[nodiscard]] Pid id() noexcept
 ER_SYSTEM_EXPORT [[nodiscard]] std::string exe();
 
 #if ER_POSIX
-EREBUS_EXPORT void daemonize() noexcept;
+ER_SYSTEM_EXPORT void daemonize() noexcept;
 #endif
 
 } // namespace CurrentProcess {}

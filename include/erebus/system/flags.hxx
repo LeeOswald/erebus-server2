@@ -143,13 +143,13 @@ public:
     }
 
     template <typename T>
-    std::enable_if_t<(std::is_same_v<T, std::uint32_t> && (N <= 32)), std::uint32_t> [[nodiscard]] pack() const noexcept
+    [[nodiscard]] std::enable_if_t<(std::is_same_v<T, std::uint32_t> && (N <= 32)), std::uint32_t> pack() const noexcept
     {
         return static_cast<std::uint32_t>(m_bits.to_ulong());
     }
 
     template <typename T>
-    std::enable_if_t<(std::is_same_v<T, std::uint64_t> && (N <= 64)), std::uint64_t> [[nodiscard]] pack() const noexcept
+    [[nodiscard]] std::enable_if_t<(std::is_same_v<T, std::uint64_t> && (N <= 64)), std::uint64_t> pack() const noexcept
     {
         return static_cast<std::uint64_t>(m_bits.to_ullong());
     }

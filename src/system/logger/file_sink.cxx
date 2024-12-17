@@ -9,7 +9,7 @@
     #include <fcntl.h>
     #include <sys/file.h>
 
-    #include <erebus/util/posixerror.hxx>
+    #include <erebus/system/system/posix_error.hxx>
 #endif
 
 #if ER_WINDOWS
@@ -99,7 +99,7 @@ public:
                 if (errno == EINTR)
                     continue;
 
-                ErThrowPosixError("Log file write failed", errno);
+                ErThrowPosixError("Log file write failed", int(errno));
             }
             else
             {
@@ -150,7 +150,7 @@ private:
 
 #if ER_POSIX
         if (!m_file.valid())
-            ErThrowPosixError("Log file could not be created", errno);
+            ErThrowPosixError("Log file could not be created", int(errno));
 #elif ER_WINDOWS
         if (m_file == INVALID_HANDLE_VALUE)
             ErThrowWin32Error("Log file could not be created", ::GetLastError());

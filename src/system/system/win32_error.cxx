@@ -96,6 +96,6 @@ ER_SYSTEM_EXPORT Exception makeWin32Exception(std::source_location location, std
 namespace Er::ExceptionProps
 {
 
-ER_SYSTEM_EXPORT const PropertyInfo Win32Error{ PropertyType::UInt32, "exception/win32_error", "Win32 error" };
+const PropertyInfo Win32Error{ PropertyType::UInt32, "exception/win32_error", "Win32 error" };
 
 } // namespace Er::ExceptionProps {}

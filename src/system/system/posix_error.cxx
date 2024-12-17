@@ -1,5 +1,7 @@
 #include <erebus/system/system/posix_error.hxx>
 
+#include <cstring>
+
 namespace Er::System
 {
     
@@ -61,6 +63,6 @@ ER_SYSTEM_EXPORT Exception makePosixException(std::source_location location, std
 namespace Er::ExceptionProps
 {
 
-ER_SYSTEM_EXPORT const PropertyInfo PosixError{ PropertyType::Int32, "exception/posix_error", "POSIX error" };
+const PropertyInfo PosixError{ PropertyType::UInt32, "exception/posix_error", "POSIX error" };
 
 } // namespace Er::ExceptionProps {}

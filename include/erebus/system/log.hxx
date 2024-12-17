@@ -89,7 +89,7 @@ struct ISink
     
     constexpr ISink() noexcept = default;
     
-    constexpr [[nodiscard]] Level level() const noexcept
+    [[nodiscard]] constexpr Level level() const noexcept
     {
         return m_level;
     }
@@ -234,7 +234,7 @@ struct IFormatter
     using Ptr = std::shared_ptr<IFormatter>;
 
     virtual ~IFormatter() = default;
-    virtual [[nodiscard]] std::string format(const Record* r) const = 0;
+    [[nodiscard]] virtual std::string format(const Record* r) const = 0;
 };
 
 
@@ -243,7 +243,7 @@ struct IFilter
     using Ptr = std::shared_ptr<IFilter>;
 
     virtual ~IFilter() = default;
-    virtual [[nodiscard]] bool filter(const Record* r) const = 0;
+    virtual bool filter(const Record* r) const = 0;
 };
 
 
@@ -257,7 +257,7 @@ struct SimpleFilter
         return (r->level() >= m_lowest) && (r->level() <= m_highest);
     }
 
-    static [[nodiscard]] Ptr make(Level lowest, Level highest)
+    [[nodiscard]] static Ptr make(Level lowest, Level highest)
     {
         return std::shared_ptr<SimpleFilter>(new SimpleFilter(lowest, highest));
     }

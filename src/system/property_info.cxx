@@ -77,10 +77,10 @@ void PropertyInfo::unregisterProperty(const PropertyInfo* info) noexcept
 
 std::string PropertyInfo::format(const Property& prop) const
 {
-    if (!formatter)
+    if (!m_formatter)
         return prop.str();
 
-    return formatter(prop);
+    return m_formatter(prop);
 }
 
 const PropertyInfo* PropertyInfo::lookup(const std::string& name) noexcept
@@ -98,7 +98,7 @@ const PropertyInfo* PropertyInfo::lookup(const std::string& name) noexcept
 namespace Unspecified
 {
 
-ER_SYSTEM_EXPORT const PropertyInfo Empty{ PropertyType::Empty, "unspecified/empty", "Empty" };
+const PropertyInfo Empty{ PropertyType::Empty, "unspecified/empty", "Empty" };
 
 
 } // namespace Unspecified {}

@@ -36,6 +36,17 @@
 #include <type_traits>
 #include <utility>
 
+#ifndef _countof
+
+    template<typename T, size_t N>
+    constexpr size_t __countof_impl(T(&arr)[N]) noexcept
+    {
+        return std::extent<T[N]>::value;
+    }
+
+    #define _countof(a) __countof_impl(a)
+
+#endif // _countof
 
 // all mush-have local stuff goes here
 #include <erebus/system/assert.hxx>

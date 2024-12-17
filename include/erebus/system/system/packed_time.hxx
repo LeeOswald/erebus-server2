@@ -33,7 +33,7 @@ struct ER_SYSTEM_EXPORT PackedTime
         return value / 1000000UL;
     }
 
-    static [[nodiscard]] ValueType now() noexcept
+    [[nodiscard]] static ValueType now() noexcept
     {
 #if ER_WINDOWS
         FILETIME ft;
@@ -56,7 +56,7 @@ struct ER_SYSTEM_EXPORT PackedTime
     [[nodiscard]] std::tm toLocalTime() const noexcept;
     [[nodiscard]] std::tm toUtc() const noexcept;
 
-    constexpr [[nodiscard]] std::uint32_t subSecond() const noexcept
+    [[nodiscard]] constexpr std::uint32_t subSecond() const noexcept
     {
         return static_cast<std::uint32_t>(value % 1000000UL);
     }

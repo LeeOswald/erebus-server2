@@ -7,6 +7,10 @@
     #include <erebus/system/system/unwindows.h>
 #endif
 
+#if ER_POSIX
+    #include <erebus/system/util/errno.hxx>
+#endif
+
 namespace Er
 {
 
@@ -24,7 +28,7 @@ ER_SYSTEM_EXPORT bool isDebuggerPresent() noexcept
 {
     try
     {
-        ErrnoGuard guard;
+        Er::Util::ErrnoGuard guard;
 
         std::ifstream in("/proc/self/status");
         for (std::string line; std::getline(in, line); )

@@ -1,7 +1,12 @@
 #include <erebus/system/system/process.hxx>
 
 #if ER_POSIX
+    #include <erebus/system/system/posix_error.hxx>
+    #include <cstring>
+    #include <fcntl.h>
+    #include <signal.h>
     #include <sys/stat.h>
+    #include <unistd.h>
 #endif
 
 #if ER_WINDOWS
@@ -26,7 +31,7 @@ ER_SYSTEM_EXPORT std::string exe()
     exe.resize(size + 1, '\0');
     auto r = ::readlink("/proc/self/exe", exe.data(), size); // readlink does not append '\0'
     if (r < 0)
-        ErThrowPosixError("Failed to read /proc/self/exe", errno);
+        ErThrowPosixError("Failed to read /proc/self/exe", int(errno));
 
     exe.resize(std::strlen(exe.c_str())); // cut extra '\0'
 
@@ -36,17 +41,17 @@ ER_SYSTEM_EXPORT std::string exe()
 }
 
 #if ER_POSIX
-EREBUS_EXPORT void daemonize() noexcept
+ER_SYSTEM_EXPORT void daemonize() noexcept
 {
     // Fork the process and have the parent exit. If the process was started
     // from a shell, this returns control to the user. Forking a new process is
     // also a prerequisite for the subsequent call to setsid().
-    auto pid = ::fork();
+    auto procId = ::fork();
 
-    if (pid < 0)
+    if (procId < 0)
         ::exit(EXIT_FAILURE);
 
-    if (pid > 0)
+    if (procId > 0)
         ::exit(EXIT_SUCCESS);
 
     // Make the process a new session leader. This detaches it from the terminal.
@@ -64,12 +69,12 @@ EREBUS_EXPORT void daemonize() noexcept
     ::signal(SIGHUP, SIG_IGN);
 
     // A second fork ensures the process cannot acquire a controlling terminal.
-    pid = ::fork();
+    procId = ::fork();
 
-    if (pid < 0)
+    if (procId < 0)
         ::exit(EXIT_FAILURE);
 
-    if (pid > 0)
+    if (procId > 0)
         ::exit(EXIT_SUCCESS);
 }
 #endif

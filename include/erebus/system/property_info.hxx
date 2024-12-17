@@ -53,7 +53,7 @@ struct Property;
 // struct Property carries a pointer to PropertyInfo instance
 // and 5 lower bits of this (aligned) pointer are used for PropertyType
 //
-struct ER_SYSTEM_EXPORT alignas(32) PropertyInfo final
+struct alignas(32) PropertyInfo 
 {
     using Formatter = std::function<std::string(const Property&)>;
 
@@ -61,25 +61,19 @@ struct ER_SYSTEM_EXPORT alignas(32) PropertyInfo final
     PropertyType type;
     std::string name;
     std::string readableName;
-    Formatter formatter;
+    
 
     ~PropertyInfo()
     {
         unregisterProperty(this);
     }
     
-    PropertyInfo(PropertyType type, std::string_view name, std::string_view readableName)
+    PropertyInfo(PropertyType type, std::string_view name, std::string_view readableName, Formatter&& formatter = Formatter{})
         : id(registerProperty(this))
         , type(type)
         , name(name)
         , readableName(readableName)
-    {
-    }
-
-    template <typename FormatterT>
-    PropertyInfo(PropertyType type, std::string_view name, std::string_view readableName, FormatterT&& formatter)
-        : PropertyInfo(type, name, readableName)
-        , formatter(std::forward<FormatterT>(formatter))
+        , m_formatter(std::move(formatter))
     {
     }
 
@@ -91,7 +85,7 @@ private:
     static std::uint32_t registerProperty(const PropertyInfo* info);
     static void unregisterProperty(const PropertyInfo* info) noexcept;
 
-    Log::ILog* m_log;
+    Formatter m_formatter;
 };
 
 
