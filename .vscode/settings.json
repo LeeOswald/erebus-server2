@@ -2,13 +2,9 @@
     "cmake.configureOnOpen": true,
     "cmake.configureArgs": [
     	"-DCMAKE_BUILD_TYPE=Debug",
-    	"-DCMAKE_TOOLCHAIN_FILE=conan/debian-64/build/build/Debug/generators/conan_toolchain.cmake",
+    	"-DCMAKE_TOOLCHAIN_FILE=build/Debug/generators/conan_toolchain.cmake",
         "-DCMAKE_POLICY_DEFAULT_CMP0091=NEW"
     ],
-    "environment": [
-       { "name": PARH }
-
-    ]
     "files.associations": {
         "chrono": "cpp",
         "cctype": "cpp",
