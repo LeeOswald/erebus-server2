@@ -34,6 +34,7 @@ add_library(erebus-system SHARED
     ../../include/erebus/system/logger/null_logger.hxx
     ../../include/erebus/system/logger/simple_formatter.hxx
     ../../include/erebus/system/property.hxx
+    ../../include/erebus/system/property_bag.hxx
     ../../include/erebus/system/property_info.hxx
     ../../include/erebus/system/result.hxx
     ../../include/erebus/system/system/packed_time.hxx
@@ -54,12 +55,13 @@ target_sources(erebus-system
         assert.cxx
         debug.cxx
         exception.cxx
-		init.cxx
+	init.cxx
         logger/async_logger.cxx
         logger/file_sink.cxx
         logger/ostream_sink.cxx
         logger/simple_formatter.cxx
         property.cxx
+        property_bag.cxx
         property_info.cxx
         result.cxx
         system/packed_time.cxx
@@ -72,7 +74,7 @@ target_sources(erebus-system
 
 target_link_libraries(erebus-system
 	PUBLIC
-		fmt::fmt
+	fmt::fmt
         boost::boost
 )
 
