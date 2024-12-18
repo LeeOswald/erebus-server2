@@ -11,11 +11,11 @@ if(ER_WINDOWS)
     
 elseif(ER_POSIX)
     set(PLATFORM_SOURCES
-        
+	system/signal_handler_posix.cxx        
     )
     
     set(PLATFORM_HEADERS
-        
+    	../../include/erebus/system/system/signal_handler_posix.hxx    
     )
     
 endif()
@@ -47,6 +47,7 @@ add_library(erebus-system SHARED
     ../../include/erebus/system/util/generic_handle.hxx
     ../../include/erebus/system/util/null_mutex.hxx
     ../../include/erebus/system/util/utf16.hxx
+    ../../include/erebus/system/waitable.hxx
     ${PLATFORM_HEADERS}
 )
 
