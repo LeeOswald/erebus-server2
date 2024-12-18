@@ -5,11 +5,6 @@
 namespace Er
 {
 
-bool Property::_allocatesStorage(PropertyType type) noexcept
-{
-    return (type >= PropertyType::String);
-}
-
 void Property::_free() noexcept
 {
     using FreeFn = void (Property::*)() noexcept;

@@ -62,7 +62,6 @@ struct alignas(32) PropertyInfo
     std::string name;
     std::string readableName;
     
-
     ~PropertyInfo()
     {
         unregisterProperty(this);

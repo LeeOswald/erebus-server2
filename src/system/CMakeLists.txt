@@ -61,7 +61,6 @@ target_sources(erebus-system
         logger/ostream_sink.cxx
         logger/simple_formatter.cxx
         property.cxx
-        property_bag.cxx
         property_info.cxx
         result.cxx
         system/packed_time.cxx
