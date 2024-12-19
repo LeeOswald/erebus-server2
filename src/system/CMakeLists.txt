@@ -11,10 +11,12 @@ if(ER_WINDOWS)
     
 elseif(ER_POSIX)
     set(PLATFORM_SOURCES
+    	logger/syslog_linux.cxx
 	system/signal_handler_posix.cxx        
     )
     
     set(PLATFORM_HEADERS
+    	../../include/erebus/system/logger/syslog_linux.hxx
     	../../include/erebus/system/system/signal_handler_posix.hxx    
     )
     
@@ -57,7 +59,7 @@ target_sources(erebus-system
         assert.cxx
         debug.cxx
         exception.cxx
-	init.cxx
+	logger.cxx
         logger/async_logger.cxx
         logger/file_sink.cxx
         logger/ostream_sink.cxx

@@ -215,6 +215,8 @@ bool Program::doLoadConfiguration(int argc, char** argv)
 
 int Program::exec(int argc, char** argv) noexcept
 {
+    int resut = EXIT_FAILURE;
+
     try
     {
 
@@ -223,6 +225,8 @@ int Program::exec(int argc, char** argv) noexcept
     {
         
     }
+
+    return resut;
 }
 
 
