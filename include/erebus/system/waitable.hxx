@@ -138,7 +138,7 @@ public:
 private:
     std::atomic<ValueType> m_value;
     mutable std::mutex m_mutex;
-    mutable std::Waitable_variable m_cv;
+    mutable std::condition_variable m_cv;
 };
 
 

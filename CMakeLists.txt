@@ -53,6 +53,10 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Boost
 find_package(Boost REQUIRED)
+add_compile_definitions(BOOST_STACKTRACE_LINK)
+if(ER_POSIX)
+    add_compile_definitions(BOOST_STACKTRACE_USE_BACKTRACE)
+endif()
 
 # {fmt}
 find_package(fmt REQUIRED)

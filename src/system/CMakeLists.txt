@@ -33,6 +33,7 @@ add_library(erebus-system SHARED
     ../../include/erebus/system/log.hxx
     ../../include/erebus/system/logger/null_logger.hxx
     ../../include/erebus/system/logger/simple_formatter.hxx
+    ../../include/erebus/system/program.hxx
     ../../include/erebus/system/property.hxx
     ../../include/erebus/system/property_bag.hxx
     ../../include/erebus/system/property_info.hxx
@@ -61,6 +62,7 @@ target_sources(erebus-system
         logger/file_sink.cxx
         logger/ostream_sink.cxx
         logger/simple_formatter.cxx
+        program.cxx
         property.cxx
         property_info.cxx
         result.cxx
@@ -73,9 +75,9 @@ target_sources(erebus-system
 )
 
 target_link_libraries(erebus-system
-	PUBLIC
-	fmt::fmt
-        boost::boost
+    PUBLIC
+    fmt::fmt
+    boost::boost
 )
 
 target_compile_definitions(erebus-system PRIVATE ER_SYSTEM_EXPORTS)
