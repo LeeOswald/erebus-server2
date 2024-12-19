@@ -3,8 +3,10 @@
 
 #include <boost/stacktrace.hpp>
 
+#include <csignal>
 #include <filesystem>
 #include <iostream>
+
 
 
 namespace Er
