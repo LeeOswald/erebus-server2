@@ -1,22 +1,26 @@
 if(ER_WINDOWS)
     set(PLATFORM_SOURCES
         logger/win32_debugger_sink.cxx
+        logger/win32_debugger_sink2.cxx
         system/win32_error.cxx
         util/utf16_win32.cxx
     )
     
     set(PLATFORM_HEADERS
+    	logger/win32_debugger_sink2.hxx
         ../../include/erebus/system/system/win32_error.hxx
     )
     
 elseif(ER_POSIX)
     set(PLATFORM_SOURCES
     	logger/syslog_linux.cxx
+    	logger/syslog_linux_sink2.cxx
 	system/signal_handler_posix.cxx        
     )
     
     set(PLATFORM_HEADERS
     	../../include/erebus/system/logger/syslog_linux.hxx
+    	../../include/erebus/system/logger/syslog_linux_sink2.hxx
     	../../include/erebus/system/system/signal_handler_posix.hxx    
     )
     
@@ -33,8 +37,13 @@ add_library(erebus-system SHARED
     ../../include/erebus/system/flags.hxx
     ../../include/erebus/system/format.hxx
     ../../include/erebus/system/log.hxx
+    ../../include/erebus/system/logger2.hxx
+    ../../include/erebus/system/logger/file_sink2.hxx
     ../../include/erebus/system/logger/null_logger.hxx
+    ../../include/erebus/system/logger/null_logger2.hxx
+    ../../include/erebus/system/logger/ostream_sink2.hxx
     ../../include/erebus/system/logger/simple_formatter.hxx
+    ../../include/erebus/system/logger/simple_formatter2.hxx
     ../../include/erebus/system/program.hxx
     ../../include/erebus/system/property.hxx
     ../../include/erebus/system/property_bag.hxx
@@ -49,6 +58,7 @@ add_library(erebus-system SHARED
     ../../include/erebus/system/util/exception_util.hxx
     ../../include/erebus/system/util/generic_handle.hxx
     ../../include/erebus/system/util/null_mutex.hxx
+    ../../include/erebus/system/util/thread_data.hxx
     ../../include/erebus/system/util/utf16.hxx
     ../../include/erebus/system/waitable.hxx
     ${PLATFORM_HEADERS}
@@ -60,10 +70,16 @@ target_sources(erebus-system
         debug.cxx
         exception.cxx
 	logger.cxx
+	logger/logger2.cxx
         logger/async_logger.cxx
+        logger/async_logger2.cxx
         logger/file_sink.cxx
+        logger/file_sink2.cxx
         logger/ostream_sink.cxx
+        logger/ostream_sink2.cxx
         logger/simple_formatter.cxx
+        logger/simple_formatter2.cxx
+        logger/tee2.cxx
         program.cxx
         property.cxx
         property_info.cxx

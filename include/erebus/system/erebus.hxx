@@ -54,6 +54,13 @@
 namespace Er
 {
 
+enum class ThreadSafe
+{
+    No,
+    Yes
+};
+
+
 namespace Log
 {
 
