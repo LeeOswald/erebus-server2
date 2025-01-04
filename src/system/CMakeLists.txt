@@ -6,7 +6,7 @@ if(ER_WINDOWS)
     )
     
     set(PLATFORM_HEADERS
-    	logger/win32_debugger_sink2.hxx
+    	../../include/erebus/system/logger/win32_debugger_sink2.hxx
         ../../include/erebus/system/system/win32_error.hxx
     )
     
