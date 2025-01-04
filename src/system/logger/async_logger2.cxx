@@ -27,7 +27,7 @@ public:
     AsyncLogger(std::chrono::milliseconds threshold)
         : m_threshold(threshold)
         , m_level(Level::Debug)
-        , m_tee(makeTee(ThreadSafe::No)) // until we have only one worker thread
+        , m_tee(makeTee(ThreadSafe::Yes))
         , m_worker([this](std::stop_token stop) { run(stop); })
     {
     }
@@ -116,13 +116,11 @@ public:
     
     void addSink(std::string_view name, ISink::Ptr sink) override
     {
-        std::unique_lock l(m_mutexTee);
         m_tee->addSink(name, sink);
     }
     
     void removeSink(std::string_view name) override
     {
-        std::unique_lock l(m_mutexTee);
         m_tee->removeSink(name);
     }
     
@@ -184,7 +182,6 @@ private:
 
     std::chrono::milliseconds m_threshold;
     Level m_level;
-    std::mutex m_mutexTee;
     ITee::Ptr m_tee;
     ThreadDataHolder m_threadData;
     std::mutex m_mutexQueue;

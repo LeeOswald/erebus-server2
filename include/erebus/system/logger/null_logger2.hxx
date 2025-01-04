@@ -14,10 +14,12 @@ public:
 
     Level level() const noexcept override
     {
+        return Level::Debug;
     }
 
     Level setLevel(Level level) noexcept override
     {
+        return Level::Debug;
     }
 
     void indent() noexcept override
