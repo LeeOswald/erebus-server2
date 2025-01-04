@@ -1,6 +1,6 @@
 #pragma once
 
-#include <erebus/system/log.hxx>
+#include <erebus/system/logger2.hxx>
 #if ER_POSIX
     #include <erebus/system/system/signal_handler_posix.hxx>
 #endif
@@ -108,7 +108,7 @@ private:
 #endif
 
     boost::program_options::variables_map m_options;
-    Log::ILog::Ptr m_logger;
+    Log2::ILogger::Ptr m_logger;
 };
 
 

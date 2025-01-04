@@ -51,7 +51,7 @@ void Program::defaultTerminateHandler()
     std::ostringstream ss;
     ss << boost::stacktrace::stacktrace();
 
-    Log::fatal(Log::get(), "std::terminate() called from\n{}", ss.str());
+    Log2::fatal(Log2::get(), "std::terminate() called from\n{}", ss.str());
 
     std::abort();
 }
@@ -86,7 +86,7 @@ void Program::staticPrintAssertFn(std::string_view message)
 
 void Program::defaultPrintAssertFn(std::string_view message)
 {
-    Log::writeln(Log::get(), Log::Level::Fatal, std::string(message));
+    Log2::writeln(Log2::get(), Log2::Level::Fatal, std::string(message));
 }
 
 void Program::printAssertFn(std::string_view message)

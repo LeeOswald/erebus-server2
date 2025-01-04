@@ -1,4 +1,4 @@
-#include <erebus/system/logger/null_logger.hxx>
+#include <erebus/system/logger/null_logger2.hxx>
 
 
 namespace Er
@@ -7,31 +7,31 @@ namespace Er
 namespace
 {
 
-Er::Log::ILog* nullLogger() noexcept
+Er::Log2::ILogger* nullLogger() noexcept
 {
-    static Er::NullLogger dummy;
+    static Er::Log2::NullLogger dummy;
     return &dummy;
 }
 
-thread_local Er::Log::ILog* g_logger = nullLogger();
+thread_local Er::Log2::ILogger* g_logger = nullLogger();
     
 } // namespace {}
 
-namespace Log
+namespace Log2
 {
 
-ER_SYSTEM_EXPORT Log::ILog* get() noexcept
+ER_SYSTEM_EXPORT Log2::ILogger* get() noexcept
 {
     return g_logger;
 }
 
-ER_SYSTEM_EXPORT ILog* set(ILog* log) noexcept
+ER_SYSTEM_EXPORT Log2::ILogger* set(Log2::ILogger* log) noexcept
 {
     auto prev = g_logger;
     g_logger = log ? log : nullLogger();
     return prev;
 }
 
-} // namespace Log {}
+} // namespace Log2 {}
 
 } // namespace Er {}

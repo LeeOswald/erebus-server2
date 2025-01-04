@@ -1,6 +1,5 @@
 if(ER_WINDOWS)
     set(PLATFORM_SOURCES
-        logger/win32_debugger_sink.cxx
         logger/win32_debugger_sink2.cxx
         system/win32_error.cxx
         util/utf16_win32.cxx
@@ -13,14 +12,12 @@ if(ER_WINDOWS)
     
 elseif(ER_POSIX)
     set(PLATFORM_SOURCES
-    	logger/syslog_linux.cxx
     	logger/syslog_linux_sink2.cxx
 	system/signal_handler_posix.cxx        
     )
     
     set(PLATFORM_HEADERS
-    	../../include/erebus/system/logger/syslog_linux.hxx
-    	../../include/erebus/system/logger/syslog_linux_sink2.hxx
+     	../../include/erebus/system/logger/syslog_linux_sink2.hxx
     	../../include/erebus/system/system/signal_handler_posix.hxx    
     )
     
@@ -36,13 +33,10 @@ add_library(erebus-system SHARED
     ../../include/erebus/system/exception.hxx
     ../../include/erebus/system/flags.hxx
     ../../include/erebus/system/format.hxx
-    ../../include/erebus/system/log.hxx
     ../../include/erebus/system/logger2.hxx
     ../../include/erebus/system/logger/file_sink2.hxx
-    ../../include/erebus/system/logger/null_logger.hxx
     ../../include/erebus/system/logger/null_logger2.hxx
     ../../include/erebus/system/logger/ostream_sink2.hxx
-    ../../include/erebus/system/logger/simple_formatter.hxx
     ../../include/erebus/system/logger/simple_formatter2.hxx
     ../../include/erebus/system/program.hxx
     ../../include/erebus/system/property.hxx
@@ -71,13 +65,9 @@ target_sources(erebus-system
         exception.cxx
 	logger.cxx
 	logger/logger2.cxx
-        logger/async_logger.cxx
         logger/async_logger2.cxx
-        logger/file_sink.cxx
         logger/file_sink2.cxx
-        logger/ostream_sink.cxx
         logger/ostream_sink2.cxx
-        logger/simple_formatter.cxx
         logger/simple_formatter2.cxx
         logger/tee2.cxx
         program.cxx

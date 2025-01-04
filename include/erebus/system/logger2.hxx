@@ -306,4 +306,8 @@ void fatal(ILogger* sink, std::string_view format, Args&&... args)
 }
 
 
+ER_SYSTEM_EXPORT ILogger* get() noexcept;
+ER_SYSTEM_EXPORT ILogger* set(ILogger* log) noexcept;
+
+
 } // namespace Er::Log2 {}

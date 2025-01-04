@@ -1,7 +1,7 @@
 #pragma once
 
 #include <erebus/system/exception.hxx>
-#include <erebus/system/log.hxx>
+#include <erebus/system/logger2.hxx>
 #include <erebus/system/result.hxx>
 
 
@@ -11,7 +11,7 @@ namespace Er::Util
 class ER_SYSTEM_EXPORT ExceptionLogger
 {
 public:
-    ExceptionLogger(Log::ILog* log)
+    ExceptionLogger(Log2::ILogger* log)
         : m_log(log)
     {}
 
@@ -25,7 +25,7 @@ public:
     ResultCode operator()(const std::exception_ptr& ep);
 
 private:
-    Log::ILog* m_log;
+    Log2::ILogger* m_log;
 };
 
 } // namespace Er::Util {}
