@@ -57,6 +57,8 @@ add_compile_definitions(BOOST_STACKTRACE_LINK)
 if(ER_POSIX)
     add_compile_definitions(BOOST_STACKTRACE_USE_BACKTRACE)
 endif()
+include_directories(${Boost_INCLUDE_DIRS})
+link_directories(${Boost_LIBRARY_DIRS})
 
 # {fmt}
 find_package(fmt REQUIRED)

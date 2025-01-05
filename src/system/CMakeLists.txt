@@ -85,7 +85,7 @@ target_sources(erebus-system
 target_link_libraries(erebus-system
     PUBLIC
     fmt::fmt
-    boost::boost
+    ${Boost_LIBRARIES}
 )
 
 target_compile_definitions(erebus-system PRIVATE ER_SYSTEM_EXPORTS)

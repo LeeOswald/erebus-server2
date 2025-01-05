@@ -41,7 +41,7 @@ public:
 } // namespace {}
 
 
-ER_SYSTEM_EXPORT ISink::Ptr makeDebuggerSink(IFormatter::Ptr formatter, Filter&& filter);
+ER_SYSTEM_EXPORT ISink::Ptr makeDebuggerSink(IFormatter::Ptr formatter, Filter&& filter)
 {
     return std::make_shared<DebuggerSink>(formatter, std::move(filter));
 }
