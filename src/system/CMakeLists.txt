@@ -63,7 +63,6 @@ target_sources(erebus-system
         assert.cxx
         debug.cxx
         exception.cxx
-	logger.cxx
 	logger/logger2.cxx
         logger/async_logger2.cxx
         logger/file_sink2.cxx
