@@ -12,13 +12,22 @@
 namespace Er
 {
 
-unsigned Program::s_options = 0;
-std::atomic<Program*> Program::s_instance = nullptr;
-bool Program::s_isDaemon = false;
-Waitable<bool> Program::s_exitCondition{false};
-std::atomic<int> Program::s_signalReceived = 0;
+Program* Program::s_instance = nullptr;
 
-bool Program::optionPresent(int argc, char** argv, const char* longName, const char* shortName) noexcept
+
+Program::~Program()
+{
+    s_instance = nullptr;
+}
+
+Program::Program(unsigned options) noexcept
+    : m_options(options)
+{
+    // no complex initialization here
+    s_instance = this;
+}
+
+bool Program::argPresent(int argc, char** argv, const char* longName, const char* shortName) noexcept
 {
     for (int i = 1; i < argc; ++i)
     {
@@ -34,19 +43,18 @@ bool Program::optionPresent(int argc, char** argv, const char* longName, const c
 
 bool Program::verbose() const noexcept
 {
-    return m_options.count("verbose") > 0;
+    return m_args.count("verbose") > 0;
 }
 
 void Program::staticTerminateHandler()
 {
-    auto this_ = instance();
-    if (this_)
-        this_->terminateHandler();
+    if (s_instance)
+        s_instance->terminateHandler();
     else
-        defaultTerminateHandler();
+        std::abort();
 }
 
-void Program::defaultTerminateHandler()
+void Program::terminateHandler()
 {
     std::ostringstream ss;
     ss << boost::stacktrace::stacktrace();
@@ -56,57 +64,40 @@ void Program::defaultTerminateHandler()
     std::abort();
 }
 
-void Program::terminateHandler()
-{
-    defaultTerminateHandler();
-}
-
 void Program::staticSignalHandler(int signo)
 {
-    auto this_ = instance();
-    if (this_)
-        this_->signalHandler(signo);
-
-    s_signalReceived = signo;
-    s_exitCondition.setAndNotifyAll(true);
+    if (s_instance)
+        s_instance->signalHandler(signo);
 }
 
 void Program::signalHandler(int signo)
 {
+    m_signalReceived = signo;
+    m_exitCondition.setAndNotifyAll(true);
 }
 
 void Program::staticPrintAssertFn(std::string_view message)
 {
-    auto this_ = instance();
-    if (this_)
-        this_->printAssertFn(message);
-    else
-        defaultPrintAssertFn(message);
-}
-
-void Program::defaultPrintAssertFn(std::string_view message)
-{
-    Log2::writeln(Log2::get(), Log2::Level::Fatal, std::string(message));
+    if (s_instance)
+        s_instance->printAssertFn(message);
 }
 
 void Program::printAssertFn(std::string_view message)
 {
-    defaultPrintAssertFn(message);
+    Log2::writeln(Log2::get(), Log2::Level::Fatal, std::string(message));
 }
 
-void Program::globalStartup(int argc, char** argv, unsigned options) noexcept
+void Program::globalStartup(int argc, char** argv) noexcept
 {
-    s_options = options;
-
 #if ER_POSIX
     // daemonize as early as possible to avoid a whole bunch of bugs
-    if (options & CanBeDaemonized)
+    if (m_options & CanBeDaemonized)
     {
-        bool daemonize = optionPresent(argc, argv, "--daemon", "-d");
+        bool daemonize = argPresent(argc, argv, "--daemon", "-d");
         if (daemonize)
         {
             Er::System::CurrentProcess::daemonize();
-            s_isDaemon = true;
+            m_isDaemon = true;
         }
     }
 #endif
@@ -122,10 +113,11 @@ void Program::globalStartup(int argc, char** argv, unsigned options) noexcept
     _CrtSetDbgFlag(tmpFlag);
 #endif
 
-    if (options & EnableSignalHandler)
+    // setup signal handler
+    if (m_options & EnableSignalHandler)
     {
 #if ER_POSIX
-        s_signalWaiter.reset(new SignalWaiter{ SIGINT, SIGTERM, SIGPIPE, SIGHUP });
+        m_signalWaiter.reset(new SignalWaiter({ SIGINT, SIGTERM, SIGPIPE, SIGHUP }, this));
 #else
         ::signal(SIGINT, staticSignalHandler);
         ::signal(SIGTERM, staticSignalHandler);
@@ -148,28 +140,17 @@ void Program::globalStartup(int argc, char** argv, unsigned options) noexcept
 void Program::globalShutdown() noexcept
 {
 #if ER_POSIX
-    if(s_signalWaiter)
+    if (m_signalWaiter)
     {
         // s_signalWaiter is locked in sigwait() so wake it 
         ::kill(::getpid(), SIGHUP);
-        s_signalWaiter.reset();
+        m_signalWaiter.reset();
     }
 #endif
 
     Er::setPrintFailedAssertionFn(nullptr);
 }
 
-Program::~Program()
-{
-    s_instance = nullptr;
-}
-
-Program::Program() noexcept
-{
-    // no complex initialization here
-    ErAssert(!s_instance);
-    s_instance = this;
-}
 
 void Program::addCmdLineOptions(boost::program_options::options_description& options)
 {
@@ -185,7 +166,7 @@ bool Program::loadConfiguration()
     return true;
 }
 
-bool Program::doLoadConfiguration(int argc, char** argv)
+bool Program::globalLoadConfiguration(int argc, char** argv)
 {
     boost::program_options::options_description options("Command line options");
     options.add_options()
@@ -194,17 +175,17 @@ bool Program::doLoadConfiguration(int argc, char** argv)
 
 
 #if ER_POSIX
-    if (s_options & CanBeDaemonized)
+    if (m_options & CanBeDaemonized)
         options.add_options()
             ("daemon,d", "run as a daemon");
 #endif
 
     addCmdLineOptions(options);
 
-    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, options), m_options);
-    boost::program_options::notify(m_options);
+    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, options), m_args);
+    boost::program_options::notify(m_args);
 
-    if (m_options.count("help"))
+    if (m_args.count("help"))
     {
         displayHelp(options);
         return false;
@@ -213,18 +194,29 @@ bool Program::doLoadConfiguration(int argc, char** argv)
     return loadConfiguration();
 }
 
+void Program::globalMakeLogger()
+{
+    
+}
+
 int Program::exec(int argc, char** argv) noexcept
 {
     int resut = EXIT_FAILURE;
+    globalStartup(argc, argv);
 
     try
     {
-
+        if (globalLoadConfiguration(argc, argv))
+        {
+            globalMakeLogger();
+        }
     }
     catch(...)
     {
         
     }
+
+    globalShutdown();
 
     return resut;
 }

@@ -27,37 +27,28 @@ public:
         CanBeDaemonized = 0x0002
     };
 
-    static void globalStartup(int argc, char** argv, unsigned options = 0) noexcept;
-    static void globalShutdown() noexcept;
-
+    
     virtual ~Program();
-    Program() noexcept;
+    Program(unsigned options) noexcept;
 
-    static bool optionPresent(int argc, char** argv, const char* longName, const char* shortName) noexcept;
-
-    static Program* instance() noexcept
+    bool isDaemon() noexcept
     {
-        return s_instance.load(std::memory_order_acquire);
+        return m_isDaemon;
     }
 
-    static bool isDaemon() noexcept
+    constexpr Waitable<bool>& exitCondition() noexcept
     {
-        return s_isDaemon;
+        return m_exitCondition;
     }
 
-    static constexpr Waitable<bool>& exitCondition() noexcept
+    int signalReceived() noexcept
     {
-        return s_exitCondition;
+        return m_signalReceived.load(std::memory_order_acquire);
     }
 
-    static int signalReceived() noexcept
+    constexpr const boost::program_options::variables_map& args() const noexcept
     {
-        return s_signalReceived.load(std::memory_order_acquire);
-    }
-
-    constexpr const boost::program_options::variables_map& options() const noexcept
-    {
-        return m_options;
+        return m_args;
     }
 
     bool verbose() const noexcept;
@@ -65,6 +56,7 @@ public:
     int exec(int argc, char** argv) noexcept;
 
 protected:
+    static bool argPresent(int argc, char** argv, const char* longName, const char* shortName) noexcept;
     virtual void terminateHandler();
     virtual void signalHandler(int signo);
     virtual void printAssertFn(std::string_view message);
@@ -75,17 +67,20 @@ protected:
 
 private:
     static void staticTerminateHandler();
-    static void defaultTerminateHandler();
     static void staticSignalHandler(int signo);
     static void staticPrintAssertFn(std::string_view message);
-    static void defaultPrintAssertFn(std::string_view message);
-    bool doLoadConfiguration(int argc, char** argv);
+
+    void globalStartup(int argc, char** argv) noexcept;
+    void globalShutdown() noexcept;
+    bool globalLoadConfiguration(int argc, char** argv);
+    void globalMakeLogger();
+
+    static Program* s_instance;
     
-    static unsigned s_options;
-    static std::atomic<Program*> s_instance;
-    static bool s_isDaemon;
-    static Waitable<bool> s_exitCondition;
-    static std::atomic<int> s_signalReceived;
+    unsigned m_options;
+    bool m_isDaemon;
+    Waitable<bool> m_exitCondition;
+    std::atomic<int> m_signalReceived;
 
 #if ER_POSIX
     struct SignalWaiter
@@ -93,21 +88,21 @@ private:
         System::SignalHandler sh;
         std::future<int> fu;
 
-        SignalWaiter(const std::initializer_list<int>& signals)
+        SignalWaiter(const std::initializer_list<int>& signals, Program* program)
             : sh(signals)
             , fu(sh.asyncWaitHandler(
-                [](int signo)
+                [program](int signo)
                 {
-                    staticSignalHandler(signo);
+                    program->signalHandler(signo);
                     return true;
                 }))
         {}
     };
 
-    static std::unique_ptr<SignalWaiter> s_signalWaiter;
+    std::unique_ptr<SignalWaiter> m_signalWaiter;
 #endif
 
-    boost::program_options::variables_map m_options;
+    boost::program_options::variables_map m_args;
     Log2::ILogger::Ptr m_logger;
 };
 
