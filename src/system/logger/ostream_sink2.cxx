@@ -11,8 +11,8 @@ class OStreamSink
     : public SinkBase
 {
 public:
-    OStreamSink(std::ostream& stream, IFormatter::Ptr formatter, Filter&& filter)
-        : SinkBase(formatter, std::move(filter))
+    OStreamSink(std::ostream& stream, IFormatter::Ptr&& formatter, Filter&& filter)
+        : SinkBase(std::move(formatter), std::move(filter))
         , m_stream(stream)
     {
     }
@@ -44,9 +44,9 @@ private:
 } // namespace {}
 
 
-ER_SYSTEM_EXPORT ISink::Ptr makeOStreamSink(std::ostream& stream, IFormatter::Ptr formatter, Filter&& filter)
+ER_SYSTEM_EXPORT ISink::Ptr makeOStreamSink(std::ostream& stream, IFormatter::Ptr&& formatter, Filter&& filter)
 {
-    return std::make_shared<OStreamSink>(stream, formatter, std::move(filter));
+    return std::make_shared<OStreamSink>(stream, std::move(formatter), std::move(filter));
 }
 
 } // namespace Er::Log2 {}

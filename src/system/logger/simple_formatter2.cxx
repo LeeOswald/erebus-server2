@@ -133,7 +133,7 @@ private:
 
 IFormatter::Ptr SimpleFormatter::make(SimpleFormatter::Options options, unsigned indentSize)
 {
-    return std::make_shared<SimpleFormatterImpl>(options, indentSize);
+    return std::make_unique<SimpleFormatterImpl>(options, indentSize);
 }
 
 } // namespace Er::Log2 {}

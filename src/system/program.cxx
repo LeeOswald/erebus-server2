@@ -167,7 +167,7 @@ bool Program::globalLoadConfiguration(int argc, char** argv)
     options.add_options()
         ("help,?", "show help")
         ("verbose,v", "verbose logging")
-        ("threshold", boost::program_options::value<unsigned>(&m_loggerThreshold)->default_value(unsigned(1000)));
+        ("logthreshold", boost::program_options::value<unsigned>(&m_loggerThreshold)->default_value(unsigned(1000)), "lt");
 
 
 #if ER_POSIX
@@ -196,7 +196,8 @@ void Program::globalMakeLogger()
     auto verbose = m_args.count("verbose") > 0;
     m_logger->setLevel(verbose ? Log2::Level::Debug : Log2::Level::Info);
 
-    auto tee = Log2::makeTee(ThreadSafe::Yes); // tee ios called from the single logger thread
+    auto tee = Log2::makeTee(ThreadSafe::Yes); // tee is called from the single logger thread
+    m_logger->addSink("tee", std::static_pointer_cast<Log2::ISink>(tee));
 }
 
 int Program::exec(int argc, char** argv) noexcept

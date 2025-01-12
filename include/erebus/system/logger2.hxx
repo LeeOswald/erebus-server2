@@ -109,7 +109,7 @@ private:
 
 struct IFormatter
 {
-    using Ptr = std::shared_ptr<IFormatter>;
+    using Ptr = std::unique_ptr<IFormatter>;
 
     virtual ~IFormatter() = default;
 
@@ -158,8 +158,8 @@ struct SinkBase
     : public ISink
     , public boost::noncopyable
 {
-    SinkBase(IFormatter::Ptr formatter, auto&& filter) noexcept
-        : m_formatter(formatter)
+    SinkBase(IFormatter::Ptr&& formatter, auto&& filter) noexcept
+        : m_formatter(std::move(formatter))
         , m_filter(std::forward<decltype(filter)>(filter))
     {}
 

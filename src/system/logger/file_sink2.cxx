@@ -59,8 +59,8 @@ public:
     {
     }
 
-    FileSink(std::string_view fileName, IFormatter::Ptr formatter, unsigned logsToKeep, std::uint64_t maxFileSize, Filter&& filter)
-        : SinkBase(formatter, std::move(filter))
+    FileSink(std::string_view fileName, IFormatter::Ptr&& formatter, unsigned logsToKeep, std::uint64_t maxFileSize, Filter&& filter)
+        : SinkBase(std::move(formatter), std::move(filter))
         , m_fileName(fileName)
         , m_logsToKeep(logsToKeep)
         , m_maxFileSize(maxFileSize)
@@ -167,16 +167,16 @@ private:
 ER_SYSTEM_EXPORT ISink::Ptr makeFileSink(
     ThreadSafe mode, 
     std::string_view fileName,
-    IFormatter::Ptr formatter,
+    IFormatter::Ptr&& formatter,
     unsigned logsToKeep, 
     std::uint64_t maxFileSize, 
     Filter&& filter
 )
 {
     if (mode == ThreadSafe::No)
-        return std::make_shared<FileSink<Util::NullMutex>>(fileName, formatter, logsToKeep, maxFileSize, std::move(filter));
+        return std::make_shared<FileSink<Util::NullMutex>>(fileName, std::move(formatter), logsToKeep, maxFileSize, std::move(filter));
     else
-        return std::make_shared<FileSink<std::mutex>>(fileName, formatter, logsToKeep, maxFileSize, std::move(filter));
+        return std::make_shared<FileSink<std::mutex>>(fileName, std::move(formatter), logsToKeep, maxFileSize, std::move(filter));
 }
 
 
