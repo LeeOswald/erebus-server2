@@ -61,6 +61,7 @@ protected:
     virtual void addCmdLineOptions(boost::program_options::options_description& options);
     virtual void displayHelp(const boost::program_options::options_description& options);
     virtual bool loadConfiguration();
+    virtual void addLoggers(Log2::ITee* main);
     virtual int run() = 0;
 
 private:

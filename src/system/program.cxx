@@ -1,5 +1,17 @@
 #include <erebus/system/program.hxx>
 #include <erebus/system/system/process.hxx>
+#include <erebus/system/util/exception_util.hxx>
+
+#if ER_WINDOWS
+    #include <erebus/system/logger/win32_debugger_sink2.hxx>
+#endif
+
+#if ER_LINUX
+    #include <erebus/system/logger/syslog_linux_sink2.hxx
+#endif
+
+#include <erebus/system/logger/ostream_sink2.hxx>
+#include <erebus/system/logger/simple_formatter2.hxx>
 
 #include <boost/stacktrace.hpp>
 
@@ -161,6 +173,50 @@ bool Program::loadConfiguration()
     return true;
 }
 
+void Program::addLoggers(Log2::ITee* main)
+{
+#if ER_WINDOWS
+    if (isDebuggerPresent())
+    {
+        Log2::makeDebuggerSink(
+            Log2::SimpleFormatter::make(),
+            Log2::Filter{}
+        );
+    }
+#endif
+
+#if ER_LINUX
+    if (m_isDaemon)
+    {
+
+    }
+#endif
+
+    if (!m_isDaemon)
+    {
+        makeOStreamSink(
+            std::cout,
+            Log2::SimpleFormatter::make(),
+            [](const Log2::Record* r)
+            {
+                return r->level() < Er::Log2::Level::Error;
+            }
+        );
+    }
+
+    if (!m_isDaemon)
+    {
+        makeOStreamSink(
+            std::cerr,
+            Log2::SimpleFormatter::make(),
+            [](const Log2::Record* r)
+            {
+                return r->level() >= Er::Log2::Level::Error;
+            }
+        );
+    }
+}
+
 bool Program::globalLoadConfiguration(int argc, char** argv)
 {
     boost::program_options::options_description options("Command line options");
@@ -198,23 +254,29 @@ void Program::globalMakeLogger()
 
     auto tee = Log2::makeTee(ThreadSafe::Yes); // tee is called from the single logger thread
     m_logger->addSink("tee", std::static_pointer_cast<Log2::ISink>(tee));
+
+    addLoggers(tee.get());
 }
 
 int Program::exec(int argc, char** argv) noexcept
 {
     int resut = EXIT_FAILURE;
     globalStartup(argc, argv);
+    
+    if (globalLoadConfiguration(argc, argv))
+    {
+        globalMakeLogger();
+    }
+
+    Util::ExceptionLogger xcptLogger(m_logger.get());
 
     try
     {
-        if (globalLoadConfiguration(argc, argv))
-        {
-            globalMakeLogger();
-        }
+        run();
     }
     catch(...)
     {
-        
+        dispatchException(std::current_exception(), xcptLogger);
     }
 
     globalShutdown();
