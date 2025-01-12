@@ -2,8 +2,6 @@
 
 #include <erebus/system/program.hxx>
 
-int InstanceCounter::instances = 0;
-
 
 namespace
 {
