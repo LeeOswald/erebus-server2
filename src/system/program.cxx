@@ -41,11 +41,6 @@ bool Program::argPresent(int argc, char** argv, const char* longName, const char
     return false;
 }
 
-bool Program::verbose() const noexcept
-{
-    return m_args.count("verbose") > 0;
-}
-
 void Program::staticTerminateHandler()
 {
     if (s_instance)
@@ -171,7 +166,8 @@ bool Program::globalLoadConfiguration(int argc, char** argv)
     boost::program_options::options_description options("Command line options");
     options.add_options()
         ("help,?", "show help")
-        ("verbose,v", "verbose logging");
+        ("verbose,v", "verbose logging")
+        ("threshold", boost::program_options::value<unsigned>(&m_loggerThreshold)->default_value(unsigned(1000)));
 
 
 #if ER_POSIX
@@ -196,7 +192,11 @@ bool Program::globalLoadConfiguration(int argc, char** argv)
 
 void Program::globalMakeLogger()
 {
-    
+    m_logger = Log2::makeLogger(std::chrono::milliseconds(m_loggerThreshold));
+    auto verbose = m_args.count("verbose") > 0;
+    m_logger->setLevel(verbose ? Log2::Level::Debug : Log2::Level::Info);
+
+    auto tee = Log2::makeTee(ThreadSafe::Yes); // tee ios called from the single logger thread
 }
 
 int Program::exec(int argc, char** argv) noexcept

@@ -23,7 +23,7 @@ class Waitable final
 public:
     using ValueType = ValueT;
 
-    explicit Waitable(ValueType initial)
+    explicit Waitable(ValueType initial = ValueType{})
         : m_value(initial)
         , m_mutex()
         , m_cv()

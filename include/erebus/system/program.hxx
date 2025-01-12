@@ -51,8 +51,6 @@ public:
         return m_args;
     }
 
-    bool verbose() const noexcept;
-
     int exec(int argc, char** argv) noexcept;
 
 protected:
@@ -103,6 +101,7 @@ private:
 #endif
 
     boost::program_options::variables_map m_args;
+    unsigned m_loggerThreshold = 0;
     Log2::ILogger::Ptr m_logger;
 };
 
