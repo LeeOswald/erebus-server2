@@ -279,7 +279,7 @@ int Program::exec(int argc, char** argv) noexcept
 
     try
     {
-        run();
+        run(argc, argv);
     }
     catch(...)
     {

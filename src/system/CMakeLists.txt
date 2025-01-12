@@ -81,10 +81,18 @@ target_sources(erebus-system
         ${PLATFORM_SOURCES}
 )
 
-target_link_libraries(erebus-system
+target_link_libraries(
+    erebus-system
     PUBLIC
     fmt::fmt
     ${Boost_LIBRARIES}
 )
 
 target_compile_definitions(erebus-system PRIVATE ER_SYSTEM_EXPORTS)
+
+if(NOT ER_BUILD_CLIENT_LIBS_ONLY)
+    include(CTest)
+    if(BUILD_TESTING)
+        add_subdirectory(tests)
+    endif()
+endif()

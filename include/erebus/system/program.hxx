@@ -29,7 +29,7 @@ public:
 
     
     virtual ~Program();
-    Program(unsigned options) noexcept;
+    Program(unsigned options = 0) noexcept;
 
     bool isDaemon() noexcept
     {
@@ -62,7 +62,7 @@ protected:
     virtual void displayHelp(const boost::program_options::options_description& options);
     virtual bool loadConfiguration();
     virtual void addLoggers(Log2::ITee* main);
-    virtual int run() = 0;
+    virtual int run(int argc, char** argv) = 0;
 
 private:
     static void staticTerminateHandler();
