@@ -7,7 +7,7 @@
 #endif
 
 #if ER_LINUX
-    #include <erebus/system/logger/syslog_linux_sink2.hxx
+    #include <erebus/system/logger/syslog_linux_sink2.hxx>
 #endif
 
 #include <erebus/system/logger/ostream_sink2.hxx>
@@ -188,7 +188,14 @@ void Program::addLoggers(Log2::ITee* main)
 #if ER_LINUX
     if (m_isDaemon)
     {
-
+        Log2::makeSyslogSink("erebus", Log2::SimpleFormatter::make(
+            Log2::SimpleFormatter::Options{ 
+                Log2::SimpleFormatter::Option::Time, 
+                Log2::SimpleFormatter::Option::Level, 
+                Log2::SimpleFormatter::Option::Tid, 
+                Log2::SimpleFormatter::Option::TzLocal, 
+                Log2::SimpleFormatter::Option::Lf}),
+                [](const Log2::Record* r) { return r->level() >= Log2::Level::Error; });
     }
 #endif
 

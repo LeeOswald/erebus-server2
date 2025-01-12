@@ -20,7 +20,7 @@ public:
     }
 
     SyslogSink(const char* tag, IFormatter::Ptr formatter, Filter&& filter)
-        : SinkBase(formatter, std::move(filter))
+        : SinkBase(std::move(formatter), std::move(filter))
     {
         ::openlog(tag, LOG_CONS, LOG_DAEMON);
     }
@@ -59,7 +59,7 @@ public:
 
 ER_SYSTEM_EXPORT ISink::Ptr makeSyslogSink(const char* tag, IFormatter::Ptr formatter, Filter&& filter)
 {
-    return std::make_shared<SyslogSink>(tag, formatter, std::move(filter));
+    return std::make_shared<SyslogSink>(tag, std::move(formatter), std::move(filter));
 }
 
 
