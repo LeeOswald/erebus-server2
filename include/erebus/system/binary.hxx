@@ -26,15 +26,19 @@ struct Binary final
 
     Binary(std::nullptr_t) = delete;
 
-    explicit Binary(std::string_view s)
+    Binary(const char* s)
         : m_bytes(s)
     {}
 
-    explicit Binary(const std::string& s)
+    Binary(std::string_view s)
         : m_bytes(s)
     {}
 
-    explicit Binary(std::string&& s) noexcept
+    Binary(const std::string& s)
+        : m_bytes(s)
+    {}
+
+    Binary(std::string&& s) noexcept
         : m_bytes(std::move(s))
     {}
 

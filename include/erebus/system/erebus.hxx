@@ -50,6 +50,7 @@
 
 // all mush-have local stuff goes here
 #include <erebus/system/assert.hxx>
+#include <erebus/system/bool.hxx>
 
 namespace Er
 {

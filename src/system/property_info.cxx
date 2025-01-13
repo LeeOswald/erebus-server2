@@ -99,7 +99,22 @@ namespace Unspecified
 {
 
 const PropertyInfo Empty{ PropertyType::Empty, "unspecified/empty", "Empty" };
-
+const PropertyInfo Bool{ PropertyType::Bool, "unspecified/bool", "Bool" };
+const PropertyInfo Int32{ PropertyType::Int32, "unspecified/int32", "Int32" };
+const PropertyInfo UInt32{ PropertyType::UInt32, "unspecified/uint32", "UInt32" };
+const PropertyInfo Int64{ PropertyType::Int64, "unspecified/int64", "Int64" };
+const PropertyInfo UInt64{ PropertyType::UInt64, "unspecified/uint64", "UInt64" };
+const PropertyInfo Double{ PropertyType::Double, "unspecified/double", "Double" };
+const PropertyInfo String{ PropertyType::String, "unspecified/string", "String" };
+const PropertyInfo Binary{ PropertyType::Binary, "unspecified/binary", "Binary" };
+const PropertyInfo Bools{ PropertyType::Bools, "unspecified/bool[]", "Bool[]" };
+const PropertyInfo Int32s{ PropertyType::Int32s, "unspecified/int32[]", "Int32[]" };
+const PropertyInfo UInt32s{ PropertyType::UInt32s, "unspecified/uint32[]", "UInt32[]" };
+const PropertyInfo Int64s{ PropertyType::Int64s, "unspecified/int64[]", "Int64[]" };
+const PropertyInfo UInt64s{ PropertyType::UInt64s, "unspecified/uint64[]", "UInt64[]" };
+const PropertyInfo Doubles{ PropertyType::Doubles, "unspecified/double[]", "Double[]" };
+const PropertyInfo Strings{ PropertyType::Strings, "unspecified/string[]", "String[]" };
+const PropertyInfo Binaries{ PropertyType::Binaries, "unspecified/binary[]", "Binary[]" };
 
 } // namespace Unspecified {}
 

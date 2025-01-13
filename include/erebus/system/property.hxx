@@ -1,4 +1,4 @@
-#pragma once
+ #pragma once
 
 #include <erebus/system/property_info.hxx>
 
@@ -26,6 +26,14 @@ struct ER_SYSTEM_EXPORT Property final
     }
 
     Property(nullptr_t) = delete;
+    
+    Property(bool v, const PropertyInfo& info) noexcept
+        : m_u()
+        , m_type(PropertyType::Bool, &info)
+    {
+        ErAssert(info.type == PropertyType::Bool);
+        m_u.v_bool = v ? Er::True : Er::False;
+    }
 
     Property(Bool v, const PropertyInfo& info) noexcept
         : m_u()
@@ -70,6 +78,13 @@ struct ER_SYSTEM_EXPORT Property final
         , m_type(PropertyType::Double, &info)
     {
         ErAssert(info.type == PropertyType::Double);
+    }
+
+    Property(const char* v, const PropertyInfo& info)
+        : m_u(new std::string(v))
+        , m_type(PropertyType::String, &info)
+    {
+        ErAssert(info.type == PropertyType::String);
     }
 
     Property(const std::string& v, const PropertyInfo& info)
@@ -497,7 +512,7 @@ private:
     struct InfoAndType
     {
         std::uintptr_t ty;
-        static constexpr std::uintptr_t TypeMask = 0x20ULL; // 5 lower pointer bits
+        static constexpr std::uintptr_t TypeMask = 0x1FULL; // 5 lower pointer bits
 
         constexpr InfoAndType(DontInit) noexcept
         {
@@ -506,7 +521,7 @@ private:
         InfoAndType(PropertyType type, const PropertyInfo* info) noexcept
             : ty(reinterpret_cast<std::uintptr_t>(info) | static_cast<std::uintptr_t>(type))
         {
-            ErAssert(reinterpret_cast<std::uintptr_t>(info) & TypeMask == 0); // misaligned PropertyInfo
+            ErAssert((reinterpret_cast<std::uintptr_t>(info) & TypeMask) == 0); // misaligned PropertyInfo
         }
 
         InfoAndType() noexcept
@@ -515,12 +530,12 @@ private:
 
         constexpr PropertyType type() const noexcept
         {
-            return static_cast<PropertyType>(ty & ~TypeMask);
+            return static_cast<PropertyType>(ty & TypeMask);
         }
 
         const PropertyInfo* info() const noexcept
         {
-            return reinterpret_cast<const PropertyInfo*>(ty & TypeMask);
+            return reinterpret_cast<const PropertyInfo*>(ty & ~TypeMask);
         }
 
         constexpr bool empty() const noexcept

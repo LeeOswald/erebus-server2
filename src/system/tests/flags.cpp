@@ -21,7 +21,7 @@ struct F16
 
 using FF16 = Er::FlagsPack<16, F16>;
 
-TEST(FlagsPack, simple)
+TEST(FlagsPack, Simple)
 {
     // default constructor
     {

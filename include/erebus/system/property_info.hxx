@@ -92,6 +92,22 @@ namespace Unspecified
 {
 
 extern ER_SYSTEM_EXPORT const PropertyInfo Empty;
+extern ER_SYSTEM_EXPORT const PropertyInfo Bool;
+extern ER_SYSTEM_EXPORT const PropertyInfo Int32;
+extern ER_SYSTEM_EXPORT const PropertyInfo UInt32;
+extern ER_SYSTEM_EXPORT const PropertyInfo Int64;
+extern ER_SYSTEM_EXPORT const PropertyInfo UInt64;
+extern ER_SYSTEM_EXPORT const PropertyInfo Double;
+extern ER_SYSTEM_EXPORT const PropertyInfo String;
+extern ER_SYSTEM_EXPORT const PropertyInfo Binary;
+extern ER_SYSTEM_EXPORT const PropertyInfo Bools;
+extern ER_SYSTEM_EXPORT const PropertyInfo Int32s;
+extern ER_SYSTEM_EXPORT const PropertyInfo UInt32s;
+extern ER_SYSTEM_EXPORT const PropertyInfo Int64s;
+extern ER_SYSTEM_EXPORT const PropertyInfo UInt64s;
+extern ER_SYSTEM_EXPORT const PropertyInfo Doubles;
+extern ER_SYSTEM_EXPORT const PropertyInfo Strings;
+extern ER_SYSTEM_EXPORT const PropertyInfo Binaries;
 
 } // namespace Unspecified {}
 
