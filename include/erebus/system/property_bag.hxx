@@ -23,18 +23,25 @@ const T* get(const PropertyBag& bag, const PropertyInfo& info)
     return nullptr;
 }
 
-inline bool update(PropertyBag& src, std::size_t index, const auto&& prop)
+template <typename T>
+bool update(PropertyBag& src, std::size_t index, Er::Property&& prop)
 {
     if (index + 1 > src.size())
     {
         src.resize(index + 1);
-        src[index] = std::forward<decltype(prop)>(prop);
+        src[index] = std::move(prop);
         return true;
     }
 
     if (src[index].info() != prop.info())
     {
-        src[index] = std::forward<decltype(prop)>(prop);
+        src[index] = std::move(prop);
+        return true;
+    }
+
+    if (prop != src[index])
+    {
+        src[index] = std::move(prop);
         return true;
     }
 
