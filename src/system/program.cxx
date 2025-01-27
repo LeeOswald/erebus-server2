@@ -12,6 +12,7 @@
 
 #include <erebus/system/logger/ostream_sink2.hxx>
 #include <erebus/system/logger/simple_formatter2.hxx>
+#include <erebus/system/type_id.hxx>
 
 #include <boost/stacktrace.hpp>
 
@@ -178,30 +179,34 @@ void Program::addLoggers(Log2::ITee* main)
 #if ER_WINDOWS
     if (isDebuggerPresent())
     {
-        Log2::makeDebuggerSink(
+        auto sink = Log2::makeDebuggerSink(
             Log2::SimpleFormatter::make(),
             Log2::Filter{}
         );
+
+        main->addSink("debugger", sink);
     }
 #endif
 
 #if ER_LINUX
     if (m_isDaemon)
     {
-        Log2::makeSyslogSink("erebus", Log2::SimpleFormatter::make(
-            Log2::SimpleFormatter::Options{ 
+        auto sink = Log2::makeSyslogSink("erebus", Log2::SimpleFormatter::make(
+                Log2::SimpleFormatter::Options{ 
                 Log2::SimpleFormatter::Option::Time, 
                 Log2::SimpleFormatter::Option::Level, 
                 Log2::SimpleFormatter::Option::Tid, 
                 Log2::SimpleFormatter::Option::TzLocal, 
                 Log2::SimpleFormatter::Option::Lf}),
                 [](const Log2::Record* r) { return r->level() >= Log2::Level::Error; });
+
+        main->addSink("syslog", sink);
     }
 #endif
 
     if (!m_isDaemon)
     {
-        makeOStreamSink(
+        auto sink = makeOStreamSink(
             std::cout,
             Log2::SimpleFormatter::make(),
             [](const Log2::Record* r)
@@ -209,11 +214,13 @@ void Program::addLoggers(Log2::ITee* main)
                 return r->level() < Er::Log2::Level::Error;
             }
         );
+
+        main->addSink("std::cout", sink);
     }
 
     if (!m_isDaemon)
     {
-        makeOStreamSink(
+        auto sink = makeOStreamSink(
             std::cerr,
             Log2::SimpleFormatter::make(),
             [](const Log2::Record* r)
@@ -221,6 +228,8 @@ void Program::addLoggers(Log2::ITee* main)
                 return r->level() >= Er::Log2::Level::Error;
             }
         );
+
+        main->addSink("std::cerr", sink);
     }
 }
 
@@ -259,10 +268,12 @@ void Program::globalMakeLogger()
     auto verbose = m_args.count("verbose") > 0;
     m_logger->setLevel(verbose ? Log2::Level::Debug : Log2::Level::Info);
 
-    auto tee = Log2::makeTee(ThreadSafe::Yes); // tee is called from the single logger thread
+    auto tee = Log2::makeTee(ThreadSafe::No); // tee is called from the single logger thread
     m_logger->addSink("tee", std::static_pointer_cast<Log2::ISink>(tee));
 
     addLoggers(tee.get());
+
+    Log2::set(m_logger.get());
 }
 
 int Program::exec(int argc, char** argv) noexcept
@@ -279,7 +290,9 @@ int Program::exec(int argc, char** argv) noexcept
 
     try
     {
+        initializeTypeRegistry(m_logger.get());
         run(argc, argv);
+        finalizeTypeRegistry();
     }
     catch(...)
     {

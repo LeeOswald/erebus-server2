@@ -2,6 +2,7 @@
 boost/1.86.0
 fmt/11.0.2
 gtest/1.15.0
+lua/5.4.7
 rapidjson/cci.20230929
 valijson/1.0.3
 

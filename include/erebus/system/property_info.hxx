@@ -79,6 +79,7 @@ struct alignas(32) PropertyInfo
     std::string format(const Property& prop) const;
 
     static const PropertyInfo* lookup(const std::string& name) noexcept;
+    static const PropertyInfo* lookup(std::uint32_t id) noexcept;
 
 private:
     static std::uint32_t registerProperty(const PropertyInfo* info);

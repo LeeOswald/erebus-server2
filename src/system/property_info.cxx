@@ -13,6 +13,8 @@ namespace
 
 struct Registration
 {
+    using Ptr = std::shared_ptr<Registration>;
+
     const PropertyInfo* info;
     std::uint32_t id;
     long refcount;
@@ -27,7 +29,9 @@ struct Registration
 struct Registry
 {
     std::shared_mutex mutex;
-    std::unordered_map<std::string, Registration> properties; // name -> info
+    std::unordered_map<std::string, Registration::Ptr> properties; // name -> info
+    std::unordered_map<std::uint32_t, Registration::Ptr> byId;
+    std::uint32_t nextId = 0;
 };
 
 
@@ -47,17 +51,19 @@ std::uint32_t PropertyInfo::registerProperty(const PropertyInfo* info)
     auto& r = registry();
 
     std::unique_lock l(r.mutex);
-    auto nextId = static_cast<std::uint32_t>(r.properties.size());
-    auto result = r.properties.insert({ info->name, Registration(info, nextId) });
+    auto nextId = ++r.nextId;
+    auto what = std::make_shared<Registration>(info, nextId);
+    auto result = r.properties.insert({ info->name, what });
     if (result.second)
     {
         // new info added
+        r.byId.insert({ nextId, what });
         return nextId;
     }
 
     // this info already exists
-    result.first->second.refcount += 1;
-    return result.first->second.id;
+    result.first->second->refcount += 1;
+    return result.first->second->id;
 }
 
 void PropertyInfo::unregisterProperty(const PropertyInfo* info) noexcept
@@ -68,8 +74,9 @@ void PropertyInfo::unregisterProperty(const PropertyInfo* info) noexcept
     auto it = r.properties.find(info->name);
     if (it != r.properties.end())
     {
-        if (--it->second.refcount == 0)
+        if (--it->second->refcount == 0)
         {
+            r.byId.erase(it->second->id);
             r.properties.erase(it);
         }
     }
@@ -90,7 +97,19 @@ const PropertyInfo* PropertyInfo::lookup(const std::string& name) noexcept
     std::shared_lock l(r.mutex);
     auto it = r.properties.find(name);
     if (it != r.properties.end())
-        return it->second.info;
+        return it->second->info;
+
+    return nullptr;
+}
+
+const PropertyInfo* PropertyInfo::lookup(std::uint32_t id) noexcept
+{
+    auto& r = registry();
+
+    std::shared_lock l(r.mutex);
+    auto it = r.byId.find(id);
+    if (it != r.byId.end())
+        return it->second->info;
 
     return nullptr;
 }

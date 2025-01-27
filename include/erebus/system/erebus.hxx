@@ -62,11 +62,15 @@ enum class ThreadSafe
 };
 
 
-namespace Log
-{
-
-struct ILog;
-
-} // namespace Log {}
-
 } // namespace Er {}
+
+
+#if defined __clang__ || defined __GNUC__
+    #define ER_PRETTY_FUNCTION __PRETTY_FUNCTION__
+    #define ER_PRETTY_FUNCTION_PREFIX '='
+    #define  ER_PRETTY_FUNCTION_SUFFIX ']'
+#elif defined _MSC_VER
+    #define  ER_PRETTY_FUNCTION __FUNCSIG__
+    #define  ER_PRETTY_FUNCTION_PREFIX '<'
+    #define ER_PRETTY_FUNCTION_SUFFIX '>'
+#endif
