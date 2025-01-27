@@ -30,15 +30,15 @@ struct Binary final
         : m_bytes(s)
     {}
 
-    Binary(std::string_view s)
+    explicit Binary(std::string_view s)
         : m_bytes(s)
     {}
 
-    Binary(const std::string& s)
+    explicit Binary(const std::string& s)
         : m_bytes(s)
     {}
 
-    Binary(std::string&& s) noexcept
+    explicit Binary(std::string&& s) noexcept
         : m_bytes(std::move(s))
     {}
 
