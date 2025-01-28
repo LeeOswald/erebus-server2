@@ -71,8 +71,9 @@ endif()
 # GTest
 find_package(GTest REQUIRED)
 
-# luajit
-find_package(luajit REQUIRED)
+# lua
+find_package(Lua REQUIRED)
+dump_cmake_variables()
 
 # rapidjson
 find_package(RapidJSON REQUIRED)

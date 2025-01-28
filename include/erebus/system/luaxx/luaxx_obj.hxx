@@ -1,7 +1,7 @@
 #pragma once
 
-#include <erebus/luaxx/luaxx_obj_fun.hxx>
-#include <erebus/luaxx/luaxx_util.hxx>
+#include <erebus/system/luaxx/luaxx_obj_fun.hxx>
+#include <erebus/system/luaxx/luaxx_util.hxx>
 
 #include <functional>
 #include <memory>

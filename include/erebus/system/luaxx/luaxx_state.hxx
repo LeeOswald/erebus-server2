@@ -12,14 +12,14 @@
 namespace Er::Lua 
 {
 
-class EREBUS_EXPORT State 
+class ER_SYSTEM_EXPORT State 
     : public boost::noncopyable
 {
 public:
     ~State();
 
-    explicit State(Er::Log::ILog* log, bool openLibs);
-    explicit State(Er::Log::ILog* log, lua_State* l);
+    explicit State(Er::Log2::ILogger* log, bool openLibs);
+    explicit State(Er::Log2::ILogger* log, lua_State* l);
     
     
     Selector operator[](const char* name) const;
@@ -54,7 +54,7 @@ public:
 protected:
     void exceptionHandler(int luaStatusCode, std::string msg, std::exception_ptr exception);
 
-    Er::Log::ILog* m_log;
+    Er::Log2::ILogger* m_log;
     lua_State* m_l;
     bool m_owner;
     std::unique_ptr<Er::Lua::Registry> m_registry;

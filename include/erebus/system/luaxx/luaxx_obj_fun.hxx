@@ -1,6 +1,6 @@
 #pragma once
 
-#include <erebus/luaxx/luaxx_base_fun.hxx>
+#include <erebus/system/luaxx/luaxx_base_fun.hxx>
 
 #include <string>
 

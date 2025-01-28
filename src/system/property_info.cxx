@@ -37,8 +37,8 @@ struct Registry
 
 Registry& registry()
 {
-    static Registry* r = new Registry();
-    return *r;
+    static Registry r;
+    return r;
 }
 
 

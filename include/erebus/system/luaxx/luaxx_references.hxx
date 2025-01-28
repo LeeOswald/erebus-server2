@@ -1,6 +1,6 @@
 #pragma once
 
-#include <erebus/luaxx/luaxx_lua_ref.hxx>
+#include <erebus/system/luaxx/luaxx_lua_ref.hxx>
 
 
 #include <cstddef>

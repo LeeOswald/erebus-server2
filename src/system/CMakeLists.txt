@@ -123,7 +123,7 @@ target_link_libraries(
     PUBLIC
     fmt::fmt
     ${Boost_LIBRARIES}
-    luajit::luajit
+    ${lua_LIBRARIES}
 )
 
 target_compile_definitions(erebus-system PRIVATE ER_SYSTEM_EXPORTS)

@@ -12,7 +12,7 @@ LuaState::~LuaState()
 {
 }
     
-LuaState::LuaState(Er::Log::ILog* log)
+LuaState::LuaState(Er::Log2::ILogger* log)
     : Er::Lua::State(log, true)
 {
     // craft the global Lua stuff
@@ -55,7 +55,6 @@ int LuaState::_print(lua_State* L)
 int LuaState::print()
 {
     std::ostringstream ss;
-    ss << "[Lua] ";
 
     int n = lua_gettop(m_l);  // number of arguments
     int i;
@@ -71,7 +70,7 @@ int LuaState::print()
         lua_pop(m_l, 1);
     }
 
-    Log::writeln(m_log, Log::Level::Info, ss.str());
+    Log2::writeln("lua", m_log, Log2::Level::Info, ss.str());
 
     return 0;
 }

@@ -12,8 +12,8 @@ class ER_SYSTEM_EXPORT PropertyException
     : public LuaException
 {
 public:
-    explicit PropertyException(std::source_location location, const char* action, Er::PropId id, const char* expected, const char* actual)
-        : LuaException(location, Er::format("Failed to {} property {:08x}: expected a \'{}\', got \'{}\'", action, id, expected, actual))
+    PropertyException(std::source_location location, std::string_view action, const Property& prop,std::string_view expected, std::string_view actual)
+        : LuaException(location, Er::format("Failed to {} property {}: expected a \'{}\', got \'{}\'", action, prop.name(), expected, actual))
     {}
 };
 
@@ -22,7 +22,7 @@ namespace
 
 uintptr_t getPropertyId(const Er::Property& prop)
 {
-    return reinterpret_cast<uintptr_t>(prop.info());
+    return prop.info()->id;
 }
 
 uint32_t getPropertyType(const Er::Property& prop)
@@ -33,29 +33,22 @@ uint32_t getPropertyType(const Er::Property& prop)
 bool getPropertyBool(const Er::Property& prop)
 {
     if (prop.type() != PropertyType::Bool) [[unlikely]]
-        throw PropertyException(std::source_location::current(), "get", prop.id, "Bool", Er::propertyTypeToString(prop.type()));
-    return get<Bool>(prop.value) == True;
+        throw PropertyException(std::source_location::current(), "get", prop, "Bool", Er::propertyTypeToString(prop.type()));
+    return get<Bool>(prop) == True;
 }
 
-void setPropertyBool(Er::Property& prop, bool val)
-{
-    if (prop.type() != PropertyType::Bool) [[unlikely]]
-        throw PropertyException(std::source_location::current(), "set", prop.id, "Bool", Er::propertyTypeToString(prop.type()));
-    prop.value = val ? True : False;
-}
-
-int32_t getPropertyInt32(const Er::Property& prop)
+std::int32_t getPropertyInt32(const Er::Property& prop)
 {
     if (prop.type() != PropertyType::Int32) [[unlikely]]
-        throw PropertyException(std::source_location::current(), "get", prop.id, "Int32", Er::propertyTypeToString(prop.type()));
-    return get<int32_t>(prop.value);
+        throw PropertyException(std::source_location::current(), "get", prop, "Int32", Er::propertyTypeToString(prop.type()));
+    return get<std::int32_t>(prop);
 }
 
 void setPropertyInt32(Er::Property& prop, int32_t val)
 {
     if (prop.type() != PropertyType::Int32) [[unlikely]]
-        throw PropertyException(std::source_location::current(), "set", prop.id, "Int32", Er::propertyTypeToString(prop.type()));
-    prop.value = val;
+        throw PropertyException(std::source_location::current(), "set", prop, "Int32", Er::propertyTypeToString(prop.type()));
+    prop = Property(val,prop.getBool*(
 }
 
 uint32_t getPropertyUInt32(const Er::Property& prop)
@@ -194,7 +187,7 @@ private:
 } // namespace {}
 
 
-EREBUS_EXPORT void registerPropertyTypes(State& state)
+ER_SYSTEM_EXPORT void registerPropertyTypes(State& state)
 {
     {
         Er::Lua::Selector s = state["Er"]["PropertyType"];

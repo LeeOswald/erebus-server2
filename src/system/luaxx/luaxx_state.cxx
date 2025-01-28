@@ -13,7 +13,7 @@ State::~State()
     }
 }
 
-State::State(Er::Log::ILog* log, bool openLibs)
+State::State(Er::Log2::ILogger* log, bool openLibs)
     : m_log(log)
     , m_l(luaL_newstate())
     , m_owner(true)
@@ -33,7 +33,7 @@ State::State(Er::Log::ILog* log, bool openLibs)
     ));
 }
 
-State::State(Er::Log::ILog* log, lua_State* l)
+State::State(Er::Log2::ILogger* log, lua_State* l)
     : m_log(log)
     , m_l(l)
     , m_owner(false)
@@ -117,7 +117,7 @@ bool State::loadString(std::string_view str, const char* name)
 
 void State::exceptionHandler(int luaStatusCode, std::string msg, std::exception_ptr exception)
 {
-    Er::Log::error(m_log, "[Lua] {}", msg);
+    Er::Log2::error("lua", m_log, "{}", msg);
 }
 
 void State::openLib(const std::string& name, lua_CFunction openf)

@@ -1,10 +1,10 @@
 #pragma once
 
-#include <erebus/luaxx/luaxx_class.hxx>
-#include <erebus/luaxx/luaxx_fun.hxx>
-#include <erebus/luaxx/luaxx_metatable_registry.hxx>
-#include <erebus/luaxx/luaxx_obj.hxx>
-#include <erebus/luaxx/luaxx_util.hxx>
+#include <erebus/system/luaxx/luaxx_class.hxx>
+#include <erebus/system/luaxx/luaxx_fun.hxx>
+#include <erebus/system/luaxx/luaxx_metatable_registry.hxx>
+#include <erebus/system/luaxx/luaxx_obj.hxx>
+#include <erebus/system/luaxx/luaxx_util.hxx>
 
 #include <functional>
 #include <vector>

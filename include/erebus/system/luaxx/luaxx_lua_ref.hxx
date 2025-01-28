@@ -1,7 +1,7 @@
 #pragma once
 
-#include <erebus/luaxx/luaxx_primitives.hxx>
-#include <erebus/luaxx/luaxx_resource_handler.hxx>
+#include <erebus/system/luaxx/luaxx_primitives.hxx>
+#include <erebus/system/luaxx/luaxx_resource_handler.hxx>
 
 
 #include <memory>

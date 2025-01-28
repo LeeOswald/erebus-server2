@@ -5,12 +5,12 @@
 namespace Er
 {
 
-class EREBUS_EXPORT LuaState final
+class ER_SYSTEM_EXPORT LuaState final
     : public Er::Lua::State
 {
 public:
     ~LuaState();
-    explicit LuaState(Er::Log::ILog* log);
+    explicit LuaState(Er::Log2::ILogger* log);
 
 private:
     static int _print(lua_State* L);
