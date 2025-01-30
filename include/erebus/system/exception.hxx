@@ -61,7 +61,7 @@ public:
     {
         for (auto& prop : m_context->properties)
         {
-            if (type.name == prop.info()->name)
+            if (type.name() == prop.info()->name())
                 return &prop;
         }
 

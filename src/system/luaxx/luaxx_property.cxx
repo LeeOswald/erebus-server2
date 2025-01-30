@@ -20,11 +20,6 @@ public:
 namespace
 {
 
-uintptr_t getPropertyId(const Er::Property& prop)
-{
-    return prop.info()->id;
-}
-
 uint32_t getPropertyType(const Er::Property& prop)
 {
     return static_cast<uint32_t>(prop.type());
@@ -35,6 +30,13 @@ bool getPropertyBool(const Er::Property& prop)
     if (prop.type() != PropertyType::Bool) [[unlikely]]
         throw PropertyException(std::source_location::current(), "get", prop, "Bool", Er::propertyTypeToString(prop.type()));
     return get<Bool>(prop) == True;
+}
+
+void setPropertyBool(Er::Property& prop, Bool val)
+{
+    if (prop.type() != PropertyType::Bool) [[unlikely]]
+        throw PropertyException(std::source_location::current(), "set", prop, "Bool", Er::propertyTypeToString(prop.type()));
+    prop = Property(val, *prop.info());
 }
 
 std::int32_t getPropertyInt32(const Er::Property& prop)
@@ -48,141 +50,109 @@ void setPropertyInt32(Er::Property& prop, int32_t val)
 {
     if (prop.type() != PropertyType::Int32) [[unlikely]]
         throw PropertyException(std::source_location::current(), "set", prop, "Int32", Er::propertyTypeToString(prop.type()));
-    prop = Property(val,prop.getBool*(
+    prop = Property(val, *prop.info());
 }
 
 uint32_t getPropertyUInt32(const Er::Property& prop)
 {
     if (prop.type() != PropertyType::UInt32) [[unlikely]]
-        throw PropertyException(std::source_location::current(), "get", prop.id, "UInt32", Er::propertyTypeToString(prop.type()));
-    return get<uint32_t>(prop.value);
+        throw PropertyException(std::source_location::current(), "get", prop, "UInt32", Er::propertyTypeToString(prop.type()));
+    return get<uint32_t>(prop);
 }
 
 void setPropertyUInt32(Er::Property& prop, uint32_t val)
 {
     if (prop.type() != PropertyType::UInt32) [[unlikely]]
-        throw PropertyException(std::source_location::current(), "set", prop.id, "UInt32", Er::propertyTypeToString(prop.type()));
-    prop.value = val;
+        throw PropertyException(std::source_location::current(), "set", prop, "UInt32", Er::propertyTypeToString(prop.type()));
+    prop = Property(val, *prop.info());
 }
 
 Er::Lua::Int64Wrapper getPropertyInt64(const Er::Property& prop)
 {
     if (prop.type() != PropertyType::Int64) [[unlikely]]
-        throw PropertyException(std::source_location::current(), "get", prop.id, "Int64", Er::propertyTypeToString(prop.type()));
+        throw PropertyException(std::source_location::current(), "get", prop, "Int64", Er::propertyTypeToString(prop.type()));
     
-    return Er::Lua::Int64Wrapper(get<int64_t>(prop.value));
+    return Er::Lua::Int64Wrapper(get<int64_t>(prop));
 }
 
 void setPropertyInt64(Er::Property& prop, const Er::Lua::Int64Wrapper& val)
 {
     if (prop.type() != PropertyType::Int64) [[unlikely]]
-        throw PropertyException(std::source_location::current(), "set", prop.id, "Int64", Er::propertyTypeToString(prop.type()));
-    prop.value = val.value;
+        throw PropertyException(std::source_location::current(), "set", prop, "Int64", Er::propertyTypeToString(prop.type()));
+    prop = Property(val.value, *prop.info());
 }
 
 Er::Lua::UInt64Wrapper getPropertyUInt64(const Er::Property& prop)
 {
     if (prop.type() != PropertyType::UInt64) [[unlikely]]
-        throw PropertyException(std::source_location::current(), "get", prop.id, "UInt64", Er::propertyTypeToString(prop.type()));
+        throw PropertyException(std::source_location::current(), "get", prop, "IUInt64", Er::propertyTypeToString(prop.type()));
 
-    return Er::Lua::UInt64Wrapper(get<uint64_t>(prop.value));
+    return Er::Lua::UInt64Wrapper(get<uint64_t>(prop));
 }
 
 void setPropertyUInt64(Er::Property& prop, const Er::Lua::UInt64Wrapper& val)
 {
     if (prop.type() != PropertyType::UInt64) [[unlikely]]
-        throw PropertyException(std::source_location::current(), "set", prop.id, "UInt64", Er::propertyTypeToString(prop.type()));
-    prop.value = val.value;
+        throw PropertyException(std::source_location::current(), "set", prop, "UInt64", Er::propertyTypeToString(prop.type()));
+    prop = Property(val.value, *prop.info());
 }
 
 double getPropertyDouble(const Er::Property& prop)
 {
     if (prop.type() != PropertyType::Double) [[unlikely]]
-        throw PropertyException(std::source_location::current(), "get", prop.id, "Double", Er::propertyTypeToString(prop.type()));
-    return get<double>(prop.value);
+        throw PropertyException(std::source_location::current(), "get", prop, "Double", Er::propertyTypeToString(prop.type()));
+    return get<double>(prop);
 }
 
 void setPropertyDouble(Er::Property& prop, double val)
 {
     if (prop.type() != PropertyType::Double) [[unlikely]]
-        throw PropertyException(std::source_location::current(), "set", prop.id, "Double", Er::propertyTypeToString(prop.type()));
-    prop.value = val;
+        throw PropertyException(std::source_location::current(), "set", prop, "Double", Er::propertyTypeToString(prop.type()));
+    prop = Property(val, *prop.info());
 }
 
 const std::string& getPropertyString(const Er::Property& prop)
 {
     if (prop.type() != PropertyType::String) [[unlikely]]
-        throw PropertyException(std::source_location::current(), "get", prop.id, "String", Er::propertyTypeToString(prop.type()));
-    return get<std::string>(prop.value);
+        throw PropertyException(std::source_location::current(), "get", prop, "String", Er::propertyTypeToString(prop.type()));
+    return get<std::string>(prop);
 }
 
 void setPropertyString(Er::Property& prop, const std::string& val)
 {
     if (prop.type() != PropertyType::String) [[unlikely]]
-        throw PropertyException(std::source_location::current(), "set", prop.id, "String", Er::propertyTypeToString(prop.type()));
-    prop.value = val;
+        throw PropertyException(std::source_location::current(), "set", prop, "String", Er::propertyTypeToString(prop.type()));
+    prop = Property(val, *prop.info());
 }
 
 const std::string& getPropertyBytes(const Er::Property& prop)
 {
     if (prop.type() != PropertyType::Binary) [[unlikely]]
-        throw PropertyException(std::source_location::current(), "get", prop.id, "Binary", Er::propertyTypeToString(prop.type()));
-    return get<Binary>(prop.value).bytes();
+        throw PropertyException(std::source_location::current(), "get", prop, "Binary", Er::propertyTypeToString(prop.type()));
+    return get<Binary>(prop).bytes();
 }
 
 void setPropertyBytes(Er::Property& prop, const std::string& val)
 {
     if (prop.type() != PropertyType::Binary) [[unlikely]]
-        throw PropertyException(std::source_location::current(), "set", prop.id, "Binary", Er::propertyTypeToString(prop.type()));
-    prop.value = Er::Binary(val);
+        throw PropertyException(std::source_location::current(), "set", prop, "Binary", Er::propertyTypeToString(prop.type()));
+    prop = Property(Binary(val), *prop.info());
 }
 
-
-class PropertyInfoWrapper
+const std::string& getPropertyName(const Er::Property& prop)
 {
-public:
-    explicit PropertyInfoWrapper(const std::string& domain, uint32_t id)
-        : m_pi(Er::lookupProperty(domain, id))
-    {
-    }
+    return prop.info() ? prop.info()->name() : "</?/?/?>";
+}
 
-    bool valid() const
-    {
-        return !!m_pi;
-    }
+const std::string& getPropertyReadableName(const Er::Property& prop)
+{
+    return prop.info() ? prop.info()->readableName() : "</?/?/?>";
+}
 
-    uint32_t type() const
-    {
-        return m_pi ? static_cast<uint32_t>(m_pi->type()) : static_cast<uint32_t>(Er::PropertyType::Empty);
-    }
-
-    uint32_t id() const
-    {
-        return m_pi ? m_pi->id() : Er::InvalidPropId;
-    }
-
-    std::string id_str() const
-    {
-        return m_pi ? m_pi->id_str() : std::string();
-    }
-
-    std::string name() const
-    {
-        return m_pi ? m_pi->name() : std::string();
-    }
-
-    std::string format(const Er::Property& prop) const
-    {
-        if (!m_pi)
-            return std::string();
-
-        return m_pi->to_string(prop);
-    }
-
-private:
-    std::shared_ptr<Er::IPropertyInfo> m_pi;
-};
-
+std::string formatProperty(const Er::Property& prop)
+{
+    return prop.info() ? prop.info()->format(prop) : prop.str();
+}
 
 } // namespace {}
 
@@ -204,7 +174,6 @@ ER_SYSTEM_EXPORT void registerPropertyTypes(State& state)
 
     {
         Er::Lua::Selector s = state["Er"]["Property"];
-        s["getId"] = &getPropertyId;
         s["getType"] = &getPropertyType;
         s["getBool"] = &getPropertyBool;
         s["setBool"] = &setPropertyBool;
@@ -222,18 +191,9 @@ ER_SYSTEM_EXPORT void registerPropertyTypes(State& state)
         s["setString"] = &setPropertyString;
         s["getBytes"] = &getPropertyBytes;
         s["setBytes"] = &setPropertyBytes;
-    }
-
-    {
-        Selector s = state["Er"]["PropertyInfo"];
-        s.SetClass<PropertyInfoWrapper, std::string, uint32_t>(
-            "valid", &PropertyInfoWrapper::valid,
-            "type", &PropertyInfoWrapper::type,
-            "id", &PropertyInfoWrapper::id,
-            "id_str", &PropertyInfoWrapper::id_str,
-            "name", &PropertyInfoWrapper::name,
-            "format", &PropertyInfoWrapper::format
-        );
+        s["getName"] = &getPropertyName;
+        s["getReadableName"] = &getPropertyReadableName;
+        s["format"] = &formatProperty;
 
     }
 }

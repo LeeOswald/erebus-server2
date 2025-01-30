@@ -31,7 +31,7 @@ struct ER_SYSTEM_EXPORT Property final
         : m_u()
         , m_type(PropertyType::Bool, &info)
     {
-        ErAssert(info.type == PropertyType::Bool);
+        ErAssert(info.type() == PropertyType::Bool);
         m_u.v_bool = v ? Er::True : Er::False;
     }
 
@@ -39,7 +39,7 @@ struct ER_SYSTEM_EXPORT Property final
         : m_u()
         , m_type(PropertyType::Bool, &info)
     {
-        ErAssert(info.type == PropertyType::Bool);
+        ErAssert(info.type() == PropertyType::Bool);
         m_u.v_bool = v;
     }
 
@@ -47,7 +47,7 @@ struct ER_SYSTEM_EXPORT Property final
         : m_u()
         , m_type(PropertyType::Int32, &info)
     {
-        ErAssert(info.type == PropertyType::Int32);
+        ErAssert(info.type() == PropertyType::Int32);
         m_u.v_int32 = v;
     }
 
@@ -55,7 +55,7 @@ struct ER_SYSTEM_EXPORT Property final
         : m_u()
         , m_type(PropertyType::UInt32, &info)
     {
-        ErAssert(info.type == PropertyType::UInt32);
+        ErAssert(info.type() == PropertyType::UInt32);
         m_u.v_uint32 = v;
     }
 
@@ -63,168 +63,168 @@ struct ER_SYSTEM_EXPORT Property final
         : m_u(v)
         , m_type(PropertyType::Int64, &info)
     {
-        ErAssert(info.type == PropertyType::Int64);
+        ErAssert(info.type() == PropertyType::Int64);
     }
 
     Property(std::uint64_t v, const PropertyInfo& info) noexcept
         : m_u(v)
         , m_type(PropertyType::UInt64, &info)
     {
-        ErAssert(info.type == PropertyType::UInt64);
+        ErAssert(info.type() == PropertyType::UInt64);
     }
 
     Property(double v, const PropertyInfo& info) noexcept
         : m_u(v)
         , m_type(PropertyType::Double, &info)
     {
-        ErAssert(info.type == PropertyType::Double);
+        ErAssert(info.type() == PropertyType::Double);
     }
 
     Property(const char* v, const PropertyInfo& info)
         : m_u(new std::string(v))
         , m_type(PropertyType::String, &info)
     {
-        ErAssert(info.type == PropertyType::String);
+        ErAssert(info.type() == PropertyType::String);
     }
 
     Property(const std::string& v, const PropertyInfo& info)
         : m_u(new std::string(v))
         , m_type(PropertyType::String, &info)
     {
-        ErAssert(info.type == PropertyType::String);
+        ErAssert(info.type() == PropertyType::String);
     }
 
     Property(std::string&& v, const PropertyInfo& info)
         : m_u(new std::string(std::move(v)))
         , m_type(PropertyType::String, &info)
     {
-        ErAssert(info.type == PropertyType::String);
+        ErAssert(info.type() == PropertyType::String);
     }
 
     Property(const Binary& v, const PropertyInfo& info)
         : m_u(new Binary(v))
         , m_type(PropertyType::Binary, &info)
     {
-        ErAssert(info.type == PropertyType::Binary);
+        ErAssert(info.type() == PropertyType::Binary);
     }
 
     Property(Binary&& v, const PropertyInfo& info)
         : m_u(new Binary(std::move(v)))
         , m_type(PropertyType::Binary, &info)
     {
-        ErAssert(info.type == PropertyType::Binary);
+        ErAssert(info.type() == PropertyType::Binary);
     }
 
     Property(const BoolVector& v, const PropertyInfo& info)
         : m_u(new BoolVector(v))
         , m_type(PropertyType::Bools, &info)
     {
-        ErAssert(info.type == PropertyType::Bools);
+        ErAssert(info.type() == PropertyType::Bools);
     }
 
     Property(BoolVector&& v, const PropertyInfo& info)
         : m_u(new BoolVector(std::move(v)))
         , m_type(PropertyType::Bools, &info)
     {
-        ErAssert(info.type == PropertyType::Bools);
+        ErAssert(info.type() == PropertyType::Bools);
     }
 
     Property(const Int32Vector& v, const PropertyInfo& info)
         : m_u(new Int32Vector(v))
         , m_type(PropertyType::Int32s, &info)
     {
-        ErAssert(info.type == PropertyType::Int32s);
+        ErAssert(info.type() == PropertyType::Int32s);
     }
 
     Property(Int32Vector&& v, const PropertyInfo& info)
         : m_u(new Int32Vector(std::move(v)))
         , m_type(PropertyType::Int32s, &info)
     {
-        ErAssert(info.type == PropertyType::Int32s);
+        ErAssert(info.type() == PropertyType::Int32s);
     }
 
     Property(const UInt32Vector& v, const PropertyInfo& info)
         : m_u(new UInt32Vector(v))
         , m_type(PropertyType::UInt32s, &info)
     {
-        ErAssert(info.type == PropertyType::UInt32s);
+        ErAssert(info.type() == PropertyType::UInt32s);
     }
 
     Property(UInt32Vector&& v, const PropertyInfo& info)
         : m_u(new UInt32Vector(std::move(v)))
         , m_type(PropertyType::UInt32s, &info)
     {
-        ErAssert(info.type == PropertyType::UInt32s);
+        ErAssert(info.type() == PropertyType::UInt32s);
     }
 
     Property(const Int64Vector& v, const PropertyInfo& info)
         : m_u(new Int64Vector(v))
         , m_type(PropertyType::Int64s, &info)
     {
-        ErAssert(info.type == PropertyType::Int64s);
+        ErAssert(info.type() == PropertyType::Int64s);
     }
 
     Property(Int64Vector&& v, const PropertyInfo& info)
         : m_u(new Int64Vector(std::move(v)))
         , m_type(PropertyType::Int64s, &info)
     {
-        ErAssert(info.type == PropertyType::Int64s);
+        ErAssert(info.type() == PropertyType::Int64s);
     }
 
     Property(const UInt64Vector& v, const PropertyInfo& info)
         : m_u(new UInt64Vector(v))
         , m_type(PropertyType::UInt64s, &info)
     {
-        ErAssert(info.type == PropertyType::UInt64s);
+        ErAssert(info.type() == PropertyType::UInt64s);
     }
 
     Property(UInt64Vector&& v, const PropertyInfo& info)
         : m_u(new UInt64Vector(std::move(v)))
         , m_type(PropertyType::UInt64s, &info)
     {
-        ErAssert(info.type == PropertyType::UInt64s);
+        ErAssert(info.type() == PropertyType::UInt64s);
     }
 
     Property(const DoubleVector& v, const PropertyInfo& info)
         : m_u(new DoubleVector(v))
         , m_type(PropertyType::Doubles, &info)
     {
-        ErAssert(info.type == PropertyType::Doubles);
+        ErAssert(info.type() == PropertyType::Doubles);
     }
 
     Property(DoubleVector&& v, const PropertyInfo& info)
         : m_u(new DoubleVector(std::move(v)))
         , m_type(PropertyType::Doubles, &info)
     {
-        ErAssert(info.type == PropertyType::Doubles);
+        ErAssert(info.type() == PropertyType::Doubles);
     }
 
     Property(const StringsVector& v, const PropertyInfo& info)
         : m_u(new StringsVector(v))
         , m_type(PropertyType::Strings, &info)
     {
-        ErAssert(info.type == PropertyType::Strings);
+        ErAssert(info.type() == PropertyType::Strings);
     }
 
     Property(StringsVector&& v, const PropertyInfo& info)
         : m_u(new StringsVector(std::move(v)))
         , m_type(PropertyType::Strings, &info)
     {
-        ErAssert(info.type == PropertyType::Strings);
+        ErAssert(info.type() == PropertyType::Strings);
     }
 
     Property(const BinariesVector& v, const PropertyInfo& info)
         : m_u(new BinariesVector(v))
         , m_type(PropertyType::Binaries, &info)
     {
-        ErAssert(info.type == PropertyType::Binaries);
+        ErAssert(info.type() == PropertyType::Binaries);
     }
 
     Property(BinariesVector&& v, const PropertyInfo& info)
         : m_u(new BinariesVector(std::move(v)))
         , m_type(PropertyType::Binaries, &info)
     {
-        ErAssert(info.type == PropertyType::Binaries);
+        ErAssert(info.type() == PropertyType::Binaries);
     }
 
     friend constexpr void swap(Property& a, Property& b) noexcept
@@ -394,7 +394,7 @@ struct ER_SYSTEM_EXPORT Property final
     [[nodiscard]] auto name() const
     {
         auto inf = info();
-        return inf ? inf->name : "/?/?/?";
+        return inf ? inf->name() : "/?/?/?";
     }
 
 private:
@@ -655,30 +655,6 @@ template <>
 }
 
 
-[[nodiscard]] std::string_view propertyTypeToString(PropertyType type)
-{
-    switch (type)
-    {
-    case PropertyType::Empty: return "Empty";
-    case PropertyType::Bool: return "Bool";
-    case PropertyType::Int32: return "Int32";
-    case PropertyType::UInt32: return "UInt32";
-    case PropertyType::Int64: return "Int64";
-    case PropertyType::UInt64: return "UInt64";
-    case PropertyType::Double: return "Double";
-    case PropertyType::String: return "String";
-    case PropertyType::Binary: return "Binary";
-    case PropertyType::Bools: return "Bool[]";
-    case PropertyType::Int32s: return "Int32[]";
-    case PropertyType::UInt32s: return "UInt32[]";
-    case PropertyType::Int64s: return "Int64[]";
-    case PropertyType::UInt64s: return "UInt64[]";
-    case PropertyType::Doubles: return "Double[]";
-    case PropertyType::Strings: return "String[]";
-    case PropertyType::Binaries: return "Binary[]";
-    }
-
-    return "\?\?\?";
-}
+[[nodiscard]] std::string_view propertyTypeToString(PropertyType type);
 
 } // namespace Er {}

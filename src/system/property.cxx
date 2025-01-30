@@ -581,4 +581,30 @@ std::string Property::_strBinaryV() const
     return ss.str();
 }
 
+std::string_view propertyTypeToString(PropertyType type)
+{
+    switch (type)
+    {
+    case PropertyType::Empty: return "Empty";
+    case PropertyType::Bool: return "Bool";
+    case PropertyType::Int32: return "Int32";
+    case PropertyType::UInt32: return "UInt32";
+    case PropertyType::Int64: return "Int64";
+    case PropertyType::UInt64: return "UInt64";
+    case PropertyType::Double: return "Double";
+    case PropertyType::String: return "String";
+    case PropertyType::Binary: return "Binary";
+    case PropertyType::Bools: return "Bool[]";
+    case PropertyType::Int32s: return "Int32[]";
+    case PropertyType::UInt32s: return "UInt32[]";
+    case PropertyType::Int64s: return "Int64[]";
+    case PropertyType::UInt64s: return "UInt64[]";
+    case PropertyType::Doubles: return "Double[]";
+    case PropertyType::Strings: return "String[]";
+    case PropertyType::Binaries: return "Binary[]";
+    }
+
+    return "\?\?\?";
+}
+
 } // namespace Er {}

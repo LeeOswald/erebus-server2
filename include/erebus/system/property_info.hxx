@@ -57,10 +57,20 @@ struct alignas(32) PropertyInfo
 {
     using Formatter = std::function<std::string(const Property&)>;
 
-    std::uint32_t id;
-    PropertyType type;
-    std::string name;
-    std::string readableName;
+    constexpr PropertyType type() const noexcept
+    {
+        return m_type;
+    }
+
+    constexpr const std::string& name() const noexcept 
+    {
+        return m_name;
+    }
+
+    constexpr const std::string& readableName() const noexcept
+    {
+        return m_readableName;
+    }
     
     ~PropertyInfo()
     {
@@ -68,10 +78,9 @@ struct alignas(32) PropertyInfo
     }
     
     PropertyInfo(PropertyType type, std::string_view name, std::string_view readableName, Formatter&& formatter = Formatter{})
-        : id(registerProperty(this))
-        , type(type)
-        , name(name)
-        , readableName(readableName)
+        : m_type(type)
+        , m_name(name)
+        , m_readableName(readableName)
         , m_formatter(std::move(formatter))
     {
     }
@@ -79,12 +88,14 @@ struct alignas(32) PropertyInfo
     std::string format(const Property& prop) const;
 
     static const PropertyInfo* lookup(const std::string& name) noexcept;
-    static const PropertyInfo* lookup(std::uint32_t id) noexcept;
 
 private:
-    static std::uint32_t registerProperty(const PropertyInfo* info);
+    static void registerProperty(const PropertyInfo* info);
     static void unregisterProperty(const PropertyInfo* info) noexcept;
 
+    PropertyType m_type;
+    std::string m_name;
+    std::string m_readableName;
     Formatter m_formatter;
 };
 

@@ -34,7 +34,7 @@ ResultCode ExceptionLogger::operator()(const Exception& e)
 
     for (auto& prop : e.properties())
     {
-        Log2::error(m_log, "{}: {}", prop.info()->readableName, prop.info()->format(prop));
+        Log2::error(m_log, "{}: {}", prop.info()->readableName(), prop.info()->format(prop));
     }
 
     return result ? static_cast<ResultCode>(result->getInt32()) : Result::Internal;
