@@ -141,12 +141,14 @@ void setPropertyBytes(Er::Property& prop, const std::string& val)
 
 const std::string& getPropertyName(const Er::Property& prop)
 {
-    return prop.info() ? prop.info()->name() : "</?/?/?>";
+    static const std::string unknown("</?/?/?>");
+    return prop.info() ? prop.info()->name() : unknown;
 }
 
 const std::string& getPropertyReadableName(const Er::Property& prop)
 {
-    return prop.info() ? prop.info()->readableName() : "</?/?/?>";
+    static const std::string unknown("</?/?/?>");
+    return prop.info() ? prop.info()->readableName() : unknown;
 }
 
 std::string formatProperty(const Er::Property& prop)
@@ -170,6 +172,14 @@ ER_SYSTEM_EXPORT void registerPropertyTypes(State& state)
         s["Double"] = static_cast<uint32_t>(Er::PropertyType::Double);
         s["String"] = static_cast<uint32_t>(Er::PropertyType::String);
         s["Binary"] = static_cast<uint32_t>(Er::PropertyType::Binary);
+        s["Bools"] = static_cast<uint32_t>(Er::PropertyType::Bools);
+        s["Int32s"] = static_cast<uint32_t>(Er::PropertyType::Int32s);
+        s["UInt32s"] = static_cast<uint32_t>(Er::PropertyType::UInt32s);
+        s["Int64s"] = static_cast<uint32_t>(Er::PropertyType::Int64s);
+        s["UInt64s"] = static_cast<uint32_t>(Er::PropertyType::UInt64s);
+        s["Doubles"] = static_cast<uint32_t>(Er::PropertyType::Doubles);
+        s["Strings"] = static_cast<uint32_t>(Er::PropertyType::Strings);
+        s["Binaries"] = static_cast<uint32_t>(Er::PropertyType::Binaries);
     }
 
     {

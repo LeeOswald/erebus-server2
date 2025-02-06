@@ -73,7 +73,8 @@ find_package(GTest REQUIRED)
 
 # lua
 find_package(Lua REQUIRED)
-dump_cmake_variables()
+include_directories(${lua_INCLUDE_DIRS})
+
 
 # rapidjson
 find_package(RapidJSON REQUIRED)

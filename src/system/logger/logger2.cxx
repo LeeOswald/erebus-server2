@@ -13,7 +13,7 @@ Er::Log2::ILogger* nullLogger() noexcept
     return &dummy;
 }
 
-thread_local Er::Log2::ILogger* g_logger = nullLogger();
+Er::Log2::ILogger* g_logger = nullLogger();
     
 } // namespace {}
 
