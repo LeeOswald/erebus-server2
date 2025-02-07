@@ -33,8 +33,8 @@ struct Registry
 
 Registry& registry()
 {
-    static Registry r;
-    return r;
+    static auto r = new Registry();
+    return *r;
 }
 
 
