@@ -33,7 +33,7 @@ Program::~Program()
     s_instance = nullptr;
 }
 
-Program::Program(unsigned options) noexcept
+Program::Program(int options) noexcept
     : m_options(options)
 {
     // no complex initialization here
@@ -264,7 +264,11 @@ bool Program::globalLoadConfiguration(int argc, char** argv)
 
 void Program::globalMakeLogger()
 {
-    m_logger = Log2::makeLogger(std::chrono::milliseconds(m_loggerThreshold));
+    if (m_options & SyncLogger)
+        m_logger = Log2::makeSyncLogger();
+    else
+        m_logger = Log2::makeLogger(std::chrono::milliseconds(m_loggerThreshold));
+
     auto verbose = m_args.count("verbose") > 0;
     m_logger->setLevel(verbose ? Log2::Level::Debug : Log2::Level::Info);
 

@@ -216,6 +216,7 @@ struct ILogger
 };
 
 ER_SYSTEM_EXPORT ILogger::Ptr makeLogger(std::chrono::milliseconds threshold = {});
+ER_SYSTEM_EXPORT ILogger::Ptr makeSyncLogger();
 
 
 struct Indent

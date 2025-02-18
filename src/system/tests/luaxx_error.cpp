@@ -10,6 +10,7 @@
 auto getCapture()
 {
     auto tee = static_cast<Er::Log2::ITee*>(Er::Log2::get()->findSink("tee").get());
+    ErAssert(tee);
     auto capturePtr = static_cast<CapturedStderr*>(tee->findSink("capture").get());
     ErAssert(capturePtr);
     return capturePtr;
@@ -24,8 +25,8 @@ TEST(Lua, load_error)
 
     const char* expected = "cannot open";
     EXPECT_FALSE(state.load("../test/non_exist.lua"));
-    Er::Log2::get()->flush();
-    EXPECT_NE(capturePtr->content().find(expected), std::string::npos);
+
+    EXPECT_NE(capturePtr->grab().find(expected), std::string::npos);
 
     EXPECT_EQ(state.size(), 0);
 }
@@ -46,8 +47,8 @@ TEST(Lua, load_syntax_error)
     const char* expected = "unexpected symbol";
 
     EXPECT_FALSE(state.loadString(test_syntax_errror_script));
-    Er::Log2::get()->flush();
-    EXPECT_NE(capturePtr->content().find(expected), std::string::npos);
+
+    EXPECT_NE(capturePtr->grab().find(expected), std::string::npos);
 
     EXPECT_EQ(state.size(), 0);
 }
@@ -62,8 +63,8 @@ TEST(Lua, do_syntax_error)
 
     bool b = state("function syntax_error() 1 2 3 4 end");
     EXPECT_FALSE(b);
-    Er::Log2::get()->flush();
-    EXPECT_NE(capturePtr->content().find(expected), std::string::npos);
+
+    EXPECT_NE(capturePtr->grab().find(expected), std::string::npos);
 
     EXPECT_EQ(state.size(), 0);
 }
@@ -98,8 +99,8 @@ TEST(Lua, call_undefined_function)
     const char* expected = "attempt to call a nil value";
 
     state["undefined_function"]();
-    Er::Log2::get()->flush();
-    EXPECT_NE(capturePtr->content().find(expected), std::string::npos);
+
+    EXPECT_NE(capturePtr->grab().find(expected), std::string::npos);
     
     EXPECT_EQ(state.size(), 0);
 }
@@ -119,7 +120,7 @@ TEST(Lua, call_undefined_function2)
 
     state["err_func1"](1, 2);
 
-    EXPECT_NE(capturePtr->content().find(expected), std::string::npos);
+    EXPECT_NE(capturePtr->grab().find(expected), std::string::npos);
 
     EXPECT_EQ(state.size(), 0);
 }
@@ -135,7 +136,7 @@ TEST(Lua, call_stackoverflow)
 
     state["do_overflow"]();
 
-    EXPECT_NE(capturePtr->content().find(expected), std::string::npos);
+    EXPECT_NE(capturePtr->grab().find(expected), std::string::npos);
 
     EXPECT_EQ(state.size(), 0);
 }
@@ -157,7 +158,7 @@ TEST(Lua, parameter_conversion_error)
         "not a number",
         largeStringToPreventSSO);
 
-    EXPECT_NE(capturePtr->content().find(expected), std::string::npos);
+    EXPECT_NE(capturePtr->grab().find(expected), std::string::npos);
 
     EXPECT_EQ(state.size(), 0);
 }

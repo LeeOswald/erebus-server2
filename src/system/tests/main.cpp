@@ -191,7 +191,10 @@ class TestApplication final
     : public Er::Program
 {
 public:
-    TestApplication() noexcept = default;
+    TestApplication(int options) noexcept
+        : Er::Program(options)
+    {
+    }
 
 private:
     void addCmdLineOptions(boost::program_options::options_description& options) override
@@ -295,7 +298,7 @@ int main(int argc, char** argv)
     try
     {
 
-        TestApplication app;
+        TestApplication app{ Er::Program::Options::SyncLogger };
 
         auto resut = app.exec(argc, argv);
 

@@ -21,15 +21,16 @@ class ER_SYSTEM_EXPORT Program
     : public boost::noncopyable
 {
 public:
-    enum 
+    enum Options
     {
         EnableSignalHandler = 0x0001,
-        CanBeDaemonized = 0x0002
+        CanBeDaemonized = 0x0002,
+        SyncLogger = 0x0004
     };
 
     
     virtual ~Program();
-    Program(unsigned options = 0) noexcept;
+    Program(int options = 0) noexcept;
 
     bool isDaemon() noexcept
     {
@@ -76,7 +77,7 @@ private:
 
     static Program* s_instance;
     
-    unsigned m_options;
+    int m_options;
     bool m_isDaemon;
     Waitable<bool> m_exitCondition;
     std::atomic<int> m_signalReceived;

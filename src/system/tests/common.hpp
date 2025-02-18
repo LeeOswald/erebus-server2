@@ -6,7 +6,7 @@
 #include <erebus/system/logger2.hxx>
 
 #include <iostream>
-#include <syncstream>
+#include <mutex>
 
 
 struct InstanceCounter
@@ -44,6 +44,7 @@ public:
 
     void write(Er::Log2::Record::Ptr r) override
     {
+        std::lock_guard l(m_mutex);
         m_out << r->message() << "\n";
     }
 
@@ -51,12 +52,15 @@ public:
     {
     }
 
-    std::string content() const
+    std::string grab()
     {
+        std::lock_guard l(m_mutex);
         auto s = m_out.str();
+        std::stringstream().swap(m_out);
         return s;
     }
 
 private:
+    std::mutex m_mutex;
     std::stringstream m_out;
 };

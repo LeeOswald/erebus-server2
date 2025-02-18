@@ -95,6 +95,7 @@ target_sources(erebus-system
         logger/file_sink2.cxx
         logger/ostream_sink2.cxx
         logger/simple_formatter2.cxx
+        logger/sync_logger.cxx
         logger/tee2.cxx
         luaxx.cxx
         luaxx/luaxx_base_fun.cxx
