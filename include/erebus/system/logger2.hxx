@@ -191,6 +191,7 @@ struct ITee
 
     virtual void addSink(std::string_view name, ISink::Ptr sink) = 0;
     virtual void removeSink(std::string_view name) = 0;
+    virtual ISink::Ptr findSink(std::string_view name) = 0;
 };
 
 
@@ -211,6 +212,7 @@ struct ILogger
     virtual void flush() = 0;
     virtual void addSink(std::string_view name, ISink::Ptr sink) = 0;
     virtual void removeSink(std::string_view name) = 0;
+    virtual ISink::Ptr findSink(std::string_view name) = 0;
 };
 
 ER_SYSTEM_EXPORT ILogger::Ptr makeLogger(std::chrono::milliseconds threshold = {});

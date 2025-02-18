@@ -146,7 +146,7 @@ class TestEventListener
 
         case testing::TestPartResult::kNonFatalFailure:
         case testing::TestPartResult::kFatalFailure:
-            Er::Log2::info(Er::Log2::get(), "{}({}) Error", result.file_name(), result.line_number());
+            Er::Log2::info(Er::Log2::get(), "{}({}): error:", result.file_name(), result.line_number());
             if (result.message() && *result.message())
                 Er::Log2::info(Er::Log2::get(), "{}", result.message());
         }
@@ -184,6 +184,8 @@ class TestEventListener
         }
     }
 };
+
+
 
 class TestApplication final
     : public Er::Program
@@ -238,6 +240,11 @@ private:
             );
 
             main->addSink("std::cerr", sink);
+        }
+
+        {
+            auto sink = std::make_shared<CapturedStderr>();
+            main->addSink("capture", sink);
         }
     }
 

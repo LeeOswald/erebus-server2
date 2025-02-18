@@ -45,6 +45,11 @@ public:
     void removeSink(std::string_view name) override
     {
     }
+
+    ISink::Ptr findSink(std::string_view name) override
+    {
+        return ISink::Ptr();
+    }
 };
 
 

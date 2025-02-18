@@ -124,6 +124,11 @@ public:
         m_tee->removeSink(name);
     }
     
+    ISink::Ptr findSink(std::string_view name) override
+    {
+        return m_tee->findSink(name);
+    }
+
 private:
     struct PerThread
     {

@@ -21,7 +21,7 @@ public:
     void write(Record::Ptr r) override
     {
         std::shared_lock l(m_mutex);
-        for (auto& sink: m_sinks)
+        for (auto& sink : m_sinks)
         {
             sink.second->write(r);
         }
@@ -30,7 +30,7 @@ public:
     void flush() override
     {
         std::shared_lock l(m_mutex);
-        for (auto& sink: m_sinks)
+        for (auto& sink : m_sinks)
         {
             sink.second->flush();
         }
@@ -47,6 +47,13 @@ public:
     {
         std::unique_lock l(m_mutex);
         m_sinks.erase(std::string(name));
+    }
+
+    ISink::Ptr findSink(std::string_view name) override
+    {
+        std::unique_lock l(m_mutex);
+        auto it = m_sinks.find(std::string(name));
+        return (it != m_sinks.end()) ? it->second : ISink::Ptr();
     }
 
 private:

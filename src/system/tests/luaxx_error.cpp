@@ -1,43 +1,31 @@
 #include "common.hpp"
 
+#include <erebus/system/logger2.hxx>
 #include <erebus/system/luaxx/luaxx_state.hxx>
 
 #include <string>
 #include <sstream>
 
 
-class CapturedStderr 
+auto getCapture()
 {
-public:
-    CapturedStderr() 
-    {
-        _old = std::cerr.rdbuf(_out.rdbuf());
-    }
-
-    ~CapturedStderr() 
-    {
-        std::cerr.rdbuf(_old);
-    }
-
-    std::string Content() const 
-    {
-        return _out.str();
-    }
-
-private:
-    std::stringstream _out;
-    std::streambuf* _old;
-};
+    auto tee = static_cast<Er::Log2::ITee*>(Er::Log2::get()->findSink("tee").get());
+    auto capturePtr = static_cast<CapturedStderr*>(tee->findSink("capture").get());
+    ErAssert(capturePtr);
+    return capturePtr;
+}
 
 
 TEST(Lua, load_error) 
 {
+    auto capturePtr = getCapture();
+
     Er::Lua::State state(Er::Log2::get(), true);
 
-    CapturedStderr capture;
     const char* expected = "cannot open";
     EXPECT_FALSE(state.load("../test/non_exist.lua"));
-    EXPECT_NE(capture.Content().find(expected), std::string::npos);
+    Er::Log2::get()->flush();
+    EXPECT_NE(capturePtr->content().find(expected), std::string::npos);
 
     EXPECT_EQ(state.size(), 0);
 }
@@ -51,25 +39,31 @@ end
 
 TEST(Lua, load_syntax_error) 
 {
+    auto capturePtr = getCapture();
+
     Er::Lua::State state(Er::Log2::get(), true);
 
     const char* expected = "unexpected symbol";
-    CapturedStderr capture;
+
     EXPECT_FALSE(state.loadString(test_syntax_errror_script));
-    EXPECT_NE(capture.Content().find(expected), std::string::npos);
+    Er::Log2::get()->flush();
+    EXPECT_NE(capturePtr->content().find(expected), std::string::npos);
 
     EXPECT_EQ(state.size(), 0);
 }
 
 TEST(Lua, do_syntax_error) 
 {
+    auto capturePtr = getCapture();
+
     Er::Lua::State state(Er::Log2::get(), true);
 
     const char* expected = "unexpected symbol";
-    CapturedStderr capture;
+
     bool b = state("function syntax_error() 1 2 3 4 end");
     EXPECT_FALSE(b);
-    EXPECT_NE(capture.Content().find(expected), std::string::npos);
+    Er::Log2::get()->flush();
+    EXPECT_NE(capturePtr->content().find(expected), std::string::npos);
 
     EXPECT_EQ(state.size(), 0);
 }
@@ -96,19 +90,24 @@ end
 
 TEST(Lua, call_undefined_function) 
 {
+    auto capturePtr = getCapture();
+
     Er::Lua::State state(Er::Log2::get(), true);
 
     state.loadString(test_test_errror_script);
     const char* expected = "attempt to call a nil value";
-    CapturedStderr capture;
+
     state["undefined_function"]();
-    EXPECT_NE(capture.Content().find(expected), std::string::npos);
+    Er::Log2::get()->flush();
+    EXPECT_NE(capturePtr->content().find(expected), std::string::npos);
     
     EXPECT_EQ(state.size(), 0);
 }
 
 TEST(Lua, call_undefined_function2) 
 {
+    auto capturePtr = getCapture();
+
     Er::Lua::State state(Er::Log2::get(), true);
 
     state.loadString(test_test_errror_script);
@@ -117,30 +116,34 @@ TEST(Lua, call_undefined_function2)
 #else
     const char* expected = "attempt to call a nil value (global 'err_func2')";
 #endif
-    CapturedStderr capture;
+
     state["err_func1"](1, 2);
 
-    EXPECT_NE(capture.Content().find(expected), std::string::npos);
+    EXPECT_NE(capturePtr->content().find(expected), std::string::npos);
 
     EXPECT_EQ(state.size(), 0);
 }
 
 TEST(Lua, call_stackoverflow) 
 {
+    auto capturePtr = getCapture();
+
     Er::Lua::State state(Er::Log2::get(), true);
 
     state.loadString(test_test_errror_script);
     const char* expected = "stack overflow";
-    CapturedStderr capture;
+
     state["do_overflow"]();
 
-    EXPECT_NE(capture.Content().find(expected), std::string::npos);
+    EXPECT_NE(capturePtr->content().find(expected), std::string::npos);
 
     EXPECT_EQ(state.size(), 0);
 }
 
 TEST(Lua, parameter_conversion_error) 
 {
+    auto capturePtr = getCapture();
+
     Er::Lua::State state(Er::Log2::get(), true);
 
     const char * expected =
@@ -148,13 +151,13 @@ TEST(Lua, parameter_conversion_error)
     std::string largeStringToPreventSSO(50, 'x');
     state["accept_string_int_string"] = [](std::string, int, std::string){};
 
-    CapturedStderr capture;
+
     state["accept_string_int_string"](
         largeStringToPreventSSO,
         "not a number",
         largeStringToPreventSSO);
 
-    EXPECT_NE(capture.Content().find(expected), std::string::npos);
+    EXPECT_NE(capturePtr->content().find(expected), std::string::npos);
 
     EXPECT_EQ(state.size(), 0);
 }
