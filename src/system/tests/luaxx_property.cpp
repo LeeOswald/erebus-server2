@@ -33,30 +33,6 @@ TEST(Er_Lua, PropertyTypes)
 
     type = state["Er"]["PropertyType"]["Binary"];
     EXPECT_EQ(type, static_cast<uint32_t>(Er::PropertyType::Binary));
-
-    type = state["Er"]["PropertyType"]["Bools"];
-    EXPECT_EQ(type, static_cast<uint32_t>(Er::PropertyType::Bools));
-
-    type = state["Er"]["PropertyType"]["Int32s"];
-    EXPECT_EQ(type, static_cast<uint32_t>(Er::PropertyType::Int32s));
-
-    type = state["Er"]["PropertyType"]["UInt32s"];
-    EXPECT_EQ(type, static_cast<uint32_t>(Er::PropertyType::UInt32s));
-
-    type = state["Er"]["PropertyType"]["Int64s"];
-    EXPECT_EQ(type, static_cast<uint32_t>(Er::PropertyType::Int64s));
-
-    type = state["Er"]["PropertyType"]["UInt64s"];
-    EXPECT_EQ(type, static_cast<uint32_t>(Er::PropertyType::UInt64s));
-
-    type = state["Er"]["PropertyType"]["Doubles"];
-    EXPECT_EQ(type, static_cast<uint32_t>(Er::PropertyType::Doubles));
-
-    type = state["Er"]["PropertyType"]["Strings"];
-    EXPECT_EQ(type, static_cast<uint32_t>(Er::PropertyType::Strings));
-
-    type = state["Er"]["PropertyType"]["Binaries"];
-    EXPECT_EQ(type, static_cast<uint32_t>(Er::PropertyType::Binaries));
 }
 
 

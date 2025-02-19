@@ -2,6 +2,8 @@
 
 #include <erebus/system/property_info.hxx>
 
+#include <atomic>
+#include <unordered_map>
 
 namespace Er
 {
@@ -14,9 +16,22 @@ namespace Er
 
 struct ER_SYSTEM_EXPORT Property final
 {
+private:
+    struct PropertyHash
+    {
+        std::size_t operator () (const Property &prop) const
+        {
+            return prop.hash();
+        }
+    };
+
+public:
+    using Map = std::unordered_map<Property, Property, PropertyHash>;
+
     ~Property()
     {
-        _free();
+        if (_allocatesStorage(type()))
+            _free();
     }
 
     Property() noexcept
@@ -81,150 +96,52 @@ struct ER_SYSTEM_EXPORT Property final
     }
 
     Property(const char* v, const PropertyInfo& info)
-        : m_u(new std::string(v))
+        : m_u(std::make_unique<SharedData>(std::string(v)).release())
         , m_type(PropertyType::String, &info)
     {
         ErAssert(info.type() == PropertyType::String);
     }
 
     Property(const std::string& v, const PropertyInfo& info)
-        : m_u(new std::string(v))
+        : m_u(std::make_unique<SharedData>(v).release())
         , m_type(PropertyType::String, &info)
     {
         ErAssert(info.type() == PropertyType::String);
     }
 
     Property(std::string&& v, const PropertyInfo& info)
-        : m_u(new std::string(std::move(v)))
+        : m_u(std::make_unique<SharedData>(std::move(v)).release())
         , m_type(PropertyType::String, &info)
     {
         ErAssert(info.type() == PropertyType::String);
     }
 
     Property(const Binary& v, const PropertyInfo& info)
-        : m_u(new Binary(v))
+        : m_u(std::make_unique<SharedData>(v).release())
         , m_type(PropertyType::Binary, &info)
     {
         ErAssert(info.type() == PropertyType::Binary);
     }
 
     Property(Binary&& v, const PropertyInfo& info)
-        : m_u(new Binary(std::move(v)))
+        : m_u(std::make_unique<SharedData>(std::move(v)).release())
         , m_type(PropertyType::Binary, &info)
     {
         ErAssert(info.type() == PropertyType::Binary);
     }
 
-    Property(const BoolVector& v, const PropertyInfo& info)
-        : m_u(new BoolVector(v))
-        , m_type(PropertyType::Bools, &info)
+    Property(const Map& v, const PropertyInfo& info)
+        : m_u(std::make_unique<SharedData>(v).release())
+        , m_type(PropertyType::Map, &info)
     {
-        ErAssert(info.type() == PropertyType::Bools);
+        ErAssert(info.type() == PropertyType::Map);
     }
 
-    Property(BoolVector&& v, const PropertyInfo& info)
-        : m_u(new BoolVector(std::move(v)))
-        , m_type(PropertyType::Bools, &info)
+    Property(Map&& v, const PropertyInfo& info)
+        : m_u(std::make_unique<SharedData>(std::move(v)).release())
+        , m_type(PropertyType::Map, &info)
     {
-        ErAssert(info.type() == PropertyType::Bools);
-    }
-
-    Property(const Int32Vector& v, const PropertyInfo& info)
-        : m_u(new Int32Vector(v))
-        , m_type(PropertyType::Int32s, &info)
-    {
-        ErAssert(info.type() == PropertyType::Int32s);
-    }
-
-    Property(Int32Vector&& v, const PropertyInfo& info)
-        : m_u(new Int32Vector(std::move(v)))
-        , m_type(PropertyType::Int32s, &info)
-    {
-        ErAssert(info.type() == PropertyType::Int32s);
-    }
-
-    Property(const UInt32Vector& v, const PropertyInfo& info)
-        : m_u(new UInt32Vector(v))
-        , m_type(PropertyType::UInt32s, &info)
-    {
-        ErAssert(info.type() == PropertyType::UInt32s);
-    }
-
-    Property(UInt32Vector&& v, const PropertyInfo& info)
-        : m_u(new UInt32Vector(std::move(v)))
-        , m_type(PropertyType::UInt32s, &info)
-    {
-        ErAssert(info.type() == PropertyType::UInt32s);
-    }
-
-    Property(const Int64Vector& v, const PropertyInfo& info)
-        : m_u(new Int64Vector(v))
-        , m_type(PropertyType::Int64s, &info)
-    {
-        ErAssert(info.type() == PropertyType::Int64s);
-    }
-
-    Property(Int64Vector&& v, const PropertyInfo& info)
-        : m_u(new Int64Vector(std::move(v)))
-        , m_type(PropertyType::Int64s, &info)
-    {
-        ErAssert(info.type() == PropertyType::Int64s);
-    }
-
-    Property(const UInt64Vector& v, const PropertyInfo& info)
-        : m_u(new UInt64Vector(v))
-        , m_type(PropertyType::UInt64s, &info)
-    {
-        ErAssert(info.type() == PropertyType::UInt64s);
-    }
-
-    Property(UInt64Vector&& v, const PropertyInfo& info)
-        : m_u(new UInt64Vector(std::move(v)))
-        , m_type(PropertyType::UInt64s, &info)
-    {
-        ErAssert(info.type() == PropertyType::UInt64s);
-    }
-
-    Property(const DoubleVector& v, const PropertyInfo& info)
-        : m_u(new DoubleVector(v))
-        , m_type(PropertyType::Doubles, &info)
-    {
-        ErAssert(info.type() == PropertyType::Doubles);
-    }
-
-    Property(DoubleVector&& v, const PropertyInfo& info)
-        : m_u(new DoubleVector(std::move(v)))
-        , m_type(PropertyType::Doubles, &info)
-    {
-        ErAssert(info.type() == PropertyType::Doubles);
-    }
-
-    Property(const StringsVector& v, const PropertyInfo& info)
-        : m_u(new StringsVector(v))
-        , m_type(PropertyType::Strings, &info)
-    {
-        ErAssert(info.type() == PropertyType::Strings);
-    }
-
-    Property(StringsVector&& v, const PropertyInfo& info)
-        : m_u(new StringsVector(std::move(v)))
-        , m_type(PropertyType::Strings, &info)
-    {
-        ErAssert(info.type() == PropertyType::Strings);
-    }
-
-    Property(const BinariesVector& v, const PropertyInfo& info)
-        : m_u(new BinariesVector(v))
-        , m_type(PropertyType::Binaries, &info)
-    {
-        ErAssert(info.type() == PropertyType::Binaries);
-    }
-
-    Property(BinariesVector&& v, const PropertyInfo& info)
-        : m_u(new BinariesVector(std::move(v)))
-        , m_type(PropertyType::Binaries, &info)
-    {
-        ErAssert(info.type() == PropertyType::Binaries);
+        ErAssert(info.type() == PropertyType::Map);
     }
 
     friend constexpr void swap(Property& a, Property& b) noexcept
@@ -246,7 +163,7 @@ struct ER_SYSTEM_EXPORT Property final
         swap(tmp, *this);
         return *this;
     }
-
+    
     Property(Property&& other) noexcept
         : Property()
     {
@@ -314,71 +231,25 @@ struct ER_SYSTEM_EXPORT Property final
     [[nodiscard]] constexpr const std::string& getString() const noexcept
     {
         ErAssert(type() == PropertyType::String);
-        ErAssert(m_u.v_string);
-        return *m_u.v_string;
+        ErAssert(m_u._shared);
+        ErAssert(m_u._shared->string);
+        return *m_u._shared->string;
     }
 
     [[nodiscard]] constexpr const Binary& getBinary() const noexcept
     {
         ErAssert(type() == PropertyType::Binary);
-        ErAssert(m_u.v_binary);
-        return *m_u.v_binary;
+        ErAssert(m_u._shared);
+        ErAssert(m_u._shared->binary);
+        return *m_u._shared->binary;
     }
 
-    [[nodiscard]] constexpr const BoolVector& getBools() const noexcept
+    [[nodiscard]] constexpr const Map& getMap() const noexcept
     {
-        ErAssert(type() == PropertyType::Bools);
-        ErAssert(m_u.a_bool);
-        return *m_u.a_bool;
-    }
-
-    [[nodiscard]] constexpr const Int32Vector& getInt32s() const noexcept
-    {
-        ErAssert(type() == PropertyType::Int32s);
-        ErAssert(m_u.a_int32);
-        return *m_u.a_int32;
-    }
-
-    [[nodiscard]] constexpr const UInt32Vector& getUInt32s() const noexcept
-    {
-        ErAssert(type() == PropertyType::UInt32s);
-        ErAssert(m_u.a_uint32);
-        return *m_u.a_uint32;
-    }
-
-    [[nodiscard]] constexpr const Int64Vector& getInt64s() const noexcept
-    {
-        ErAssert(type() == PropertyType::Int64s);
-        ErAssert(m_u.a_int64);
-        return *m_u.a_int64;
-    }
-
-    [[nodiscard]] constexpr const UInt64Vector& getUInt64s() const noexcept
-    {
-        ErAssert(type() == PropertyType::UInt64s);
-        ErAssert(m_u.a_uint64);
-        return *m_u.a_uint64;
-    }
-
-    [[nodiscard]] constexpr const DoubleVector& getDoubles() const noexcept
-    {
-        ErAssert(type() == PropertyType::Doubles);
-        ErAssert(m_u.a_double);
-        return *m_u.a_double;
-    }
-
-    [[nodiscard]] constexpr const StringsVector& getStrings() const noexcept
-    {
-        ErAssert(type() == PropertyType::Strings);
-        ErAssert(m_u.a_string);
-        return *m_u.a_string;
-    }
-
-    [[nodiscard]] constexpr const BinariesVector& getBinaries() const noexcept
-    {
-        ErAssert(type() == PropertyType::Binaries);
-        ErAssert(m_u.a_binary);
-        return *m_u.a_binary;
+        ErAssert(type() == PropertyType::Map);
+        ErAssert(m_u._shared);
+        ErAssert(m_u._shared->map);
+        return *m_u._shared->map;
     }
 
     [[nodiscard]] bool operator==(const Property& other) const noexcept
@@ -397,45 +268,23 @@ struct ER_SYSTEM_EXPORT Property final
         return inf ? inf->name() : "/?/?/?";
     }
 
+    [[nodiscard]] std::size_t hash() const noexcept
+    {
+        return _hash();
+    }
+
 private:
-    static bool _allocatesStorage(PropertyType type) noexcept
+    inline static bool _allocatesStorage(PropertyType type) noexcept
     {
         return (type >= PropertyType::String);
     }
-
+    
     void _free() noexcept;
-    void _freeString() noexcept;
-    void _freeBinary() noexcept;
-    void _freeBoolV() noexcept;
-    void _freeInt32V() noexcept;
-    void _freeUInt32V() noexcept;
-    void _freeInt64V() noexcept;
-    void _freeUInt64V() noexcept;
-    void _freeDoubleV() noexcept;
-    void _freeStringV() noexcept;
-    void _freeBinaryV() noexcept;
     void _clone(const Property& other);
-    void _cloneString(const Property& other);
-    void _cloneBinary(const Property& other);
-    void _cloneBoolV(const Property& other);
-    void _cloneInt32V(const Property& other);
-    void _cloneUInt32V(const Property& other);
-    void _cloneInt64V(const Property& other);
-    void _cloneUInt64V(const Property& other);
-    void _cloneDoubleV(const Property& other);
-    void _cloneStringV(const Property& other);
-    void _cloneBinaryV(const Property& other);
     bool _eq(const Property& other) const noexcept;
     bool _eqString(const Property& other) const noexcept;
     bool _eqBinary(const Property& other) const noexcept;
-    bool _eqBoolV(const Property& other) const noexcept;
-    bool _eqInt32V(const Property& other) const noexcept;
-    bool _eqUInt32V(const Property& other) const noexcept;
-    bool _eqInt64V(const Property& other) const noexcept;
-    bool _eqUInt64V(const Property& other) const noexcept;
-    bool _eqDoubleV(const Property& other) const noexcept;
-    bool _eqStringV(const Property& other) const noexcept;
-    bool _eqBinaryV(const Property& other) const noexcept;
+    bool _eqMap(const Property& other) const noexcept;
     std::string _str() const;
     std::string _strEmpty() const;
     std::string _strBool() const;
@@ -446,17 +295,111 @@ private:
     std::string _strDouble() const;
     std::string _strString() const;
     std::string _strBinary() const;
-    std::string _strBoolV() const;
-    std::string _strInt32V() const;
-    std::string _strUInt32V() const;
-    std::string _strInt64V() const;
-    std::string _strUInt64V() const;
-    std::string _strDoubleV() const;
-    std::string _strStringV() const;
-    std::string _strBinaryV() const;
+    std::string _strMap() const;
+    std::size_t _hash() const noexcept;
+    std::size_t _hashEmpty() const noexcept;
+    std::size_t _hashBool() const noexcept;
+    std::size_t _hashInt32() const noexcept;
+    std::size_t _hashUInt32() const noexcept;
+    std::size_t _hashInt64() const noexcept;
+    std::size_t _hashUInt64() const noexcept;
+    std::size_t _hashDouble() const noexcept;
+    std::size_t _hashString() const noexcept;
+    std::size_t _hashBinary() const noexcept;
+    std::size_t _hashMap() const noexcept;
 
     struct DontInit
     {
+    };
+
+    // binary-large types like strings or maps are shared
+    struct SharedData
+    {
+        enum class Type
+        {
+            String,
+            Binary,
+            Map
+        };
+
+        Type type;
+        std::atomic<std::size_t> refs;
+        union
+        {
+            std::string* string;
+            Binary* binary;
+            Map* map;
+        };
+
+        ~SharedData()
+        {
+            switch (type)
+            {
+            case Er::Property::SharedData::Type::String:
+                delete string;
+                break;
+            case Er::Property::SharedData::Type::Binary:
+                delete binary;
+                break;
+            case Er::Property::SharedData::Type::Map:
+                delete map;
+                break;
+            default:
+                ErAssert(!"Unknown type");
+                break;
+            }
+        }
+
+        SharedData(const std::string& v)
+            : type(Type::String)
+            , refs(1)
+            , string(std::make_unique<std::string>(v).release())
+        {}
+
+        SharedData(std::string&& v)
+            : type(Type::String)
+            , refs(1)
+            , string(std::make_unique<std::string>(std::move(v)).release())
+        {}
+
+        SharedData(const Binary& v)
+            : type(Type::Binary)
+            , refs(1)
+            , binary(std::make_unique<Binary>(v).release())
+        {}
+
+        SharedData(Binary&& v)
+            : type(Type::Binary)
+            , refs(1)
+            , binary(std::make_unique<Binary>(std::move(v)).release())
+        {}
+
+        SharedData(const Map& v)
+            : type(Type::Map)
+            , refs(1)
+            , map(std::make_unique<Map>(v).release())
+        {}
+
+        SharedData(Map&& v)
+            : type(Type::Map)
+            , refs(1)
+            , map(std::make_unique<Map>(std::move(v)).release())
+        {}
+
+        std::size_t addRef() noexcept
+        {
+            auto prev = refs.fetch_add(1, std::memory_order_acq_rel);
+            return prev + 1;
+        }
+
+        std::size_t release() noexcept
+        {
+            auto prev = refs.fetch_sub(1, std::memory_order_acq_rel);
+            if (prev == 1)
+                delete this;
+
+            return prev - 1;
+        }
     };
 
     union Storage
@@ -467,17 +410,7 @@ private:
         int64_t v_int64;
         uint64_t v_uint64;
         double v_double;
-        void* _ptr;
-        std::string* v_string;
-        Binary* v_binary;
-        BoolVector* a_bool;
-        Int32Vector* a_int32;
-        UInt32Vector* a_uint32;
-        Int64Vector* a_int64;
-        UInt64Vector* a_uint64;
-        DoubleVector* a_double;
-        StringsVector* a_string;
-        BinariesVector* a_binary;
+        SharedData* _shared;
         uint64_t _largest; // must be the largest type
 
         constexpr Storage(DontInit) noexcept
@@ -504,8 +437,8 @@ private:
         {
         }
 
-        constexpr Storage(void* v) noexcept
-            : _ptr(v)
+        constexpr Storage(SharedData* v) noexcept
+            : _shared(v)
         {
         }
 
@@ -606,53 +539,6 @@ template <>
     return v.getBinary();
 }
 
-template <>
-[[nodiscard]] inline const BoolVector& get<>(const Property& v) noexcept
-{
-    return v.getBools();
-}
-
-template <>
-[[nodiscard]] inline const Int32Vector& get<>(const Property& v) noexcept
-{
-    return v.getInt32s();
-}
-
-template <>
-[[nodiscard]] inline const UInt32Vector& get<>(const Property& v) noexcept
-{
-    return v.getUInt32s();
-}
-
-template <>
-[[nodiscard]] inline const Int64Vector& get<>(const Property& v) noexcept
-{
-    return v.getInt64s();
-}
-
-template <>
-[[nodiscard]] inline const UInt64Vector& get<>(const Property& v) noexcept
-{
-    return v.getUInt64s();
-}
-
-template <>
-[[nodiscard]] inline const DoubleVector& get<>(const Property& v) noexcept
-{
-    return v.getDoubles();
-}
-
-template <>
-[[nodiscard]] inline const StringsVector& get<>(const Property& v) noexcept
-{
-    return v.getStrings();
-}
-
-template <>
-[[nodiscard]] inline const BinariesVector& get<>(const Property& v) noexcept
-{
-    return v.getBinaries();
-}
 
 
 [[nodiscard]] std::string_view propertyTypeToString(PropertyType type);

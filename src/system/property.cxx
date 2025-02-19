@@ -7,22 +7,6 @@ namespace Er
 
 void Property::_free() noexcept
 {
-    using FreeFn = void (Property::*)() noexcept;
-
-    static FreeFn s_freeFns[] =
-    {
-        &Property::_freeString,
-        &Property::_freeBinary,
-        &Property::_freeBoolV,
-        &Property::_freeInt32V,
-        &Property::_freeUInt32V,
-        &Property::_freeInt64V,
-        &Property::_freeUInt64V,
-        &Property::_freeDoubleV,
-        &Property::_freeStringV,
-        &Property::_freeBinaryV
-    };
-
     auto ty = type();
 
     if (!_allocatesStorage(ty))
@@ -31,191 +15,20 @@ void Property::_free() noexcept
         return;
     }
 
-    auto idx = static_cast<std::size_t>(ty) - static_cast<std::size_t>(PropertyType::String);
-    ErAssert(idx < _countof(s_freeFns));
-    std::invoke(s_freeFns[idx], *this);
-}
-
-void Property::_freeString() noexcept
-{
-    ErAssert(type() == PropertyType::String);
-    delete m_u.v_string;
-    m_u.v_string = nullptr;
-    m_type = InfoAndType();
-}
-
-void Property::_freeBinary() noexcept
-{
-    ErAssert(type() == PropertyType::Binary);
-    delete m_u.v_binary;
-    m_u.v_binary = nullptr;
-    m_type = InfoAndType();
-}
-
-void Property::_freeBoolV() noexcept
-{
-    ErAssert(type() == PropertyType::Bools);
-    delete m_u.a_bool;
-    m_u.a_bool = nullptr;
-    m_type = InfoAndType();
-}
-
-void Property::_freeInt32V() noexcept
-{
-    ErAssert(type() == PropertyType::Int32s);
-    delete m_u.a_int32;
-    m_u.a_int32 = nullptr;
-    m_type = InfoAndType();
-}
-
-void Property::_freeUInt32V() noexcept
-{
-    ErAssert(type() == PropertyType::UInt32s);
-    delete m_u.a_uint32;
-    m_u.a_uint32 = nullptr;
-    m_type = InfoAndType();
-}
-
-void Property::_freeInt64V() noexcept
-{
-    ErAssert(type() == PropertyType::Int64s);
-    delete m_u.a_int64;
-    m_u.a_int64 = nullptr;
-    m_type = InfoAndType();
-}
-
-void Property::_freeUInt64V() noexcept
-{
-    ErAssert(type() == PropertyType::UInt64s);
-    delete m_u.a_uint64;
-    m_u.a_uint64 = nullptr;
-    m_type = InfoAndType();
-}
-
-void Property::_freeDoubleV() noexcept
-{
-    ErAssert(type() == PropertyType::Doubles);
-    delete m_u.a_double;
-    m_u.a_double = nullptr;
-    m_type = InfoAndType();
-}
-
-void Property::_freeStringV() noexcept
-{
-    ErAssert(type() == PropertyType::Strings);
-    delete m_u.a_string;
-    m_u.a_string = nullptr;
-    m_type = InfoAndType();
-}
-
-void Property::_freeBinaryV() noexcept
-{
-    ErAssert(type() == PropertyType::Binaries);
-    delete m_u.a_binary;
-    m_u.a_binary = nullptr;
-    m_type = InfoAndType();
+    if (m_u._shared)
+        m_u._shared->release();
 }
 
 void Property::_clone(const Property& other)
 {
-    using CloneFn = void (Property::*)(const Property&);
-
-    static CloneFn s_cloneFns[] =
-    {
-        &Property::_cloneString,
-        &Property::_cloneBinary,
-        &Property::_cloneBoolV,
-        &Property::_cloneInt32V,
-        &Property::_cloneUInt32V,
-        &Property::_cloneInt64V,
-        &Property::_cloneUInt64V,
-        &Property::_cloneDoubleV,
-        &Property::_cloneStringV,
-        &Property::_cloneBinaryV
-    };
-
     auto ty = other.type();
-    if (!_allocatesStorage(ty))
-    {
-        m_u._largest = other.m_u._largest;
-        m_type = other.m_type;
-        return;
-    }
-
-    auto idx = static_cast<std::size_t>(ty) - static_cast<std::size_t>(PropertyType::String);
-    ErAssert(idx < _countof(s_cloneFns));
-    std::invoke(s_cloneFns[idx], *this, other);
     m_type = other.m_type;
-}
+    m_u._largest = other.m_u._largest;
 
-void Property::_cloneString(const Property& other)
-{
-    ErAssert(other.type() == PropertyType::String);
-    ErAssert(other.m_u.v_string);
-    m_u.v_string = new std::string(*other.m_u.v_string);
-}
-
-void Property::_cloneBinary(const Property& other)
-{
-    ErAssert(other.type() == PropertyType::Binary);
-    ErAssert(other.m_u.v_binary);
-    m_u.v_binary = new Binary(*other.m_u.v_binary);
-}
-
-void Property::_cloneBoolV(const Property& other)
-{
-    ErAssert(other.type() == PropertyType::Bools);
-    ErAssert(other.m_u.a_bool);
-    m_u.a_bool = new BoolVector(*other.m_u.a_bool);
-}
-
-void Property::_cloneInt32V(const Property& other)
-{
-    ErAssert(other.type() == PropertyType::Int32s);
-    ErAssert(other.m_u.a_int32);
-    m_u.a_int32 = new Int32Vector(*other.m_u.a_int32);
-}
-
-void Property::_cloneUInt32V(const Property& other)
-{
-    ErAssert(other.type() == PropertyType::UInt32s);
-    ErAssert(other.m_u.a_uint32);
-    m_u.a_uint32 = new UInt32Vector(*other.m_u.a_uint32);
-}
-
-void Property::_cloneInt64V(const Property& other)
-{
-    ErAssert(other.type() == PropertyType::Int64s);
-    ErAssert(other.m_u.a_int64);
-    m_u.a_int64 = new Int64Vector(*other.m_u.a_int64);
-}
-
-void Property::_cloneUInt64V(const Property& other)
-{
-    ErAssert(other.type() == PropertyType::UInt64s);
-    ErAssert(other.m_u.a_uint64);
-    m_u.a_uint64 = new UInt64Vector(*other.m_u.a_uint64);
-}
-
-void Property::_cloneDoubleV(const Property& other)
-{
-    ErAssert(other.type() == PropertyType::Doubles);
-    ErAssert(other.m_u.a_double);
-    m_u.a_double = new DoubleVector(*other.m_u.a_double);
-}
-
-void Property::_cloneStringV(const Property& other)
-{
-    ErAssert(other.type() == PropertyType::Strings);
-    ErAssert(other.m_u.a_string);
-    m_u.a_string = new StringsVector(*other.m_u.a_string);
-}
-
-void Property::_cloneBinaryV(const Property& other)
-{
-    ErAssert(other.type() == PropertyType::Binaries);
-    ErAssert(other.m_u.a_binary);
-    m_u.a_binary = new BinariesVector(*other.m_u.a_binary);
+    if (_allocatesStorage(ty))
+    {
+        m_u._shared->addRef();
+    }
 }
 
 bool Property::_eq(const Property& other) const noexcept
@@ -226,14 +39,7 @@ bool Property::_eq(const Property& other) const noexcept
     {
         &Property::_eqString,
         &Property::_eqBinary,
-        &Property::_eqBoolV,
-        &Property::_eqInt32V,
-        &Property::_eqUInt32V,
-        &Property::_eqInt64V,
-        &Property::_eqUInt64V,
-        &Property::_eqDoubleV,
-        &Property::_eqStringV,
-        &Property::_eqBinaryV
+        &Property::_eqMap
     };
 
     auto ty = type();
@@ -264,59 +70,10 @@ bool Property::_eqBinary(const Property& other) const noexcept
     return v1 == v2;
 }
 
-bool Property::_eqBoolV(const Property& other) const noexcept
+bool Property::_eqMap(const Property& other) const noexcept
 {
-    auto& v1 = getBools();
-    auto& v2 = other.getBools();
-    return v1 == v2;
-}
-
-bool Property::_eqInt32V(const Property& other) const noexcept
-{
-    auto& v1 = getInt32s();
-    auto& v2 = other.getInt32s();
-    return v1 == v2;
-}
-
-bool Property::_eqUInt32V(const Property& other) const noexcept
-{
-    auto& v1 = getUInt32s();
-    auto& v2 = other.getUInt32s();
-    return v1 == v2;
-}
-
-bool Property::_eqInt64V(const Property& other) const noexcept
-{
-    auto& v1 = getInt64s();
-    auto& v2 = other.getInt64s();
-    return v1 == v2;
-}
-
-bool Property::_eqUInt64V(const Property& other) const noexcept
-{
-    auto& v1 = getUInt64s();
-    auto& v2 = other.getUInt64s();
-    return v1 == v2;
-}
-
-bool Property::_eqDoubleV(const Property& other) const noexcept
-{
-    auto& v1 = getDoubles();
-    auto& v2 = other.getDoubles();
-    return v1 == v2;
-}
-
-bool Property::_eqStringV(const Property& other) const noexcept
-{
-    auto& v1 = getStrings();
-    auto& v2 = other.getStrings();
-    return v1 == v2;
-}
-
-bool Property::_eqBinaryV(const Property& other) const noexcept
-{
-    auto& v1 = getBinaries();
-    auto& v2 = other.getBinaries();
+    auto& v1 = getMap();
+    auto& v2 = other.getMap();
     return v1 == v2;
 }
 
@@ -335,14 +92,7 @@ std::string Property::_str() const
         &Property::_strDouble,
         &Property::_strString,
         &Property::_strBinary,
-        &Property::_strBoolV,
-        &Property::_strInt32V,
-        &Property::_strUInt32V,
-        &Property::_strInt64V,
-        &Property::_strUInt64V,
-        &Property::_strDoubleV,
-        &Property::_strStringV,
-        &Property::_strBinaryV
+        &Property::_strMap
     };
 
     auto ty = type();
@@ -388,7 +138,7 @@ std::string Property::_strUInt64() const
 
 std::string Property::_strDouble() const
 {
-    auto& v = getDouble();
+    auto v = getDouble();
     return std::to_string(v);
 }
 
@@ -405,180 +155,144 @@ std::string Property::_strBinary() const
     return ss.str();
 }
 
-std::string Property::_strBoolV() const
+std::string Property::_strMap() const
 {
-    auto& a = getBools();
-    if (a.empty())
-        return "[]";
-
+    auto& v = getMap();
     std::ostringstream ss;
-    ss << "[";
+    ss << "{";
     bool first = true;
-    for (auto v : a)
+    for (auto it = v.begin(); it != v.end(); ++it)
     {
         if (first)
+        {
+            ss << " ";
             first = false;
+        }
         else
+        {
             ss << ", ";
+        }
 
-        ss << (v ? "True" : "False");
+        auto& key = it->first;
+        auto infoKey = key.info();
+        ErAssert(infoKey);
+        ss << "\'" << infoKey->format(key) << "\'";
+
+        auto& value = it->second;
+        auto infoValue = value.info();
+        ErAssert(infoValue);
+        ss << ": \'" << infoValue->format(value) << "\'";
     }
-    ss << "]";
+
+    if (!v.empty())
+        ss << " ";
+
+    ss << "}";
+
     return ss.str();
 }
 
-std::string Property::_strInt32V() const
+std::size_t Property::_hash() const noexcept
 {
-    auto& a = getInt32s();
-    if (a.empty())
-        return "[]";
+    using HashFn = std::size_t(Property::*)() const noexcept;
 
-    std::ostringstream ss;
-    ss << "[";
-    bool first = true;
-    for (auto v : a)
+    static HashFn s_hashFns[] =
     {
-        if (first)
-            first = false;
-        else
-            ss << ", ";
+        &Property::_hashEmpty,
+        &Property::_hashBool,
+        &Property::_hashInt32,
+        &Property::_hashUInt32,
+        &Property::_hashInt64,
+        &Property::_hashUInt64,
+        &Property::_hashDouble,
+        &Property::_hashString,
+        &Property::_hashBinary,
+        &Property::_hashMap
+    };
 
-        ss << v;
-    }
-    ss << "]";
-    return ss.str();
+    auto ty = type();
+    auto idx = static_cast<std::size_t>(ty);
+    ErAssert(idx < _countof(s_hashFns));
+    return std::invoke(s_hashFns[idx], *this);
 }
 
-std::string Property::_strUInt32V() const
+std::size_t Property::_hashEmpty() const noexcept
 {
-    auto& a = getUInt32s();
-    if (a.empty())
-        return "[]";
-
-    std::ostringstream ss;
-    ss << "[";
-    bool first = true;
-    for (auto v : a)
-    {
-        if (first)
-            first = false;
-        else
-            ss << ", ";
-
-        ss << v;
-    }
-    ss << "]";
-    return ss.str();
+    return 0;
 }
 
-std::string Property::_strInt64V() const
+std::size_t Property::_hashBool() const noexcept
 {
-    auto& a = getInt64s();
-    if (a.empty())
-        return "[]";
-
-    std::ostringstream ss;
-    ss << "[";
-    bool first = true;
-    for (auto v : a)
-    {
-        if (first)
-            first = false;
-        else
-            ss << ", ";
-
-        ss << v;
-    }
-    ss << "]";
-    return ss.str();
+    auto v = getBool();
+    std::hash<bool> h;
+    return h(v);
 }
 
-std::string Property::_strUInt64V() const
+std::size_t Property::_hashInt32() const noexcept
 {
-    auto& a = getUInt64s();
-    if (a.empty())
-        return "[]";
-
-    std::ostringstream ss;
-    ss << "[";
-    bool first = true;
-    for (auto v : a)
-    {
-        if (first)
-            first = false;
-        else
-            ss << ", ";
-
-        ss << v;
-    }
-    ss << "]";
-    return ss.str();
+    auto v = getInt32();
+    std::hash<std::int32_t> h;
+    return h(v);
 }
 
-std::string Property::_strDoubleV() const
+std::size_t Property::_hashUInt32() const noexcept
 {
-    auto& a = getDoubles();
-    if (a.empty())
-        return "[]";
-
-    std::ostringstream ss;
-    ss << "[";
-    bool first = true;
-    for (auto v : a)
-    {
-        if (first)
-            first = false;
-        else
-            ss << ", ";
-
-        ss << v;
-    }
-    ss << "]";
-    return ss.str();
+    auto v = getUInt32();
+    std::hash<std::uint32_t> h;
+    return h(v);
 }
 
-std::string Property::_strStringV() const
+std::size_t Property::_hashInt64() const noexcept
 {
-    auto& a = getStrings();
-    if (a.empty())
-        return "[]";
-
-    std::ostringstream ss;
-    ss << "[";
-    bool first = true;
-    for (auto& v : a)
-    {
-        if (first)
-            first = false;
-        else
-            ss << ", ";
-
-        ss << "\"" << v << "\"";
-    }
-    ss << "]";
-    return ss.str();
+    auto v = getInt64();
+    std::hash<std::int64_t> h;
+    return h(v);
 }
 
-std::string Property::_strBinaryV() const
+std::size_t Property::_hashUInt64() const noexcept
 {
-    auto& a = getBinaries();
-    if (a.empty())
-        return "[]";
+    auto v = getUInt64();
+    std::hash<std::uint64_t> h;
+    return h(v);
+}
 
-    std::ostringstream ss;
-    ss << "[";
-    bool first = true;
-    for (auto& v : a)
+std::size_t Property::_hashDouble() const noexcept
+{
+    auto v = getDouble();
+    std::hash<double> h;
+    return h(v);
+}
+
+std::size_t Property::_hashString() const noexcept
+{
+    auto& v = getString();
+    std::hash<std::string> h;
+    return h(v);
+}
+
+std::size_t Property::_hashBinary() const noexcept
+{
+    auto& v = getBinary();
+    return v.hash();
+}
+
+std::size_t Property::_hashMap() const noexcept
+{
+    auto& v = getMap();
+    std::size_t hash = 0x9e3779b9;
+    for (auto it = v.begin(); it != v.end(); ++it)
     {
-        if (first)
-            first = false;
-        else
-            ss << ", ";
+        auto& key = it->first;
+        auto keyHash = key.hash();
 
-        ss << "\"" << v << "\"";
+        auto& value = it->second;
+        auto valueHash = value.hash();
+
+        // TODO: find a nicer hash function
+        hash ^= (keyHash << 6) + (keyHash >> 1) + (valueHash << 6) + (valueHash >> 1);
     }
-    ss << "]";
-    return ss.str();
+
+    return hash;
 }
 
 std::string_view propertyTypeToString(PropertyType type)
@@ -594,14 +308,7 @@ std::string_view propertyTypeToString(PropertyType type)
     case PropertyType::Double: return "Double";
     case PropertyType::String: return "String";
     case PropertyType::Binary: return "Binary";
-    case PropertyType::Bools: return "Bool[]";
-    case PropertyType::Int32s: return "Int32[]";
-    case PropertyType::UInt32s: return "UInt32[]";
-    case PropertyType::Int64s: return "Int64[]";
-    case PropertyType::UInt64s: return "UInt64[]";
-    case PropertyType::Doubles: return "Double[]";
-    case PropertyType::Strings: return "String[]";
-    case PropertyType::Binaries: return "Binary[]";
+    case PropertyType::Map: return "Map";
     }
 
     return "\?\?\?";

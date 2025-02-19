@@ -22,28 +22,11 @@ enum class PropertyType : uint32_t
     Double,
     String,
     Binary,
-    Bools,
-    Int32s,
-    UInt32s,
-    Int64s,
-    UInt64s,
-    Doubles,
-    Strings,
-    Binaries,
+    Map,
     Max // should go last
 };
 
 static_assert(unsigned(PropertyType::Max) <= 0x20, "Align PropertyInfo so that we can fit enough PropertyTypes into it's lower address bits");
-
-
-using BoolVector = std::vector<Bool>;
-using Int32Vector = std::vector<std::int32_t>;
-using UInt32Vector = std::vector<std::uint32_t>;
-using Int64Vector = std::vector<std::int64_t>;
-using UInt64Vector = std::vector<std::uint64_t>;
-using DoubleVector = std::vector<double>;
-using StringsVector = std::vector<std::string>;
-using BinariesVector = std::vector<Binary>;
 
 
 struct Property;
@@ -112,14 +95,7 @@ extern ER_SYSTEM_EXPORT const PropertyInfo UInt64;
 extern ER_SYSTEM_EXPORT const PropertyInfo Double;
 extern ER_SYSTEM_EXPORT const PropertyInfo String;
 extern ER_SYSTEM_EXPORT const PropertyInfo Binary;
-extern ER_SYSTEM_EXPORT const PropertyInfo Bools;
-extern ER_SYSTEM_EXPORT const PropertyInfo Int32s;
-extern ER_SYSTEM_EXPORT const PropertyInfo UInt32s;
-extern ER_SYSTEM_EXPORT const PropertyInfo Int64s;
-extern ER_SYSTEM_EXPORT const PropertyInfo UInt64s;
-extern ER_SYSTEM_EXPORT const PropertyInfo Doubles;
-extern ER_SYSTEM_EXPORT const PropertyInfo Strings;
-extern ER_SYSTEM_EXPORT const PropertyInfo Binaries;
+
 
 } // namespace Unspecified {}
 

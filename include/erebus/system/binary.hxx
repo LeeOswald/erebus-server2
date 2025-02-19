@@ -107,6 +107,12 @@ struct Binary final
         return ostream;
     }
 
+    std::size_t hash() const noexcept
+    {
+        std::hash<std::string> h;
+        return h(m_bytes);
+    }
+
 private:
     std::string m_bytes;
 };

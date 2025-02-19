@@ -29,7 +29,7 @@ bool getPropertyBool(const Er::Property& prop)
 {
     if (prop.type() != PropertyType::Bool) [[unlikely]]
         throw PropertyException(std::source_location::current(), "get", prop, "Bool", Er::propertyTypeToString(prop.type()));
-    return get<Bool>(prop) == True;
+    return prop.getBool() == True;
 }
 
 void setPropertyBool(Er::Property& prop, Bool val)
@@ -43,7 +43,7 @@ std::int32_t getPropertyInt32(const Er::Property& prop)
 {
     if (prop.type() != PropertyType::Int32) [[unlikely]]
         throw PropertyException(std::source_location::current(), "get", prop, "Int32", Er::propertyTypeToString(prop.type()));
-    return get<std::int32_t>(prop);
+    return prop.getInt32();
 }
 
 void setPropertyInt32(Er::Property& prop, int32_t val)
@@ -57,7 +57,7 @@ uint32_t getPropertyUInt32(const Er::Property& prop)
 {
     if (prop.type() != PropertyType::UInt32) [[unlikely]]
         throw PropertyException(std::source_location::current(), "get", prop, "UInt32", Er::propertyTypeToString(prop.type()));
-    return get<uint32_t>(prop);
+    return prop.getUInt32();
 }
 
 void setPropertyUInt32(Er::Property& prop, uint32_t val)
@@ -72,7 +72,7 @@ Er::Lua::Int64Wrapper getPropertyInt64(const Er::Property& prop)
     if (prop.type() != PropertyType::Int64) [[unlikely]]
         throw PropertyException(std::source_location::current(), "get", prop, "Int64", Er::propertyTypeToString(prop.type()));
     
-    return Er::Lua::Int64Wrapper(get<int64_t>(prop));
+    return Er::Lua::Int64Wrapper(prop.getInt64());
 }
 
 void setPropertyInt64(Er::Property& prop, const Er::Lua::Int64Wrapper& val)
@@ -87,7 +87,7 @@ Er::Lua::UInt64Wrapper getPropertyUInt64(const Er::Property& prop)
     if (prop.type() != PropertyType::UInt64) [[unlikely]]
         throw PropertyException(std::source_location::current(), "get", prop, "IUInt64", Er::propertyTypeToString(prop.type()));
 
-    return Er::Lua::UInt64Wrapper(get<uint64_t>(prop));
+    return Er::Lua::UInt64Wrapper(prop.getUInt64());
 }
 
 void setPropertyUInt64(Er::Property& prop, const Er::Lua::UInt64Wrapper& val)
@@ -101,7 +101,7 @@ double getPropertyDouble(const Er::Property& prop)
 {
     if (prop.type() != PropertyType::Double) [[unlikely]]
         throw PropertyException(std::source_location::current(), "get", prop, "Double", Er::propertyTypeToString(prop.type()));
-    return get<double>(prop);
+    return prop.getDouble();
 }
 
 void setPropertyDouble(Er::Property& prop, double val)
@@ -115,7 +115,7 @@ const std::string& getPropertyString(const Er::Property& prop)
 {
     if (prop.type() != PropertyType::String) [[unlikely]]
         throw PropertyException(std::source_location::current(), "get", prop, "String", Er::propertyTypeToString(prop.type()));
-    return get<std::string>(prop);
+    return prop.getString();
 }
 
 void setPropertyString(Er::Property& prop, const std::string& val)
@@ -125,14 +125,14 @@ void setPropertyString(Er::Property& prop, const std::string& val)
     prop = Property(val, *prop.info());
 }
 
-const std::string& getPropertyBytes(const Er::Property& prop)
+const std::string& getPropertyBinary(const Er::Property& prop)
 {
     if (prop.type() != PropertyType::Binary) [[unlikely]]
         throw PropertyException(std::source_location::current(), "get", prop, "Binary", Er::propertyTypeToString(prop.type()));
-    return get<Binary>(prop).bytes();
+    return prop.getBinary().bytes();
 }
 
-void setPropertyBytes(Er::Property& prop, const std::string& val)
+void setPropertyBinary(Er::Property& prop, const std::string& val)
 {
     if (prop.type() != PropertyType::Binary) [[unlikely]]
         throw PropertyException(std::source_location::current(), "set", prop, "Binary", Er::propertyTypeToString(prop.type()));
@@ -172,14 +172,6 @@ ER_SYSTEM_EXPORT void registerPropertyTypes(State& state)
         s["Double"] = static_cast<uint32_t>(Er::PropertyType::Double);
         s["String"] = static_cast<uint32_t>(Er::PropertyType::String);
         s["Binary"] = static_cast<uint32_t>(Er::PropertyType::Binary);
-        s["Bools"] = static_cast<uint32_t>(Er::PropertyType::Bools);
-        s["Int32s"] = static_cast<uint32_t>(Er::PropertyType::Int32s);
-        s["UInt32s"] = static_cast<uint32_t>(Er::PropertyType::UInt32s);
-        s["Int64s"] = static_cast<uint32_t>(Er::PropertyType::Int64s);
-        s["UInt64s"] = static_cast<uint32_t>(Er::PropertyType::UInt64s);
-        s["Doubles"] = static_cast<uint32_t>(Er::PropertyType::Doubles);
-        s["Strings"] = static_cast<uint32_t>(Er::PropertyType::Strings);
-        s["Binaries"] = static_cast<uint32_t>(Er::PropertyType::Binaries);
     }
 
     {
@@ -199,8 +191,8 @@ ER_SYSTEM_EXPORT void registerPropertyTypes(State& state)
         s["setDouble"] = &setPropertyDouble;
         s["getString"] = &getPropertyString;
         s["setString"] = &setPropertyString;
-        s["getBytes"] = &getPropertyBytes;
-        s["setBytes"] = &setPropertyBytes;
+        s["getBinary"] = &getPropertyBinary;
+        s["setBinary"] = &setPropertyBinary;
         s["getName"] = &getPropertyName;
         s["getReadableName"] = &getPropertyReadableName;
         s["format"] = &formatProperty;
