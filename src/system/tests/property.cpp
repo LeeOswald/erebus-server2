@@ -398,9 +398,11 @@ TEST(Property, Compare)
     {
         Er::Property v1;
         Er::Property v2;
+        Er::Property v3(false, Er::Unspecified::Bool); // different type
 
         EXPECT_TRUE(v1 == v2);
         EXPECT_FALSE(v1 != v2);
+        EXPECT_FALSE(v1 == v3);
     }
 
     // bool
@@ -408,21 +410,25 @@ TEST(Property, Compare)
         Er::Property v1(true, Er::Unspecified::Bool);
         Er::Property v2(false, Er::Unspecified::Bool);
         Er::Property v3(true, Er::Unspecified::Bool);
+        Er::Property v4(int32_t(1), Er::Unspecified::Int32);
         EXPECT_FALSE(v1 == v2);
         EXPECT_TRUE(v1 != v2);
         EXPECT_TRUE(v1 == v3);
         EXPECT_FALSE(v1 != v3);
+        EXPECT_FALSE(v1 == v4);
     }
 
     // int32
     {
         Er::Property v1(int32_t(-10), Er::Unspecified::Int32);
-        Er::Property v2(int32_t(30), Er::Unspecified::Int32);
+        Er::Property v2(int32_t(10), Er::Unspecified::Int32);
         Er::Property v3(int32_t(-10), Er::Unspecified::Int32);
+        Er::Property v4(uint32_t(10), Er::Unspecified::UInt32);
         EXPECT_FALSE(v1 == v2);
         EXPECT_TRUE(v1 != v2);
         EXPECT_TRUE(v1 == v3);
         EXPECT_FALSE(v1 != v3);
+        EXPECT_FALSE(v2 == v4); // same value, different types
     }
 
     // uint32
@@ -430,10 +436,12 @@ TEST(Property, Compare)
         Er::Property v1(uint32_t(10), Er::Unspecified::UInt32);
         Er::Property v2(uint32_t(30), Er::Unspecified::UInt32);
         Er::Property v3(uint32_t(10), Er::Unspecified::UInt32);
+        Er::Property v4(int64_t(30), Er::Unspecified::Int64);
         EXPECT_FALSE(v1 == v2);
         EXPECT_TRUE(v1 != v2);
         EXPECT_TRUE(v1 == v3);
         EXPECT_FALSE(v1 != v3);
+        EXPECT_FALSE(v2 == v4); // same value, different types
     }
 
     // int64
@@ -441,10 +449,12 @@ TEST(Property, Compare)
         Er::Property v1(int64_t(-9223372036854775803LL), Er::Unspecified::Int64);
         Er::Property v2(int64_t(22LL), Er::Unspecified::Int64);
         Er::Property v3(int64_t(-9223372036854775803LL), Er::Unspecified::Int64);
+        Er::Property v4(uint64_t(22ULL), Er::Unspecified::UInt64);
         EXPECT_FALSE(v1 == v2);
         EXPECT_TRUE(v1 != v2);
         EXPECT_TRUE(v1 == v3);
         EXPECT_FALSE(v1 != v3);
+        EXPECT_FALSE(v2 == v4); // same value, different types
     }
 
     // uint64
@@ -452,10 +462,12 @@ TEST(Property, Compare)
         Er::Property v1(uint64_t(0x8000000000000005ULL), Er::Unspecified::UInt64);
         Er::Property v2(uint64_t(5ULL), Er::Unspecified::UInt64);
         Er::Property v3(uint64_t(0x8000000000000005ULL), Er::Unspecified::UInt64);
+        Er::Property v4(5.0, Er::Unspecified::Double);
         EXPECT_FALSE(v1 == v2);
         EXPECT_TRUE(v1 != v2);
         EXPECT_TRUE(v1 == v3);
         EXPECT_FALSE(v1 != v3);
+        EXPECT_FALSE(v2 == v4); // same value, different types
     }
 
     // double
@@ -463,10 +475,12 @@ TEST(Property, Compare)
         Er::Property v1(3.0, Er::Unspecified::Double);
         Er::Property v2(-3.0, Er::Unspecified::Double);
         Er::Property v3(3.0, Er::Unspecified::Double);
+        Er::Property v4("-3.0", Er::Unspecified::String);
         EXPECT_FALSE(v1 == v2);
         EXPECT_TRUE(v1 != v2);
         EXPECT_TRUE(v1 == v3);
         EXPECT_FALSE(v1 != v3);
+        EXPECT_FALSE(v2 == v4); // same value, different types
     }
 
     // string
@@ -474,10 +488,12 @@ TEST(Property, Compare)
         Er::Property v1(std::string("Test"), Er::Unspecified::String);
         Er::Property v2("Test1", Er::Unspecified::String);
         Er::Property v3("Test", Er::Unspecified::String);
+        Er::Property v4(Er::Binary("Test1"), Er::Unspecified::Binary);
         EXPECT_FALSE(v1 == v2);
         EXPECT_TRUE(v1 != v2);
         EXPECT_TRUE(v1 == v3);
         EXPECT_FALSE(v1 != v3);
+        EXPECT_FALSE(v2 == v4); // same value, different types
     }
 
     // binary
