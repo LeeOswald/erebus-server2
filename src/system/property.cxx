@@ -278,21 +278,8 @@ std::size_t Property::_hashBinary() const noexcept
 
 std::size_t Property::_hashMap() const noexcept
 {
-    auto& v = getMap();
-    std::size_t hash = 0x9e3779b9;
-    for (auto it = v.begin(); it != v.end(); ++it)
-    {
-        auto& key = it->first;
-        auto keyHash = key.hash();
-
-        auto& value = it->second;
-        auto valueHash = value.hash();
-
-        // TODO: find a nicer hash function
-        hash ^= (keyHash << 6) + (keyHash >> 1) + (valueHash << 6) + (valueHash >> 1);
-    }
-
-    return hash;
+    ErAssert(!"Cannot use Map as a key");
+    return 0;
 }
 
 std::string_view propertyTypeToString(PropertyType type)

@@ -8,6 +8,7 @@ TEST(Property, ConstructionAssignment)
     // empty
     {
         Er::Property v;
+        EXPECT_EQ(v.info(), &Er::Unspecified::Empty);
         EXPECT_EQ(v.type(), Er::PropertyType::Empty);
         EXPECT_TRUE(v.empty());
 

@@ -25,6 +25,11 @@ uint32_t getPropertyType(const Er::Property& prop)
     return static_cast<uint32_t>(prop.type());
 }
 
+void* getPropertyId(const Er::Property& prop)
+{
+    return const_cast<void*>(static_cast<const void*>(prop.info()));
+}
+
 bool getPropertyBool(const Er::Property& prop)
 {
     if (prop.type() != PropertyType::Bool) [[unlikely]]
@@ -172,10 +177,26 @@ ER_SYSTEM_EXPORT void registerPropertyTypes(State& state)
         s["Double"] = static_cast<uint32_t>(Er::PropertyType::Double);
         s["String"] = static_cast<uint32_t>(Er::PropertyType::String);
         s["Binary"] = static_cast<uint32_t>(Er::PropertyType::Binary);
+        s["Map"] = static_cast<uint32_t>(Er::PropertyType::Map);
+    }
+        
+    {
+        Er::Lua::Selector s = state["Er"]["Unspecified"];
+        s["Empty"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::Empty), "id", &Er::PropertyInfo::self);
+        s["Bool"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::Bool), "id", &Er::PropertyInfo::self);
+        s["Int32"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::Int32), "id", &Er::PropertyInfo::self);
+        s["UInt32"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::UInt32), "id", &Er::PropertyInfo::self);
+        s["Int64"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::Int64), "id", &Er::PropertyInfo::self);
+        s["UInt64"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::UInt64), "id", &Er::PropertyInfo::self);
+        s["Double"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::Double), "id", &Er::PropertyInfo::self);
+        s["String"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::String), "id", &Er::PropertyInfo::self);
+        s["Binary"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::Binary), "id", &Er::PropertyInfo::self);
+        s["Map"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::Map), "id", &Er::PropertyInfo::self);
     }
 
     {
         Er::Lua::Selector s = state["Er"]["Property"];
+        s["getId"] = &getPropertyId;
         s["getType"] = &getPropertyType;
         s["getBool"] = &getPropertyBool;
         s["setBool"] = &setPropertyBool;

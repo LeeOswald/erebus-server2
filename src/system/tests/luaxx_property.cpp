@@ -33,7 +33,109 @@ TEST(Er_Lua, PropertyTypes)
 
     type = state["Er"]["PropertyType"]["Binary"];
     EXPECT_EQ(type, static_cast<uint32_t>(Er::PropertyType::Binary));
+
+    type = state["Er"]["PropertyType"]["Map"];
+    EXPECT_EQ(type, static_cast<uint32_t>(Er::PropertyType::Map));
 }
 
 
+static const std::string test_property_info = R"(
+function get_id(prop)
+    local id = Er.Property.getId(prop)
+    if id == Er.Unspecified.Empty.id() then
+        return 0
+    elseif id == Er.Unspecified.Bool.id() then
+        return 1
+    elseif id == Er.Unspecified.Int32.id() then
+        return 2
+    elseif id == Er.Unspecified.UInt32.id() then
+        return 3
+    elseif id == Er.Unspecified.Int64.id() then
+        return 4
+    elseif id == Er.Unspecified.UInt64.id() then
+        return 5
+    elseif id == Er.Unspecified.Double.id() then
+        return 6
+    elseif id == Er.Unspecified.String.id() then
+        return 7
+    elseif id == Er.Unspecified.Binary.id() then
+        return 8
+    elseif id == Er.Unspecified.Map.id() then
+        return 9
+    end
 
+    return -1
+end
+)";
+
+
+TEST(Er_Lua, PropertyInfo)
+{
+    Er::LuaState state(Er::Log2::get());
+
+    state.loadString(test_property_info, "test_property_info");
+
+    {
+        Er::Property v;
+        int res = state["get_id"](v);
+        EXPECT_EQ(res, 0);
+    }
+
+    {
+        Er::Property v(Er::True, Er::Unspecified::Bool);
+        int res = state["get_id"](v);
+        EXPECT_EQ(res, 1);
+    }
+
+    {
+        Er::Property v(std::int32_t(1), Er::Unspecified::Int32);
+        int res = state["get_id"](v);
+        EXPECT_EQ(res, 2);
+    }
+
+    {
+        Er::Property v(std::uint32_t(1), Er::Unspecified::UInt32);
+        int res = state["get_id"](v);
+        EXPECT_EQ(res, 3);
+    }
+
+    {
+        Er::Property v(std::int64_t(1), Er::Unspecified::Int64);
+        int res = state["get_id"](v);
+        EXPECT_EQ(res, 4);
+    }
+
+    {
+        Er::Property v(std::uint64_t(1), Er::Unspecified::UInt64);
+        int res = state["get_id"](v);
+        EXPECT_EQ(res, 5);
+    }
+
+    {
+        Er::Property v(1.0, Er::Unspecified::Double);
+        int res = state["get_id"](v);
+        EXPECT_EQ(res, 6);
+    }
+
+    {
+        Er::Property v(std::string("1"), Er::Unspecified::String);
+        int res = state["get_id"](v);
+        EXPECT_EQ(res, 7);
+    }
+
+    {
+        Er::Property v(Er::Binary(std::string("1")), Er::Unspecified::Binary);
+        int res = state["get_id"](v);
+        EXPECT_EQ(res, 8);
+    }
+
+    {
+        Er::Property::Map m;
+        m.insert({ Er::Property(std::int32_t(-1), Er::Unspecified::Int32),  Er::Property(std::string("-1"), Er::Unspecified::String) });
+        m.insert({ Er::Property(std::int32_t(1), Er::Unspecified::Int32),  Er::Property(std::string("1"), Er::Unspecified::String) });
+
+        Er::Property v(std::move(m), Er::Unspecified::Map);
+        int res = state["get_id"](v);
+        EXPECT_EQ(res, 9);
+    }
+}

@@ -40,6 +40,11 @@ struct alignas(32) PropertyInfo
 {
     using Formatter = std::function<std::string(const Property&)>;
 
+    constexpr void* self()
+    {
+        return this;
+    }
+
     constexpr PropertyType type() const noexcept
     {
         return m_type;
@@ -95,6 +100,7 @@ extern ER_SYSTEM_EXPORT const PropertyInfo UInt64;
 extern ER_SYSTEM_EXPORT const PropertyInfo Double;
 extern ER_SYSTEM_EXPORT const PropertyInfo String;
 extern ER_SYSTEM_EXPORT const PropertyInfo Binary;
+extern ER_SYSTEM_EXPORT const PropertyInfo Map;
 
 
 } // namespace Unspecified {}

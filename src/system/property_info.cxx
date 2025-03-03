@@ -103,6 +103,7 @@ const PropertyInfo UInt64{ PropertyType::UInt64, "unspecified/uint64", "UInt64" 
 const PropertyInfo Double{ PropertyType::Double, "unspecified/double", "Double" };
 const PropertyInfo String{ PropertyType::String, "unspecified/string", "String" };
 const PropertyInfo Binary{ PropertyType::Binary, "unspecified/binary", "Binary" };
+const PropertyInfo Map{ PropertyType::Map, "unspecified/map", "Map" };
 
 
 } // namespace Unspecified {}
