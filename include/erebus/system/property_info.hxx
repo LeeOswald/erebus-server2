@@ -26,7 +26,7 @@ enum class PropertyType : uint32_t
     Max // should go last
 };
 
-static_assert(unsigned(PropertyType::Max) <= 0x20, "Align PropertyInfo so that we can fit enough PropertyTypes into it's lower address bits");
+static_assert(unsigned(PropertyType::Max) <= 0x10, "Align PropertyInfo so that we can fit enough PropertyTypes into it's lower address bits");
 
 
 struct Property;
@@ -34,9 +34,9 @@ struct Property;
 //
 // Yes, we DO need that large alignment value
 // struct Property carries a pointer to PropertyInfo instance
-// and 5 lower bits of this (aligned) pointer are used for PropertyType
+// and 4 lower bits of this (aligned) pointer are used for PropertyType
 //
-struct alignas(32) PropertyInfo 
+struct alignas(16) PropertyInfo 
 {
     using Formatter = std::function<std::string(const Property&)>;
 

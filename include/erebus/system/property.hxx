@@ -431,7 +431,7 @@ private:
     struct InfoAndType
     {
         std::uintptr_t ty;
-        static constexpr std::uintptr_t TypeMask = 0x1FULL; // 5 lower pointer bits
+        static constexpr std::uintptr_t TypeMask = 0x0FULL; // 4 lower pointer bits
 
         constexpr InfoAndType(DontInit) noexcept
         {
