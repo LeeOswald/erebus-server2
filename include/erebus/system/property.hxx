@@ -4,6 +4,8 @@
 
 #include <atomic>
 #include <unordered_map>
+#include <variant>
+
 
 namespace Er
 {
@@ -19,7 +21,7 @@ struct ER_SYSTEM_EXPORT Property final
 private:
     struct PropertyHash
     {
-        std::size_t operator () (const Property &prop) const
+        std::size_t operator()(const Property &prop) const
         {
             return prop.hash();
         }
@@ -232,24 +234,24 @@ public:
     {
         ErAssert(type() == PropertyType::String);
         ErAssert(m_u._shared);
-        ErAssert(m_u._shared->string);
-        return *m_u._shared->string;
+        
+        return std::get<std::string>(m_u._shared->data);
     }
 
     [[nodiscard]] constexpr const Binary& getBinary() const noexcept
     {
         ErAssert(type() == PropertyType::Binary);
         ErAssert(m_u._shared);
-        ErAssert(m_u._shared->binary);
-        return *m_u._shared->binary;
+        
+        return std::get<Binary>(m_u._shared->data);
     }
 
     [[nodiscard]] constexpr const Map& getMap() const noexcept
     {
         ErAssert(type() == PropertyType::Map);
         ErAssert(m_u._shared);
-        ErAssert(m_u._shared->map);
-        return *m_u._shared->map;
+        
+        return std::get<Map>(m_u._shared->data);
     }
 
     [[nodiscard]] bool operator==(const Property& other) const noexcept
@@ -324,66 +326,44 @@ private:
 
         Type type;
         std::atomic<std::size_t> refs;
-        union
-        {
-            std::string* string;
-            Binary* binary;
-            Map* map;
-        };
-
-        ~SharedData()
-        {
-            switch (type)
-            {
-            case Er::Property::SharedData::Type::String:
-                delete string;
-                break;
-            case Er::Property::SharedData::Type::Binary:
-                delete binary;
-                break;
-            case Er::Property::SharedData::Type::Map:
-                delete map;
-                break;
-            default:
-                ErAssert(!"Unknown type");
-                break;
-            }
-        }
+        std::variant<std::string, Binary, Map> data;
+        
+        ~SharedData() = default;
 
         SharedData(const std::string& v)
             : type(Type::String)
             , refs(1)
-            , string(std::make_unique<std::string>(v).release())
+            , data(v)
         {}
 
         SharedData(std::string&& v)
             : type(Type::String)
             , refs(1)
-            , string(std::make_unique<std::string>(std::move(v)).release())
+            , data(std::move(v))
         {}
 
         SharedData(const Binary& v)
             : type(Type::Binary)
             , refs(1)
-            , binary(std::make_unique<Binary>(v).release())
+            , data(v)
         {}
 
         SharedData(Binary&& v)
             : type(Type::Binary)
             , refs(1)
-            , binary(std::make_unique<Binary>(std::move(v)).release())
+            , data(std::move(v))
         {}
 
         SharedData(const Map& v)
             : type(Type::Map)
             , refs(1)
-            , map(std::make_unique<Map>(v).release())
+            , data(v)
         {}
 
         SharedData(Map&& v)
             : type(Type::Map)
             , refs(1)
-            , map(std::make_unique<Map>(std::move(v)).release())
+            , data(std::move(v))
         {}
 
         std::size_t addRef() noexcept
