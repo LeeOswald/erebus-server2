@@ -72,12 +72,6 @@ void Program::terminateHandler()
     std::abort();
 }
 
-void Program::staticSignalHandler(int signo)
-{
-    if (s_instance)
-        s_instance->signalHandler(signo);
-}
-
 void Program::signalHandler(int signo)
 {
     m_signalReceived = signo;
@@ -124,11 +118,10 @@ void Program::globalStartup(int argc, char** argv) noexcept
     // setup signal handler
     if (m_options & EnableSignalHandler)
     {
-#if ER_POSIX
-        m_signalWaiter.reset(new SignalWaiter({ SIGINT, SIGTERM, SIGPIPE, SIGHUP }, this));
+#if ER_WINDOWS
+        m_signalWaiter.reset(new SignalWaiter(this,SIGINT, SIGTERM));
 #else
-        ::signal(SIGINT, staticSignalHandler);
-        ::signal(SIGTERM, staticSignalHandler);
+        m_signalWaiter.reset(new SignalWaiter(this, SIGINT, SIGTERM, SIGPIPE, SIGHUP));
 #endif
     }
     
@@ -147,14 +140,14 @@ void Program::globalStartup(int argc, char** argv) noexcept
 
 void Program::globalShutdown() noexcept
 {
-#if ER_POSIX
     if (m_signalWaiter)
     {
-        // s_signalWaiter is locked in sigwait() so wake it 
+#if ER_POSIX
+        // m_signalWaiter is locked in sigwait() so wake it 
         ::kill(::getpid(), SIGHUP);
+#endif
         m_signalWaiter.reset();
     }
-#endif
 
     Er::setPrintFailedAssertionFn(nullptr);
 }

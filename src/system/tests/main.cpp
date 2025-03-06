@@ -1,6 +1,6 @@
-#include "common.hpp"
-
 #include <erebus/system/program.hxx>
+
+#include "common.hpp"
 
 #if ER_WINDOWS
 #include <erebus/system/logger/win32_debugger_sink2.hxx>
@@ -72,7 +72,6 @@ class TestEventListener
                         continue;
                     }
                     Er::Log2::info(Er::Log2::get(), "[  FAILED  ] {}.{}", test_suite.name(), test_info.name());
-                    printf("%s.%s", test_suite.name(), test_info.name());
 
                     auto type_param = test_info.type_param();
                     auto value_param = test_info.value_param();

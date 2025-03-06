@@ -1,16 +1,14 @@
 #pragma once
 
+#include <boost/asio.hpp>
+#include <boost/noncopyable.hpp>
+#include <boost/program_options.hpp>
+
 #include <erebus/system/logger2.hxx>
-#if ER_POSIX
-    #include <erebus/system/system/signal_handler_posix.hxx>
-#endif
 #include <erebus/system/waitable.hxx>
 
 #include <atomic>
-#include <future>
-
-#include <boost/noncopyable.hpp>
-#include <boost/program_options.hpp>
+#include <thread>
 
 
 namespace Er
@@ -67,7 +65,6 @@ protected:
 
 private:
     static void staticTerminateHandler();
-    static void staticSignalHandler(int signo);
     static void staticPrintAssertFn(std::string_view message);
 
     void globalStartup(int argc, char** argv) noexcept;
@@ -78,29 +75,55 @@ private:
     static Program* s_instance;
     
     int m_options;
-    bool m_isDaemon;
+    bool m_isDaemon = false;
     Waitable<bool> m_exitCondition;
     std::atomic<int> m_signalReceived;
 
-#if ER_POSIX
-    struct SignalWaiter
+    class SignalWaiter
     {
-        System::SignalHandler sh;
-        std::future<int> fu;
+    public:
+        ~SignalWaiter()
+        {
+            m_io.stop();
+        }
 
-        SignalWaiter(const std::initializer_list<int>& signals, Program* program)
-            : sh(signals)
-            , fu(sh.asyncWaitHandler(
-                [program](int signo)
-                {
-                    program->signalHandler(signo);
-                    return true;
-                }))
+        template <typename... Signals>
+        SignalWaiter(Program* owner, Signals... signals)
+            : m_owner(owner)
+            , m_io()
+            , m_wg(m_io.get_executor())
+            , m_signals(m_io, std::forward<Signals>(signals)...)
+            , m_worker([this]() { run(); })
         {}
+
+    private:
+        void run()
+        {
+            m_signals.async_wait([this](const boost::system::error_code& ec, int signo) { handler(ec, signo); });
+            m_io.run();
+        }
+
+        void handler(const boost::system::error_code& ec, int signo)
+        {
+            if (!ec)
+            {
+                m_owner->signalHandler(signo);
+            }
+            else
+            {
+                Log2::fatal(Log2::get(), "Signal handler failed: {}", ec.to_string());
+                std::abort();
+            }
+        }
+
+        Program* m_owner;
+        boost::asio::io_context m_io;
+        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_wg;
+        boost::asio::signal_set m_signals;
+        std::jthread m_worker;
     };
 
     std::unique_ptr<SignalWaiter> m_signalWaiter;
-#endif
 
     boost::program_options::variables_map m_args;
     unsigned m_loggerThreshold = 0;

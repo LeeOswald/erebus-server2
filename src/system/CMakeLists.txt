@@ -13,12 +13,10 @@ if(ER_WINDOWS)
 elseif(ER_POSIX)
     set(PLATFORM_SOURCES
     	logger/syslog_linux_sink2.cxx
-	system/signal_handler_posix.cxx        
     )
     
     set(PLATFORM_HEADERS
      	../../include/erebus/system/logger/syslog_linux_sink2.hxx
-    	../../include/erebus/system/system/signal_handler_posix.hxx    
     )
     
 endif()
