@@ -119,9 +119,9 @@ void Program::globalStartup(int argc, char** argv) noexcept
     if (m_options & EnableSignalHandler)
     {
 #if ER_WINDOWS
-        m_signalWaiter.reset(new SignalWaiter(this,SIGINT, SIGTERM));
+        m_signalWaiter.reset(new SignalWaiter(this, { SIGINT, SIGTERM }));
 #else
-        m_signalWaiter.reset(new SignalWaiter(this, SIGINT, SIGTERM, SIGPIPE, SIGHUP));
+        m_signalWaiter.reset(new SignalWaiter(this, { SIGINT, SIGTERM, SIGPIPE, SIGHUP }));
 #endif
     }
     

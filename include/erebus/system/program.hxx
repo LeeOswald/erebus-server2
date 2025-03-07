@@ -87,14 +87,19 @@ private:
             m_io.stop();
         }
 
-        template <typename... Signals>
-        SignalWaiter(Program* owner, Signals... signals)
+        SignalWaiter(Program* owner, std::initializer_list<int> signals)
             : m_owner(owner)
             , m_io()
             , m_wg(m_io.get_executor())
-            , m_signals(m_io, std::forward<Signals>(signals)...)
-            , m_worker([this]() { run(); })
-        {}
+            , m_signals(m_io)
+        {
+            for (auto signo: signals)
+            {
+                m_signals.add(signo);
+            }
+
+            m_worker = std::jthread([this]() { run(); });
+        }
 
     private:
         void run()
