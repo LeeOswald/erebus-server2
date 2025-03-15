@@ -36,6 +36,16 @@ void* getPropertyId(const Er::Property& prop)
     return const_cast<void*>(static_cast<const void*>(prop.info()));
 }
 
+const std::string& getPropertyName(const Er::Property& prop)
+{
+    return prop.name();
+}
+
+const std::string& getPropertyReadableName(const Er::Property& prop)
+{
+    return prop.readableName();
+}
+
 bool getPropertyBool(const Er::Property& prop)
 {
     if (prop.type() != PropertyType::Bool) [[unlikely]]
@@ -43,7 +53,7 @@ bool getPropertyBool(const Er::Property& prop)
     return prop.getBool() == True;
 }
 
-void setPropertyBool(Er::Property& prop, Bool val)
+void setPropertyBool(Er::Property& prop, bool val)
 {
     if (prop.type() != PropertyType::Bool) [[unlikely]]
         throw PropertyException(std::source_location::current(), "set", prop, "Bool", Er::propertyTypeToString(prop.type()));
@@ -96,7 +106,7 @@ void setPropertyInt64(Er::Property& prop, const Er::Lua::Int64Wrapper& val)
 Er::Lua::UInt64Wrapper getPropertyUInt64(const Er::Property& prop)
 {
     if (prop.type() != PropertyType::UInt64) [[unlikely]]
-        throw PropertyException(std::source_location::current(), "get", prop, "IUInt64", Er::propertyTypeToString(prop.type()));
+        throw PropertyException(std::source_location::current(), "get", prop, "UInt64", Er::propertyTypeToString(prop.type()));
 
     return Er::Lua::UInt64Wrapper(prop.getUInt64());
 }
@@ -148,18 +158,6 @@ void setPropertyBinary(Er::Property& prop, const std::string& val)
     if (prop.type() != PropertyType::Binary) [[unlikely]]
         throw PropertyException(std::source_location::current(), "set", prop, "Binary", Er::propertyTypeToString(prop.type()));
     prop = Property(Binary(val), *prop.info());
-}
-
-const std::string& getPropertyName(const Er::Property& prop)
-{
-    static const std::string unknown("</?/?/?>");
-    return prop.info() ? prop.info()->name() : unknown;
-}
-
-const std::string& getPropertyReadableName(const Er::Property& prop)
-{
-    static const std::string unknown("</?/?/?>");
-    return prop.info() ? prop.info()->readableName() : unknown;
 }
 
 std::string formatProperty(const Er::Property& prop)

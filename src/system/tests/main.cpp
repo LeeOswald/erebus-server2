@@ -265,11 +265,11 @@ private:
         }
 #endif
         ::testing::InitGoogleTest(&argc, argv);
-#if 1
+
         auto& listeners = testing::UnitTest::GetInstance()->listeners();
         delete listeners.Release(listeners.default_result_printer());
         listeners.Append(new TestEventListener);
-#endif
+
         return RUN_ALL_TESTS();
     }
 };

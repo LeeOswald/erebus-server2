@@ -239,10 +239,18 @@ public:
         return _str();
     }
 
-    [[nodiscard]] auto name() const
+    [[nodiscard]] const std::string& name() const
     {
+        static const std::string unknown = "/?/?/?";
         auto inf = info();
-        return inf ? inf->name() : "/?/?/?";
+        return inf ? inf->name() : unknown;
+    }
+
+    [[nodiscard]] const std::string& readableName() const
+    {
+        static const std::string unknown = "/?/?/?";
+        auto inf = info();
+        return inf ? inf->readableName() : unknown;
     }
 
     [[nodiscard]] std::size_t hash() const noexcept
