@@ -6,8 +6,8 @@ namespace Er
 namespace ExceptionProps
 {
 
-const PropertyInfo Result{ PropertyType::Int32, "exception/result", "Result" };
-const PropertyInfo DecodedError{ PropertyType::String, "exception/decoded_error", "Decoded error" };
+const PropertyInfo Result{ PropertyType::Int32, "Er.Exception.result", "Result" };
+const PropertyInfo DecodedError{ PropertyType::String, "Er.Exception.decoded_error", "Decoded error" };
 
 
 } // namespace ExceptionProps {}

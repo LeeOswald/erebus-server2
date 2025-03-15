@@ -70,11 +70,13 @@ struct alignas(16) PropertyInfo
         , m_readableName(readableName)
         , m_formatter(std::move(formatter))
     {
+        registerProperty(this);
     }
 
     std::string format(const Property& prop) const;
 
     static const PropertyInfo* lookup(const std::string& name) noexcept;
+    static void enumerate(std::function<bool(const PropertyInfo*)> cb) noexcept;
 
 private:
     static void registerProperty(const PropertyInfo* info);

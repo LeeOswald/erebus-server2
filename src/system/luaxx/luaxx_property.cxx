@@ -1,9 +1,15 @@
 #include <erebus/system/exception.hxx>
 #include <erebus/system/property.hxx>
+#include <erebus/system/util/exception_util.hxx>
 
 #include <erebus/system/luaxx/luaxx_int64.hxx>
 #include <erebus/system/luaxx/luaxx_property.hxx>
 #include <erebus/system/luaxx/luaxx_state.hxx>
+
+#include <vector>
+
+#include <boost/algorithm/string.hpp>
+
 
 namespace Er::Lua
 {
@@ -161,11 +167,42 @@ std::string formatProperty(const Er::Property& prop)
     return prop.info() ? prop.info()->format(prop) : prop.str();
 }
 
+Er::Lua::Selector selectorForPropertyName(State& state, const std::string& name)
+{
+    std::vector<std::string> v;
+    boost::split(v, name, boost::is_any_of("."));
+    if (v.empty())
+        throw Er::Exception(std::source_location::current(), Er::format("Invalid property name {}", name));
+
+    Er::Lua::Selector s = state[v[0].c_str()];
+    for (std::size_t i = 1; i < v.size(); ++i)
+        s = s[v[i].c_str()];
+
+    return s;
+}
+
+void registerPropertyInfo(State& state, const PropertyInfo* pi) noexcept
+{
+    Util::ExceptionLogger xcptLogger(Log2::get());
+
+    try
+    {
+        auto selector = selectorForPropertyName(state, pi->name());
+        selector.SetObj(const_cast<PropertyInfo&>(*pi), "id", &Er::PropertyInfo::self);
+    }
+    catch (...)
+    {
+        dispatchException(std::current_exception(), xcptLogger);
+    }
+}
+
+
 } // namespace {}
 
 
 ER_SYSTEM_EXPORT void registerPropertyTypes(State& state)
 {
+    // register PropertyType constants
     {
         Er::Lua::Selector s = state["Er"]["PropertyType"];
         s["Empty"] = static_cast<uint32_t>(Er::PropertyType::Empty);
@@ -179,19 +216,16 @@ ER_SYSTEM_EXPORT void registerPropertyTypes(State& state)
         s["Binary"] = static_cast<uint32_t>(Er::PropertyType::Binary);
     }
         
+    // add the registered properties
     {
-        Er::Lua::Selector s = state["Er"]["Unspecified"];
-        s["Empty"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::Empty), "id", &Er::PropertyInfo::self);
-        s["Bool"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::Bool), "id", &Er::PropertyInfo::self);
-        s["Int32"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::Int32), "id", &Er::PropertyInfo::self);
-        s["UInt32"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::UInt32), "id", &Er::PropertyInfo::self);
-        s["Int64"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::Int64), "id", &Er::PropertyInfo::self);
-        s["UInt64"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::UInt64), "id", &Er::PropertyInfo::self);
-        s["Double"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::Double), "id", &Er::PropertyInfo::self);
-        s["String"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::String), "id", &Er::PropertyInfo::self);
-        s["Binary"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::Binary), "id", &Er::PropertyInfo::self);
+        PropertyInfo::enumerate([&state](const Er::PropertyInfo* pi) ->bool
+        {
+            registerPropertyInfo(state, pi);
+            return true;
+        });
     }
 
+    // add helper methods
     {
         Er::Lua::Selector s = state["Er"]["Property"];
         s["getId"] = &getPropertyId;

@@ -13,7 +13,7 @@ namespace
 
 struct Registration
 {
-    using Ptr = std::shared_ptr<Registration>;
+    using Ptr = std::unique_ptr<Registration>;
 
     const PropertyInfo* info;
     long refcount;
@@ -47,8 +47,8 @@ void PropertyInfo::registerProperty(const PropertyInfo* info)
     auto& r = registry();
 
     std::unique_lock l(r.mutex);
-    auto what = std::make_shared<Registration>(info);
-    auto result = r.properties.insert({ info->name(), what });
+    auto what = std::make_unique<Registration>(info);
+    auto result = r.properties.insert({ info->name(), std::move(what) });
     if (!result.second)
     {
         // this info already exists
@@ -91,18 +91,34 @@ const PropertyInfo* PropertyInfo::lookup(const std::string& name) noexcept
     return nullptr;
 }
 
+void PropertyInfo::enumerate(std::function<bool(const PropertyInfo*)> cb) noexcept
+{
+    ErAssert(cb);
+
+    auto& r = registry();
+
+    std::shared_lock l(r.mutex);
+
+    for (auto& pi : r.properties)
+    {
+        if (!cb(pi.second->info))
+            break;
+    }
+}
+
+
 namespace Unspecified
 {
 
-const PropertyInfo Empty{ PropertyType::Empty, "unspecified/empty", "Empty" };
-const PropertyInfo Bool{ PropertyType::Bool, "unspecified/bool", "Bool" };
-const PropertyInfo Int32{ PropertyType::Int32, "unspecified/int32", "Int32" };
-const PropertyInfo UInt32{ PropertyType::UInt32, "unspecified/uint32", "UInt32" };
-const PropertyInfo Int64{ PropertyType::Int64, "unspecified/int64", "Int64" };
-const PropertyInfo UInt64{ PropertyType::UInt64, "unspecified/uint64", "UInt64" };
-const PropertyInfo Double{ PropertyType::Double, "unspecified/double", "Double" };
-const PropertyInfo String{ PropertyType::String, "unspecified/string", "String" };
-const PropertyInfo Binary{ PropertyType::Binary, "unspecified/binary", "Binary" };
+const PropertyInfo Empty{ PropertyType::Empty, "Er.Unspecified.Empty", "Empty" };
+const PropertyInfo Bool{ PropertyType::Bool, "Er.Unspecified.Bool", "Bool" };
+const PropertyInfo Int32{ PropertyType::Int32, "Er.Unspecified.Int32", "Int32" };
+const PropertyInfo UInt32{ PropertyType::UInt32, "Er.Unspecified.UInt32", "UInt32" };
+const PropertyInfo Int64{ PropertyType::Int64, "Er.Unspecified.Int64", "Int64" };
+const PropertyInfo UInt64{ PropertyType::UInt64, "Er.Unspecified.UInt64", "UInt64" };
+const PropertyInfo Double{ PropertyType::Double, "Er.Unspecified.Double", "Double" };
+const PropertyInfo String{ PropertyType::String, "Er.Unspecified.String", "String" };
+const PropertyInfo Binary{ PropertyType::Binary, "Er.Unspecified.Binary", "Binary" };
 
 
 } // namespace Unspecified {}

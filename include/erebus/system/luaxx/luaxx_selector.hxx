@@ -52,8 +52,8 @@ private:
         : _state(s)
         , _registry(&r)
         , _exception_handler(&eh)
-        , _name(name),
-          _key(make_Ref(s, name)) 
+        , _name(name)
+        , _key(make_Ref(s, name)) 
     {}
 
     void _get(LuaRef r) const 
@@ -69,8 +69,7 @@ private:
         _get(_key);
     }
 
-    // Sets this element from a function that pushes a value to the
-    // stack.
+    // Sets this element from a function that pushes a value to the stack
     template<typename PushFunction>
     void _put(PushFunction fun) const 
     {
@@ -339,7 +338,7 @@ public:
         return std::move(*this)[std::string{name}];
     }
 
-    Selector&& operator[](const int index)&& 
+    Selector&& operator[](const int index) && 
     {
         _name += std::string(".") + std::to_string(index);
         _check_create_table();
