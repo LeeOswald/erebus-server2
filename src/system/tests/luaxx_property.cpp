@@ -36,7 +36,7 @@ TEST(Er_Lua, PropertyTypes)
 }
 
 
-static const std::string test_property_info = R"(
+static const std::string test_get_property_id = R"(
 function get_id(prop)
     local id = Er.Property.getId(prop)
     if id == Er.Unspecified.Empty.id() then
@@ -64,11 +64,11 @@ end
 )";
 
 
-TEST(Er_Lua, PropertyInfo)
+TEST(Er_Lua, PropertyInfoGetId)
 {
     Er::LuaState state(Er::Log2::get());
 
-    state.loadString(test_property_info, "test_property_info");
+    state.loadString(test_get_property_id, "test_get_property_id");
 
     {
         Er::Property v;
@@ -124,3 +124,72 @@ TEST(Er_Lua, PropertyInfo)
         EXPECT_EQ(res, 8);
     }
 }
+
+static const std::string test_get_property_type = R"(
+function get_type(prop)
+    local id = Er.Property.getType(prop)
+    return id
+end
+)";
+
+TEST(Er_Lua, PropertyInfoGetType)
+{
+    Er::LuaState state(Er::Log2::get());
+
+    state.loadString(test_get_property_type, "test_get_property_type");
+
+    {
+        Er::Property v;
+        int res = state["get_type"](v);
+        EXPECT_EQ(res, static_cast<int>(Er::PropertyType::Empty));
+    }
+
+    {
+        Er::Property v(Er::True, Er::Unspecified::Bool);
+        int res = state["get_type"](v);
+        EXPECT_EQ(res, static_cast<int>(Er::PropertyType::Bool));
+    }
+
+    {
+        Er::Property v(std::int32_t(1), Er::Unspecified::Int32);
+        int res = state["get_type"](v);
+        EXPECT_EQ(res, static_cast<int>(Er::PropertyType::Int32));
+    }
+
+    {
+        Er::Property v(std::uint32_t(1), Er::Unspecified::UInt32);
+        int res = state["get_type"](v);
+        EXPECT_EQ(res, static_cast<int>(Er::PropertyType::UInt32));
+    }
+
+    {
+        Er::Property v(std::int64_t(1), Er::Unspecified::Int64);
+        int res = state["get_type"](v);
+        EXPECT_EQ(res, static_cast<int>(Er::PropertyType::Int64));
+    }
+
+    {
+        Er::Property v(std::uint64_t(1), Er::Unspecified::UInt64);
+        int res = state["get_type"](v);
+        EXPECT_EQ(res, static_cast<int>(Er::PropertyType::UInt64));
+    }
+
+    {
+        Er::Property v(1.0, Er::Unspecified::Double);
+        int res = state["get_type"](v);
+        EXPECT_EQ(res, static_cast<int>(Er::PropertyType::Double));
+    }
+
+    {
+        Er::Property v(std::string("1"), Er::Unspecified::String);
+        int res = state["get_type"](v);
+        EXPECT_EQ(res, static_cast<int>(Er::PropertyType::String));
+    }
+
+    {
+        Er::Property v(Er::Binary(std::string("1")), Er::Unspecified::Binary);
+        int res = state["get_type"](v);
+        EXPECT_EQ(res, static_cast<int>(Er::PropertyType::Binary));
+    }
+}
+
