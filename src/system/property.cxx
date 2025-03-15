@@ -38,8 +38,7 @@ bool Property::_eq(const Property& other) const noexcept
     static EqFn s_eqFns[] =
     {
         &Property::_eqString,
-        &Property::_eqBinary,
-        &Property::_eqMap
+        &Property::_eqBinary
     };
 
     auto ty = type();
@@ -70,13 +69,6 @@ bool Property::_eqBinary(const Property& other) const noexcept
     return v1 == v2;
 }
 
-bool Property::_eqMap(const Property& other) const noexcept
-{
-    auto& v1 = getMap();
-    auto& v2 = other.getMap();
-    return v1 == v2;
-}
-
 std::string Property::_str() const
 {
     using StrFn = std::string (Property::*)() const;
@@ -91,8 +83,7 @@ std::string Property::_str() const
         &Property::_strUInt64,
         &Property::_strDouble,
         &Property::_strString,
-        &Property::_strBinary,
-        &Property::_strMap
+        &Property::_strBinary
     };
 
     auto ty = type();
@@ -155,43 +146,6 @@ std::string Property::_strBinary() const
     return ss.str();
 }
 
-std::string Property::_strMap() const
-{
-    auto& v = getMap();
-    std::ostringstream ss;
-    ss << "{";
-    bool first = true;
-    for (auto it = v.begin(); it != v.end(); ++it)
-    {
-        if (first)
-        {
-            ss << " ";
-            first = false;
-        }
-        else
-        {
-            ss << ", ";
-        }
-
-        auto& key = it->first;
-        auto infoKey = key.info();
-        ErAssert(infoKey);
-        ss << "\'" << infoKey->format(key) << "\'";
-
-        auto& value = it->second;
-        auto infoValue = value.info();
-        ErAssert(infoValue);
-        ss << ": \'" << infoValue->format(value) << "\'";
-    }
-
-    if (!v.empty())
-        ss << " ";
-
-    ss << "}";
-
-    return ss.str();
-}
-
 std::size_t Property::_hash() const noexcept
 {
     using HashFn = std::size_t(Property::*)() const noexcept;
@@ -206,8 +160,7 @@ std::size_t Property::_hash() const noexcept
         &Property::_hashUInt64,
         &Property::_hashDouble,
         &Property::_hashString,
-        &Property::_hashBinary,
-        &Property::_hashMap
+        &Property::_hashBinary
     };
 
     auto ty = type();
@@ -276,12 +229,6 @@ std::size_t Property::_hashBinary() const noexcept
     return v.hash();
 }
 
-std::size_t Property::_hashMap() const noexcept
-{
-    ErAssert(!"Cannot use Map as a key");
-    return 0;
-}
-
 std::string_view propertyTypeToString(PropertyType type)
 {
     switch (type)
@@ -295,7 +242,6 @@ std::string_view propertyTypeToString(PropertyType type)
     case PropertyType::Double: return "Double";
     case PropertyType::String: return "String";
     case PropertyType::Binary: return "Binary";
-    case PropertyType::Map: return "Map";
     }
 
     return "\?\?\?";

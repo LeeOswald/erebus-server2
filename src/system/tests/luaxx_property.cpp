@@ -33,9 +33,6 @@ TEST(Er_Lua, PropertyTypes)
 
     type = state["Er"]["PropertyType"]["Binary"];
     EXPECT_EQ(type, static_cast<uint32_t>(Er::PropertyType::Binary));
-
-    type = state["Er"]["PropertyType"]["Map"];
-    EXPECT_EQ(type, static_cast<uint32_t>(Er::PropertyType::Map));
 }
 
 
@@ -60,8 +57,6 @@ function get_id(prop)
         return 7
     elseif id == Er.Unspecified.Binary.id() then
         return 8
-    elseif id == Er.Unspecified.Map.id() then
-        return 9
     end
 
     return -1
@@ -127,15 +122,5 @@ TEST(Er_Lua, PropertyInfo)
         Er::Property v(Er::Binary(std::string("1")), Er::Unspecified::Binary);
         int res = state["get_id"](v);
         EXPECT_EQ(res, 8);
-    }
-
-    {
-        Er::Property::Map m;
-        m.insert({ Er::Property(std::int32_t(-1), Er::Unspecified::Int32),  Er::Property(std::string("-1"), Er::Unspecified::String) });
-        m.insert({ Er::Property(std::int32_t(1), Er::Unspecified::Int32),  Er::Property(std::string("1"), Er::Unspecified::String) });
-
-        Er::Property v(std::move(m), Er::Unspecified::Map);
-        int res = state["get_id"](v);
-        EXPECT_EQ(res, 9);
     }
 }

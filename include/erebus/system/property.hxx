@@ -3,7 +3,6 @@
 #include <erebus/system/property_info.hxx>
 
 #include <atomic>
-#include <unordered_map>
 #include <variant>
 
 
@@ -28,8 +27,6 @@ private:
     };
 
 public:
-    using Map = std::unordered_map<Property, Property, PropertyHash>;
-
     ~Property()
     {
         if (_allocatesStorage(type()))
@@ -132,20 +129,6 @@ public:
         ErAssert(info.type() == PropertyType::Binary);
     }
 
-    Property(const Map& v, const PropertyInfo& info)
-        : m_u(std::make_unique<SharedData>(v).release())
-        , m_type(PropertyType::Map, &info)
-    {
-        ErAssert(info.type() == PropertyType::Map);
-    }
-
-    Property(Map&& v, const PropertyInfo& info)
-        : m_u(std::make_unique<SharedData>(std::move(v)).release())
-        , m_type(PropertyType::Map, &info)
-    {
-        ErAssert(info.type() == PropertyType::Map);
-    }
-
     friend constexpr void swap(Property& a, Property& b) noexcept
     {
         std::swap(a.m_type, b.m_type);
@@ -246,14 +229,6 @@ public:
         return std::get<Binary>(m_u._shared->data);
     }
 
-    [[nodiscard]] constexpr const Map& getMap() const noexcept
-    {
-        ErAssert(type() == PropertyType::Map);
-        ErAssert(m_u._shared);
-        
-        return std::get<Map>(m_u._shared->data);
-    }
-
     [[nodiscard]] bool operator==(const Property& other) const noexcept
     {
         return _eq(other);
@@ -286,7 +261,6 @@ private:
     bool _eq(const Property& other) const noexcept;
     bool _eqString(const Property& other) const noexcept;
     bool _eqBinary(const Property& other) const noexcept;
-    bool _eqMap(const Property& other) const noexcept;
     std::string _str() const;
     std::string _strEmpty() const;
     std::string _strBool() const;
@@ -308,7 +282,6 @@ private:
     std::size_t _hashDouble() const noexcept;
     std::size_t _hashString() const noexcept;
     std::size_t _hashBinary() const noexcept;
-    std::size_t _hashMap() const noexcept;
 
     struct DontInit
     {
@@ -326,7 +299,7 @@ private:
 
         Type type;
         std::atomic<std::size_t> refs;
-        std::variant<std::string, Binary, Map> data;
+        std::variant<std::string, Binary> data;
         
         ~SharedData() = default;
 
@@ -350,18 +323,6 @@ private:
 
         SharedData(Binary&& v)
             : type(Type::Binary)
-            , refs(1)
-            , data(std::move(v))
-        {}
-
-        SharedData(const Map& v)
-            : type(Type::Map)
-            , refs(1)
-            , data(v)
-        {}
-
-        SharedData(Map&& v)
-            : type(Type::Map)
             , refs(1)
             , data(std::move(v))
         {}

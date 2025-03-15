@@ -22,7 +22,6 @@ enum class PropertyType : uint32_t
     Double,
     String,
     Binary,
-    Map,
     Max // should go last
 };
 
@@ -100,7 +99,6 @@ extern ER_SYSTEM_EXPORT const PropertyInfo UInt64;
 extern ER_SYSTEM_EXPORT const PropertyInfo Double;
 extern ER_SYSTEM_EXPORT const PropertyInfo String;
 extern ER_SYSTEM_EXPORT const PropertyInfo Binary;
-extern ER_SYSTEM_EXPORT const PropertyInfo Map;
 
 
 } // namespace Unspecified {}

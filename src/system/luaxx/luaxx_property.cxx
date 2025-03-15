@@ -177,7 +177,6 @@ ER_SYSTEM_EXPORT void registerPropertyTypes(State& state)
         s["Double"] = static_cast<uint32_t>(Er::PropertyType::Double);
         s["String"] = static_cast<uint32_t>(Er::PropertyType::String);
         s["Binary"] = static_cast<uint32_t>(Er::PropertyType::Binary);
-        s["Map"] = static_cast<uint32_t>(Er::PropertyType::Map);
     }
         
     {
@@ -191,7 +190,6 @@ ER_SYSTEM_EXPORT void registerPropertyTypes(State& state)
         s["Double"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::Double), "id", &Er::PropertyInfo::self);
         s["String"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::String), "id", &Er::PropertyInfo::self);
         s["Binary"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::Binary), "id", &Er::PropertyInfo::self);
-        s["Map"].SetObj(const_cast<PropertyInfo&>(Er::Unspecified::Map), "id", &Er::PropertyInfo::self);
     }
 
     {
