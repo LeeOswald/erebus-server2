@@ -28,6 +28,7 @@ struct Registry
 {
     std::shared_mutex mutex;
     std::unordered_map<std::string, Registration::Ptr> properties; // name -> info
+    std::uint32_t unique = 0;
 };
 
 
@@ -42,7 +43,7 @@ Registry& registry()
 
 
 
-void PropertyInfo::registerProperty(const PropertyInfo* info)
+std::uint32_t PropertyInfo::registerProperty(const PropertyInfo* info)
 {
     auto& r = registry();
 
@@ -54,6 +55,8 @@ void PropertyInfo::registerProperty(const PropertyInfo* info)
         // this info already exists
         result.first->second->refcount += 1;
     }
+
+    return r.unique++;
 }
 
 void PropertyInfo::unregisterProperty(const PropertyInfo* info) noexcept

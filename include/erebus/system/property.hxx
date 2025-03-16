@@ -17,15 +17,6 @@ namespace Er
 
 struct ER_SYSTEM_EXPORT Property final
 {
-private:
-    struct PropertyHash
-    {
-        std::size_t operator()(const Property &prop) const
-        {
-            return prop.hash();
-        }
-    };
-
 public:
     ~Property()
     {
@@ -253,9 +244,10 @@ public:
         return inf ? inf->readableName() : unknown;
     }
 
-    [[nodiscard]] std::size_t hash() const noexcept
+    [[nodiscard]] std::uint32_t unique() const noexcept
     {
-        return _hash();
+        auto inf = info();
+        return inf ? inf->unique() : 0;
     }
 
 private:
@@ -279,17 +271,6 @@ private:
     std::string _strDouble() const;
     std::string _strString() const;
     std::string _strBinary() const;
-    std::string _strMap() const;
-    std::size_t _hash() const noexcept;
-    std::size_t _hashEmpty() const noexcept;
-    std::size_t _hashBool() const noexcept;
-    std::size_t _hashInt32() const noexcept;
-    std::size_t _hashUInt32() const noexcept;
-    std::size_t _hashInt64() const noexcept;
-    std::size_t _hashUInt64() const noexcept;
-    std::size_t _hashDouble() const noexcept;
-    std::size_t _hashString() const noexcept;
-    std::size_t _hashBinary() const noexcept;
 
     struct DontInit
     {

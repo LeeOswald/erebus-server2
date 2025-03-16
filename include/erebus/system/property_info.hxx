@@ -44,6 +44,11 @@ struct alignas(16) PropertyInfo
         return this;
     }
 
+    constexpr std::uint32_t unique() const noexcept
+    {
+        return m_unique;
+    }
+
     constexpr PropertyType type() const noexcept
     {
         return m_type;
@@ -69,8 +74,8 @@ struct alignas(16) PropertyInfo
         , m_name(name)
         , m_readableName(readableName)
         , m_formatter(std::move(formatter))
+        , m_unique(registerProperty(this))
     {
-        registerProperty(this);
     }
 
     std::string format(const Property& prop) const;
@@ -79,13 +84,14 @@ struct alignas(16) PropertyInfo
     static void enumerate(std::function<bool(const PropertyInfo*)> cb) noexcept;
 
 private:
-    static void registerProperty(const PropertyInfo* info);
+    static std::uint32_t registerProperty(const PropertyInfo* info);
     static void unregisterProperty(const PropertyInfo* info) noexcept;
 
     PropertyType m_type;
     std::string m_name;
     std::string m_readableName;
     Formatter m_formatter;
+    std::uint32_t m_unique;
 };
 
 
