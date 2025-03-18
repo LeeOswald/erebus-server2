@@ -24,8 +24,14 @@ public:
     ResultCode operator()(const std::exception& e);
     ResultCode operator()(const std::exception_ptr& ep);
 
+    const std::string& lastError() const noexcept
+    {
+        return m_lastError;
+    }
+
 private:
     Log2::ILogger* m_log;
+    std::string m_lastError;
 };
 
 } // namespace Er::Util {}

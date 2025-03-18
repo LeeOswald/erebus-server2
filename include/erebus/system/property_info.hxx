@@ -95,6 +95,15 @@ private:
 };
 
 
+struct IPropertyMapping
+{
+    virtual const Er::PropertyInfo* mapProperty(std::uint32_t id, std::string_view context) = 0;
+
+protected:
+    virtual ~IPropertyMapping() {}
+};
+
+
 namespace Unspecified
 {
 

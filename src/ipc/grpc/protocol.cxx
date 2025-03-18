@@ -138,12 +138,9 @@ void assignProperty(erebus::Property& out, const Er::Property& source)
     std::invoke(s_assignPropertyFns[idx], out, source);
 }
 
-Er::Property getProperty(const erebus::Property& source, const PropertyMapping& mapping)
+Er::Property getProperty(const erebus::Property& source, Er::IPropertyMapping* mapping, std::string_view context)
 {
-    auto id = source.id();
-    if (id >= mapping.size())
-        ErThrow(Er::format("Unknown property {}", id));
-
+    auto info = mapping->mapProperty(source.id(), context);
 
     using GetPropertyFn = Er::Property(*)(const erebus::Property&, const Er::PropertyInfo*);
 
@@ -174,7 +171,7 @@ Er::Property getProperty(const erebus::Property& source, const PropertyMapping& 
     if (idx >= _countof(s_getPropertyFns))
         ErThrow(Er::format("Unsupported property type {}", idx));
 
-    return std::invoke(s_getPropertyFns[idx], source, mapping[id]);
+    return std::invoke(s_getPropertyFns[idx], source, info);
 }
 
 
