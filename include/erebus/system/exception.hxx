@@ -242,3 +242,5 @@ extern ER_SYSTEM_EXPORT const PropertyInfo DecodedError;
 
 } // namespace Er {}
 
+
+#define ErThrow(message, ...) throw ::Er::Exception(std::source_location::current(), message, ##__VA_ARGS__)

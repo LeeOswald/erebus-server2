@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package erebus;
+
+
+message Void {
+}
+
+message PropertyInfo {
+  uint32 id = 1;
+  uint32 type = 2;
+  string name = 3;
+  string readable_name = 4;  
+}
+
+message Property {
+  uint32 id = 1;
+  oneof value {
+    Void v_void = 2;
+    bool v_bool = 3;
+    int32 v_int32 = 4;
+    uint32 v_uint32 = 5;
+    int64 v_int64 = 6;
+    uint64 v_uint64 = 7;
+    double v_double = 8;
+    string v_string = 9;
+    bytes v_binary = 10;
+  }
+}
+
+message Exception {
+  optional string message = 1;
+  repeated Property props = 2;
+}
+
+service Erebus {
+  rpc GetPropertyMapping(GetPropertyMappingRequest) returns(stream PropertyInfo) {}
+  rpc PutPropertyMapping(stream PutPropertyMappingRequest) returns(Void) {}
+  rpc GenericRpc(ServiceRequest) returns(ServiceReply) {}
+  rpc GenericStream(ServiceRequest) returns(stream ServiceReply) {}
+}
+
+message GetPropertyMappingRequest {
+  string cookie = 1;
+}
+
+message PutPropertyMappingRequest {
+  string cookie = 1;
+  repeated PropertyInfo mapping = 2;
+}
+
+message ServiceRequest {
+  string request = 1;
+  optional string cookie = 2;
+  repeated Property args = 3;
+}
+
+message ServiceReply {
+  optional Exception exception = 1;  
+  repeated Property props = 2;
+}

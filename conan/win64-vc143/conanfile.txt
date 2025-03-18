@@ -1,8 +1,10 @@
 [requires]
 boost/1.86.0
 fmt/11.0.2
+grpc/1.69.0
 gtest/1.15.0
 lua/5.4.7
+protobuf/5.27.0
 rapidjson/cci.20230929
 valijson/1.0.3
 
@@ -14,4 +16,11 @@ CMakeToolchain
 cmake_layout
 
 [options]
-pkg/*:shared=True
+pkg/boost:shared=True
+pkg/fmt:shared=True
+pkg/grpc:shared=False
+pkg/gtest:shared=True
+pkg/lua:shared=True
+pkg/protobuf:shared=False
+pkg/rapidjson:shared=False
+pkg/valijson:shared=False

@@ -82,6 +82,12 @@ find_package(RapidJSON REQUIRED)
 # valijson
 find_package(valijson REQUIRED)
 
+# protobuf
+find_package(protobuf REQUIRED)
+
+# gRPC
+find_package(gRPC CONFIG REQUIRED)
+
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/erebus-version.h.in" erebus-version.h)
 

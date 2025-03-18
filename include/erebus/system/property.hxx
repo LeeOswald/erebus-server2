@@ -29,8 +29,6 @@ public:
         , m_type()
     {
     }
-
-    Property(nullptr_t) = delete;
     
     Property(bool v, const PropertyInfo& info) noexcept
         : m_u()
