@@ -5,6 +5,7 @@
 #include <erebus/erebus.grpc.pb.h>
 
 #include <erebus/ipc/grpc/grpc_server.hxx>
+#include <erebus/system/property_info.hxx>
 #include <erebus/system/util/exception_util.hxx>
 
 #include <atomic>
@@ -14,19 +15,23 @@
 namespace Erp::Ipc::Grpc
 {
 
-class ErebusCbService final
+class ErebusService final
     : public erebus::Erebus::CallbackService
     , public Er::Ipc::IServer
+    , public Er::IPropertyMapping
 {
 public:
-    ~ErebusCbService();
-    ErebusCbService(const Er::Ipc::Grpc::ServerArgs& params);
+    ~ErebusService();
+    ErebusService(const Er::Ipc::Grpc::ServerArgs& params);
 
+    grpc::ServerWriteReactor<erebus::PropertyInfo>* GetPropertyMapping(grpc::CallbackServerContext* context, const erebus::Void* request) override;
     grpc::ServerUnaryReactor* GenericRpc(grpc::CallbackServerContext* context, const erebus::ServiceRequest* request, erebus::ServiceReply* reply) override;
     grpc::ServerWriteReactor<erebus::ServiceReply>* GenericStream(grpc::CallbackServerContext* context, const erebus::ServiceRequest* request) override;
 
     void registerService(std::string_view request, Er::Ipc::IService::Ptr service) override;
     void unregisterService(Er::Ipc::IService* service) override;
+
+    const Er::PropertyInfo* mapProperty(std::uint32_t id, std::string_view context) override;
 
 private:
     class ExceptionMarshaler
@@ -243,6 +248,88 @@ private:
         Er::Ipc::IService::Ptr m_service;
         Er::Ipc::IService::StreamId m_streamId = {};
         erebus::ServiceReply m_response;
+    };
+
+    class PropertyInfoStreamWriteReactor
+        : public grpc::ServerWriteReactor<erebus::PropertyInfo>
+    {
+    public:
+        ~PropertyInfoStreamWriteReactor()
+        {
+            Er::Log2::debug(m_log, "{}.PropertyInfoStreamWriteReactor::~PropertyInfoStreamWriteReactor", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log);
+        }
+
+        PropertyInfoStreamWriteReactor(Er::Log2::ILogger* log) noexcept
+            : m_log(log)
+        {
+            Er::Log2::debug(m_log, "{}.PropertyInfoStreamWriteReactor::PropertyInfoStreamWriteReactor", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log);
+        }
+
+        void Begin()
+        {
+            Er::Log2::debug(m_log, "{}.PropertyInfoStreamWriteReactor::Begin", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log);
+
+            ErAssert(m_properties.empty());
+            ErAssert(m_next == 0);
+
+            Er::enumerateProperties([this](const Er::PropertyInfo* pi) -> bool
+            {
+                m_properties.push_back(pi);
+                return true;
+            });
+
+            Continue();
+        }
+
+        void OnWriteDone(bool ok) override
+        {
+            Er::Log2::debug(m_log, "{}.PropertyInfoStreamWriteReactor::OnWriteDone", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log);
+
+            if (!ok)
+                Finish(grpc::Status(grpc::StatusCode::UNKNOWN, "Unexpected Failure"));
+            else
+                Continue();
+        }
+
+        void OnDone() override
+        {
+            Er::Log2::debug(m_log, "{}.PropertyInfoStreamWriteReactor::OnDone", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log);
+
+            delete this;
+        }
+
+        void OnCancel() override
+        {
+            Er::Log2::debug(m_log, "{}.PropertyInfoStreamWriteReactor::OnCancel", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log);
+        }
+
+    private:
+        void Continue()
+        {
+            Er::Log2::debug(m_log, "{}.PropertyInfoStreamWriteReactor::Continue", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log);
+
+            m_response.Clear();
+            
+            auto pi = m_properties[m_next++];
+            m_response.set_id(pi->unique());
+            m_response.set_type(static_cast<std::uint32_t>(pi->type()));
+            m_response.set_name(pi->name());
+            m_response.set_readable_name(pi->readableName());
+
+            StartWrite(&m_response);
+        }
+
+        Er::Log2::ILogger* m_log;
+        std::vector<const Er::PropertyInfo*> m_properties;
+        std::size_t m_next = 0;
+        erebus::PropertyInfo m_response;
     };
 
     Er::Ipc::IService::Ptr findService(const std::string& id) const;

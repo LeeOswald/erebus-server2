@@ -43,7 +43,7 @@ Registry& registry()
 
 
 
-std::uint32_t PropertyInfo::registerProperty(const PropertyInfo* info)
+ER_SYSTEM_EXPORT std::uint32_t registerProperty(const PropertyInfo* info)
 {
     auto& r = registry();
 
@@ -59,7 +59,7 @@ std::uint32_t PropertyInfo::registerProperty(const PropertyInfo* info)
     return r.unique++;
 }
 
-void PropertyInfo::unregisterProperty(const PropertyInfo* info) noexcept
+ER_SYSTEM_EXPORT void unregisterProperty(const PropertyInfo* info) noexcept
 {
     auto& r = registry();
 
@@ -74,15 +74,7 @@ void PropertyInfo::unregisterProperty(const PropertyInfo* info) noexcept
     }
 }
 
-std::string PropertyInfo::format(const Property& prop) const
-{
-    if (!m_formatter)
-        return prop.str();
-
-    return m_formatter(prop);
-}
-
-const PropertyInfo* PropertyInfo::lookup(const std::string& name) noexcept
+ER_SYSTEM_EXPORT const PropertyInfo* lookupProperty(const std::string& name) noexcept
 {
     auto& r = registry();
 
@@ -94,14 +86,11 @@ const PropertyInfo* PropertyInfo::lookup(const std::string& name) noexcept
     return nullptr;
 }
 
-void PropertyInfo::enumerate(std::function<bool(const PropertyInfo*)> cb) noexcept
+ER_SYSTEM_EXPORT void enumerateProperties(std::function<bool(const PropertyInfo*)> cb) noexcept
 {
-    ErAssert(cb);
-
     auto& r = registry();
 
     std::shared_lock l(r.mutex);
-
     for (auto& pi : r.properties)
     {
         if (!cb(pi.second->info))
@@ -109,6 +98,14 @@ void PropertyInfo::enumerate(std::function<bool(const PropertyInfo*)> cb) noexce
     }
 }
 
+ER_SYSTEM_EXPORT std::string formatProperty(const PropertyInfo* info, const Property& prop)
+{
+    auto& f = info->formatter();
+    if (!f)
+        return prop.str();
+
+    return f(prop);
+}
 
 namespace Unspecified
 {

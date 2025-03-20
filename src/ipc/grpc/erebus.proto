@@ -34,14 +34,10 @@ message Exception {
 }
 
 service Erebus {
-  rpc GetPropertyMapping(GetPropertyMappingRequest) returns(stream PropertyInfo) {}
+  rpc GetPropertyMapping(Void) returns(stream PropertyInfo) {}
   rpc PutPropertyMapping(stream PutPropertyMappingRequest) returns(Void) {}
   rpc GenericRpc(ServiceRequest) returns(ServiceReply) {}
   rpc GenericStream(ServiceRequest) returns(stream ServiceReply) {}
-}
-
-message GetPropertyMappingRequest {
-  string cookie = 1;
 }
 
 message PutPropertyMappingRequest {

@@ -216,7 +216,7 @@ ER_SYSTEM_EXPORT void registerPropertyTypes(State& state)
         
     // add the registered properties
     {
-        PropertyInfo::enumerate([&state](const Er::PropertyInfo* pi) ->bool
+        enumerateProperties([&state](const Er::PropertyInfo* pi) ->bool
         {
             registerPropertyInfo(state, pi);
             return true;

@@ -29,6 +29,14 @@ static_assert(unsigned(PropertyType::Max) <= 0x10, "Align PropertyInfo so that w
 
 
 struct Property;
+struct PropertyInfo;
+
+ER_SYSTEM_EXPORT std::uint32_t registerProperty(const PropertyInfo* info);
+ER_SYSTEM_EXPORT void unregisterProperty(const PropertyInfo* info) noexcept;
+ER_SYSTEM_EXPORT const PropertyInfo* lookupProperty(const std::string& name) noexcept;
+ER_SYSTEM_EXPORT void enumerateProperties(std::function<bool(const PropertyInfo*)> cb) noexcept;
+ER_SYSTEM_EXPORT std::string formatProperty(const PropertyInfo* info, const Property& prop);
+
 
 //
 // Yes, we DO need that large alignment value
@@ -63,6 +71,11 @@ struct alignas(16) PropertyInfo
     {
         return m_readableName;
     }
+
+    constexpr const Formatter& formatter() const noexcept
+    {
+        return m_formatter;
+    }
     
     ~PropertyInfo()
     {
@@ -78,15 +91,12 @@ struct alignas(16) PropertyInfo
     {
     }
 
-    std::string format(const Property& prop) const;
-
-    static const PropertyInfo* lookup(const std::string& name) noexcept;
-    static void enumerate(std::function<bool(const PropertyInfo*)> cb) noexcept;
+    std::string format(const Property& prop) const
+    {
+        return formatProperty(this, prop);
+    }
 
 private:
-    static std::uint32_t registerProperty(const PropertyInfo* info);
-    static void unregisterProperty(const PropertyInfo* info) noexcept;
-
     PropertyType m_type;
     std::string m_name;
     std::string m_readableName;

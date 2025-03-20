@@ -5,12 +5,12 @@
 namespace Erp::Ipc::Grpc
 {
 
-ErebusCbService::~ErebusCbService()
+ErebusService::~ErebusService()
 {
     m_server->Shutdown();
 }
 
-ErebusCbService::ErebusCbService(const Er::Ipc::Grpc::ServerArgs& params)
+ErebusService::ErebusService(const Er::Ipc::Grpc::ServerArgs& params)
     : m_params(params)
 {
     grpc::ServerBuilder builder;
@@ -52,7 +52,7 @@ ErebusCbService::ErebusCbService(const Er::Ipc::Grpc::ServerArgs& params)
     m_server.swap(server);
 }
 
-Er::Ipc::IService::Ptr ErebusCbService::findService(const std::string& id) const
+Er::Ipc::IService::Ptr ErebusService::findService(const std::string& id) const
 {
     std::shared_lock l(m_servicesLock);
 
@@ -65,7 +65,7 @@ Er::Ipc::IService::Ptr ErebusCbService::findService(const std::string& id) const
     return {};
 }
 
-Er::PropertyBag ErebusCbService::unmarshalArgs(const erebus::ServiceRequest* request, Er::IPropertyMapping* mapping, std::string_view context)
+Er::PropertyBag ErebusService::unmarshalArgs(const erebus::ServiceRequest* request, Er::IPropertyMapping* mapping, std::string_view context)
 {
     Er::PropertyBag bag;
 
@@ -84,7 +84,7 @@ Er::PropertyBag ErebusCbService::unmarshalArgs(const erebus::ServiceRequest* req
     return bag;
 }
 
-void ErebusCbService::marshalReplyProps(const Er::PropertyBag& props, erebus::ServiceReply* reply)
+void ErebusService::marshalReplyProps(const Er::PropertyBag& props, erebus::ServiceReply* reply)
 {
     if (props.empty())
         return;
@@ -97,7 +97,7 @@ void ErebusCbService::marshalReplyProps(const Er::PropertyBag& props, erebus::Se
     }
 }
 
-void ErebusCbService::marshalException(erebus::ServiceReply* reply, const std::exception& e)
+void ErebusService::marshalException(erebus::ServiceReply* reply, const std::exception& e)
 {
     std::string_view what;
     auto msg = e.what();
@@ -110,7 +110,7 @@ void ErebusCbService::marshalException(erebus::ServiceReply* reply, const std::e
     *exception->mutable_message() = std::string_view(e.what());
 }
 
-void ErebusCbService::marshalException(erebus::ServiceReply* reply, const Er::Exception& e)
+void ErebusService::marshalException(erebus::ServiceReply* reply, const Er::Exception& e)
 {
     std::string_view what;
     auto msg = e.message();
@@ -136,9 +136,9 @@ void ErebusCbService::marshalException(erebus::ServiceReply* reply, const Er::Ex
     }
 }
 
-grpc::ServerUnaryReactor* ErebusCbService::GenericRpc(grpc::CallbackServerContext* context, const erebus::ServiceRequest* request, erebus::ServiceReply* reply)
+grpc::ServerUnaryReactor* ErebusService::GenericRpc(grpc::CallbackServerContext* context, const erebus::ServiceRequest* request, erebus::ServiceReply* reply)
 {
-    Er::Log2::debug(m_params.log, "ErebusCbService::GenericRpc");
+    Er::Log2::debug(m_params.log, "ErebusService::GenericRpc");
     Er::Log2::Indent idt(m_params.log);
 
     auto reactor = std::make_unique<ReplyUnaryReactor>(m_params.log);
@@ -167,7 +167,7 @@ grpc::ServerUnaryReactor* ErebusCbService::GenericRpc(grpc::CallbackServerContex
     ExceptionMarshaler xcptHandler(m_params.log, *reply);
     try
     {
-        auto args = unmarshalArgs(request, service.get(), cookie);
+        auto args = unmarshalArgs(request, this, cookie);
         auto result = service->request(requestStr, cookie, args);
         marshalReplyProps(result, reply);
     }
@@ -180,9 +180,9 @@ grpc::ServerUnaryReactor* ErebusCbService::GenericRpc(grpc::CallbackServerContex
     return reactor.release();
 }
 
-grpc::ServerWriteReactor<erebus::ServiceReply>* ErebusCbService::GenericStream(grpc::CallbackServerContext* context, const erebus::ServiceRequest* request)
+grpc::ServerWriteReactor<erebus::ServiceReply>* ErebusService::GenericStream(grpc::CallbackServerContext* context, const erebus::ServiceRequest* request)
 {
-    Er::Log2::debug(m_params.log, "ErebusCbService::GenericStream");
+    Er::Log2::debug(m_params.log, "ErebusService::GenericStream");
     Er::Log2::Indent idt(m_params.log);
 
     auto reactor = std::make_unique<ReplyStreamWriteReactor>(m_params.log);
@@ -207,7 +207,7 @@ grpc::ServerWriteReactor<erebus::ServiceReply>* ErebusCbService::GenericStream(g
     Er::Util::ExceptionLogger xcptLogger(m_params.log);
     try
     {
-        auto args = unmarshalArgs(request, service.get(), cookie);
+        auto args = unmarshalArgs(request, this, cookie);
         reactor->Begin(service, requestStr, cookie, args);
         return reactor.release();
     }
@@ -222,7 +222,20 @@ grpc::ServerWriteReactor<erebus::ServiceReply>* ErebusCbService::GenericStream(g
     return reactor.release();
 }
 
-void ErebusCbService::registerService(std::string_view request, Er::Ipc::IService::Ptr service)
+grpc::ServerWriteReactor<erebus::PropertyInfo>* ErebusService::GetPropertyMapping(grpc::CallbackServerContext* context, const erebus::Void* request)
+{
+    Er::Log2::debug(m_params.log, "ErebusService::GetPropertyMapping");
+    Er::Log2::Indent idt(m_params.log);
+
+    Er::Log2::info(m_params.log, "Request from {}", context->peer());
+
+    auto reactor = std::make_unique<PropertyInfoStreamWriteReactor>(m_params.log);
+    reactor->Begin();
+    
+    return reactor.release();
+}
+
+void ErebusService::registerService(std::string_view request, Er::Ipc::IService::Ptr service)
 {
     std::lock_guard l(m_servicesLock);
 
@@ -236,7 +249,7 @@ void ErebusCbService::registerService(std::string_view request, Er::Ipc::IServic
     m_services.insert({ std::move(id), service });
 }
 
-void ErebusCbService::unregisterService(Er::Ipc::IService* service)
+void ErebusService::unregisterService(Er::Ipc::IService* service)
 {
     std::lock_guard l(m_servicesLock);
 
@@ -263,6 +276,11 @@ void ErebusCbService::unregisterService(Er::Ipc::IService* service)
         Er::Log2::error(m_params.log, "Service {} is not registered", Er::Format::ptr(service));
 }
 
+const Er::PropertyInfo* ErebusService::mapProperty(std::uint32_t id, std::string_view context)
+{
+    return nullptr;
+}
+
 } // namespace Erp::Ipc::Grpc {}
 
 
@@ -271,7 +289,7 @@ namespace Er::Ipc::Grpc
     
 IServer::Ptr ER_GRPC_EXPORT create(const ServerArgs& params)
 {
-    return std::make_unique<Erp::Ipc::Grpc::ErebusCbService>(params);
+    return std::make_unique<Erp::Ipc::Grpc::ErebusService>(params);
 }
 
 } // namespace Er::Ipc::Grpc {}

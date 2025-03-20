@@ -1,7 +1,6 @@
 #pragma once
 
 #include <erebus/system/property_bag.hxx>
-#include <erebus/system/property_info.hxx>
 
 
 namespace Er::Ipc
@@ -10,7 +9,6 @@ namespace Er::Ipc
 struct IServer;
 
 struct IService
-    : public IPropertyMapping
 {
     using StreamId = uintptr_t;
     using Ptr = std::shared_ptr<IService>;
