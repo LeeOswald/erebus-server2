@@ -4,3 +4,5 @@ conan.lock
 conaninfo.txt
 conanbuildinfo.txt
 graph_info.json
+*.LOG
+*.log

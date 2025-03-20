@@ -88,7 +88,6 @@ find_package(protobuf REQUIRED)
 # gRPC
 find_package(gRPC CONFIG REQUIRED)
 
-
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/erebus-version.h.in" erebus-version.h)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
