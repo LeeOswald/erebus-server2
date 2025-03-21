@@ -1,6 +1,7 @@
 #pragma once
 
 #include "protocol.hxx"
+#include "session_data.hxx"
 
 #include <erebus/erebus.grpc.pb.h>
 
@@ -426,14 +427,10 @@ private:
     struct
     {
         mutable std::shared_mutex lock;
-        std::unordered_map<std::string, Er::Ipc::IService::Ptr> map;
+        std::unordered_map<std::string, Er::Ipc::IService::Ptr> map; // uri -> service
     } m_services;
 
-    struct
-    {
-        mutable std::shared_mutex lock;
-        std::unordered_map<std::string, std::vector<const Er::PropertyInfo*>> map;
-    } m_propertyMappings;
+    Erp::SessionData<std::string, std::vector<const Er::PropertyInfo*>> m_propertyMappings;
 };
 
 } // namespace Erp::Ipc::Grpc {}

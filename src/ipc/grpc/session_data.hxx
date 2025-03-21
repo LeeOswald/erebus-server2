@@ -88,7 +88,7 @@ public:
         DataWrapper* w;
     };
 
-    Ref allocate(const KeyType& key)
+    Ref get(const KeyType& key)
     {
         auto lock = [](DataWrapper* w, bool touch) -> Ref
         {
@@ -168,7 +168,7 @@ public:
 
 private:
     struct DataWrapper
-        : public Er::NonCopyable
+        : public boost::noncopyable
     {
         DataWrapper() = default;
 

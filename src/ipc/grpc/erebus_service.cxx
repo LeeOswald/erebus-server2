@@ -12,6 +12,7 @@ ErebusService::~ErebusService()
 
 ErebusService::ErebusService(const Er::Ipc::Grpc::ServerArgs& params)
     : m_params(params)
+    , m_propertyMappings(std::chrono::seconds(600)) // 10 mins
 {
     grpc::ServerBuilder builder;
 
@@ -287,15 +288,13 @@ void ErebusService::unregisterService(Er::Ipc::IService* service)
 
 const Er::PropertyInfo* ErebusService::mapProperty(std::uint32_t id, const std::string& context)
 {
-    std::unique_lock l(m_propertyMappings.lock);
+    auto m = m_propertyMappings.get(context);
+    ErAssert(m);
 
-    // any mapping for this 'context'?
-    auto it = m_propertyMappings.map.find(context);
-    if (it == m_propertyMappings.map.end())
-        return nullptr;
+    auto& mapping = m.get();
 
-    if (id < it->second.size())
-        return it->second[id];
+    if (id < mapping.size())
+        return mapping[id];
 
     return nullptr;
 }
@@ -305,30 +304,14 @@ void ErebusService::registerPropertyMapping(std::uint32_t id, const std::string&
     Er::Log2::debug(m_params.log, "ErebusService::registerPropertyMapping({}.{} -> {}[{}])", context, id, name, readableName);
     Er::Log2::Indent idt(m_params.log);
 
-    std::unique_lock l(m_propertyMappings.lock);
+    auto m = m_propertyMappings.get(context);
+    ErAssert(m);
 
-    std::vector<const Er::PropertyInfo*>* mapping = nullptr;
+    auto& mapping = m.get();
+    if (id >= mapping.size())
+        mapping.resize(id);
 
-    // any mapping for this 'context'?
-    auto it = m_propertyMappings.map.find(context);
-    if (it != m_propertyMappings.map.end())
-    {
-        mapping = &(it->second);
-    }
-    else
-    {
-        auto r = m_propertyMappings.map.insert({ context, std::vector<const Er::PropertyInfo*>{} });
-        ErAssert(r.second);
-
-        mapping = &(r.first->second);
-    }
-
-    ErAssert(mapping);
-
-    if (id >= mapping->size())
-        mapping->resize(id);
-
-    (*mapping)[id] = Er::allocateTransientProperty(type, name, readableName);
+    mapping[id] = Er::allocateTransientProperty(type, name, readableName);
 }
 
 } // namespace Erp::Ipc::Grpc {}
