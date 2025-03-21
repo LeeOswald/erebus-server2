@@ -1,12 +1,11 @@
+#include <erebus/system/exception.hxx>
+#include <erebus/system/format.hxx>
+#include <erebus/system/logger2.hxx>
 #include <erebus/system/property.hxx>
 
 #include <mutex>
 #include <shared_mutex>
 #include <unordered_map>
-
-
-namespace Er
-{
 
 namespace
 {
@@ -15,19 +14,18 @@ struct Registration
 {
     using Ptr = std::unique_ptr<Registration>;
 
-    const PropertyInfo* info;
-    long refcount;
+    const Er::PropertyInfo* info;
 
-    constexpr Registration(const PropertyInfo* info) noexcept
+    constexpr Registration(const Er::PropertyInfo* info) noexcept
         : info(info)
-        , refcount(1)
     {}
 };
 
 struct Registry
 {
     std::shared_mutex mutex;
-    std::unordered_map<std::string, Registration::Ptr> properties; // name -> info
+    std::unordered_map<std::string, const Er::PropertyInfo*> persistentProps;
+    std::unordered_map<std::string, std::unique_ptr<Er::PropertyInfo>> transientProps;
     std::uint32_t unique = 0;
 };
 
@@ -42,36 +40,93 @@ Registry& registry()
 } // namespace {}
 
 
+namespace Erp
+{
 
-ER_SYSTEM_EXPORT std::uint32_t registerProperty(const PropertyInfo* info)
+
+ER_SYSTEM_EXPORT std::uint32_t registerPersistentProperty(const Er::PropertyInfo* info)
 {
     auto& r = registry();
 
     std::unique_lock l(r.mutex);
-    auto what = std::make_unique<Registration>(info);
-    auto result = r.properties.insert({ info->name(), std::move(what) });
-    if (!result.second)
+
+    // maybe already there
+    auto it = r.persistentProps.find(info->name());
+    if (it != r.persistentProps.end())
     {
-        // this info already exists
-        result.first->second->refcount += 1;
+        if (it->second->type() != info->type())
+        {
+            ErThrow(Er::format("Property [{}] of type {} already registered but with different type {}", info->name(), 
+                static_cast<unsigned>(info->type()), static_cast<unsigned>(it->second->type())));
+        }
+
+        return it->second->unique();
     }
 
-    return r.unique++;
+    auto id = r.unique++;
+    auto result = r.persistentProps.insert({ info->name(), info });
+    ErAssert(result.second);
+    
+    return id;
 }
 
-ER_SYSTEM_EXPORT void unregisterProperty(const PropertyInfo* info) noexcept
+ER_SYSTEM_EXPORT std::string formatProperty(const Er::PropertyInfo* info, const Er::Property& prop)
+{
+    auto& f = info->formatter();
+    if (!f)
+        return prop.str();
+
+    return f(prop);
+}
+
+} // namespace Erp {}
+
+namespace Er
+{
+
+ER_SYSTEM_EXPORT const Er::PropertyInfo* allocateTransientProperty(Er::PropertyType type, const std::string& name, const std::string& readableName)
 {
     auto& r = registry();
 
     std::unique_lock l(r.mutex);
-    auto it = r.properties.find(info->name());
-    if (it != r.properties.end())
+
+    // maybe already there
+    auto it = r.persistentProps.find(name);
+    if (it != r.persistentProps.end())
     {
-        if (--it->second->refcount == 0)
+        if (it->second->type() != type)
         {
-            r.properties.erase(it);
+            ErThrow(Er::format("Property [{}] of type {} already registered but with different type {}", name,
+                static_cast<unsigned>(type), static_cast<unsigned>(it->second->type())));
         }
+
+        Er::Log2::debug(Er::Log2::get(), "Transient property mapped to persistent property {} [{}] of type {}", name, readableName, static_cast<std::uint32_t>(type));
+        return it->second;
     }
+
+    auto it2 = r.transientProps.find(name);
+    if (it2 != r.transientProps.end())
+    {
+        if (it2->second->type() != type)
+        {
+            ErThrow(Er::format("Property [{}] of type {} already registered but with different type {}", name,
+                static_cast<unsigned>(type), static_cast<unsigned>(it2->second->type())));
+        }
+
+        Er::Log2::debug(Er::Log2::get(), "Transient property found: {} [{}] of type {}", name, readableName, static_cast<std::uint32_t>(type));
+        return it2->second.get();
+    }
+
+    // allocate a new transient property
+    auto id = r.unique++;
+    auto prop = std::make_unique<Er::PropertyInfo>(Er::PropertyInfo::Transient{}, id, type, name, readableName);
+    auto pi = prop.get();
+
+    r.transientProps.insert({ name, std::move(prop) });
+
+    Er::Log2::debug(Er::Log2::get(), "Transient property registered: {} [{}] of type {}", name, readableName, static_cast<std::uint32_t>(type));
+
+    return pi;
 }
 
 ER_SYSTEM_EXPORT const PropertyInfo* lookupProperty(const std::string& name) noexcept
@@ -79,9 +134,14 @@ ER_SYSTEM_EXPORT const PropertyInfo* lookupProperty(const std::string& name) noe
     auto& r = registry();
 
     std::shared_lock l(r.mutex);
-    auto it = r.properties.find(name);
-    if (it != r.properties.end())
-        return it->second->info;
+
+    auto it = r.persistentProps.find(name);
+    if (it != r.persistentProps.end())
+        return it->second;
+
+    auto it2 = r.transientProps.find(name);
+    if (it2 != r.transientProps.end())
+        return it2->second.get();
 
     return nullptr;
 }
@@ -91,21 +151,20 @@ ER_SYSTEM_EXPORT void enumerateProperties(std::function<bool(const PropertyInfo*
     auto& r = registry();
 
     std::shared_lock l(r.mutex);
-    for (auto& pi : r.properties)
+
+    for (auto& pi : r.persistentProps)
     {
-        if (!cb(pi.second->info))
+        if (!cb(pi.second))
+            break;
+    }
+
+    for (auto& pi : r.transientProps)
+    {
+        if (!cb(pi.second.get()))
             break;
     }
 }
 
-ER_SYSTEM_EXPORT std::string formatProperty(const PropertyInfo* info, const Property& prop)
-{
-    auto& f = info->formatter();
-    if (!f)
-        return prop.str();
-
-    return f(prop);
-}
 
 namespace Unspecified
 {

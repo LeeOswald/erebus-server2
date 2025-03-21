@@ -138,9 +138,11 @@ void assignProperty(erebus::Property& out, const Er::Property& source)
     std::invoke(s_assignPropertyFns[idx], out, source);
 }
 
-Er::Property getProperty(const erebus::Property& source, Er::IPropertyMapping* mapping, std::string_view context)
+Er::Property getProperty(const erebus::Property& source, Er::IPropertyMapping* mapping, const std::string& context)
 {
     auto info = mapping->mapProperty(source.id(), context);
+    if (!info)
+        ErThrow(Er::format("Unknown property {}", source.id()));
 
     using GetPropertyFn = Er::Property(*)(const erebus::Property&, const Er::PropertyInfo*);
 

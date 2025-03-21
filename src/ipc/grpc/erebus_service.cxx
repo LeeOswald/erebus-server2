@@ -54,10 +54,10 @@ ErebusService::ErebusService(const Er::Ipc::Grpc::ServerArgs& params)
 
 Er::Ipc::IService::Ptr ErebusService::findService(const std::string& id) const
 {
-    std::shared_lock l(m_servicesLock);
+    std::shared_lock l(m_services.lock);
 
-    auto it = m_services.find(id);
-    if (it != m_services.end())
+    auto it = m_services.map.find(id);
+    if (it != m_services.map.end())
     {
         return it->second;
     }
@@ -65,7 +65,7 @@ Er::Ipc::IService::Ptr ErebusService::findService(const std::string& id) const
     return {};
 }
 
-Er::PropertyBag ErebusService::unmarshalArgs(const erebus::ServiceRequest* request, Er::IPropertyMapping* mapping, std::string_view context)
+Er::PropertyBag ErebusService::unmarshalArgs(const erebus::ServiceRequest* request, Er::IPropertyMapping* mapping, const std::string& context)
 {
     Er::PropertyBag bag;
 
@@ -160,9 +160,8 @@ grpc::ServerUnaryReactor* ErebusService::GenericRpc(grpc::CallbackServerContext*
         return reactor.release();
     }
 
-    std::string_view cookie;
-    if (request->has_cookie())
-        cookie = request->cookie();
+    static std::string empty;
+    const std::string& cookie = request->has_cookie() ? request->cookie() : empty;
 
     ExceptionMarshaler xcptHandler(m_params.log, *reply);
     try
@@ -199,9 +198,8 @@ grpc::ServerWriteReactor<erebus::ServiceReply>* ErebusService::GenericStream(grp
         return reactor.release();
     }
 
-    std::string_view cookie;
-    if (request->has_cookie())
-        cookie = request->cookie();
+    static std::string empty;
+    const std::string& cookie = request->has_cookie() ? request->cookie() : empty;
 
     std::string errorMsg;
     Er::Util::ExceptionLogger xcptLogger(m_params.log);
@@ -235,33 +233,44 @@ grpc::ServerWriteReactor<erebus::PropertyInfo>* ErebusService::GetPropertyMappin
     return reactor.release();
 }
 
+grpc::ServerReadReactor<erebus::PutPropertyMappingRequest>* ErebusService::PutPropertyMapping(grpc::CallbackServerContext* context, ::erebus::Void* response)
+{
+    Er::Log2::debug(m_params.log, "ErebusService::PutPropertyMapping");
+    Er::Log2::Indent idt(m_params.log);
+
+    Er::Log2::info(m_params.log, "Request from {}", context->peer());
+
+    auto reactor = std::make_unique<PutPropertyMappingStreamReadReactor>(m_params.log, this);
+    return reactor.release();
+}
+
 void ErebusService::registerService(std::string_view request, Er::Ipc::IService::Ptr service)
 {
-    std::lock_guard l(m_servicesLock);
+    std::lock_guard l(m_services.lock);
 
     std::string id(request);
-    auto it = m_services.find(id);
-    if (it != m_services.end())
+    auto it = m_services.map.find(id);
+    if (it != m_services.map.end())
         ErThrow(Er::format("Service for [{}] is already registered", id));
 
     Er::Log2::info(m_params.log, "Registered service {} for [{}]", Er::Format::ptr(service.get()), id);
 
-    m_services.insert({ std::move(id), service });
+    m_services.map.insert({ std::move(id), service });
 }
 
 void ErebusService::unregisterService(Er::Ipc::IService* service)
 {
-    std::lock_guard l(m_servicesLock);
+    std::lock_guard l(m_services.lock);
 
     bool success = false;
-    for (auto it = m_services.begin(); it != m_services.end();)
+    for (auto it = m_services.map.begin(); it != m_services.map.end();)
     {
         if (it->second.get() == service)
         {
             Er::Log2::info(m_params.log, "Unregistered service {}", Er::Format::ptr(service));
 
             auto next = std::next(it);
-            m_services.erase(it);
+            m_services.map.erase(it);
             it = next;
 
             success = true;
@@ -276,9 +285,50 @@ void ErebusService::unregisterService(Er::Ipc::IService* service)
         Er::Log2::error(m_params.log, "Service {} is not registered", Er::Format::ptr(service));
 }
 
-const Er::PropertyInfo* ErebusService::mapProperty(std::uint32_t id, std::string_view context)
+const Er::PropertyInfo* ErebusService::mapProperty(std::uint32_t id, const std::string& context)
 {
+    std::unique_lock l(m_propertyMappings.lock);
+
+    // any mapping for this 'context'?
+    auto it = m_propertyMappings.map.find(context);
+    if (it == m_propertyMappings.map.end())
+        return nullptr;
+
+    if (id < it->second.size())
+        return it->second[id];
+
     return nullptr;
+}
+
+void ErebusService::registerPropertyMapping(std::uint32_t id, const std::string& context, Er::PropertyType type, const std::string& name, const std::string& readableName)
+{
+    Er::Log2::debug(m_params.log, "ErebusService::registerPropertyMapping({}.{} -> {}[{}])", context, id, name, readableName);
+    Er::Log2::Indent idt(m_params.log);
+
+    std::unique_lock l(m_propertyMappings.lock);
+
+    std::vector<const Er::PropertyInfo*>* mapping = nullptr;
+
+    // any mapping for this 'context'?
+    auto it = m_propertyMappings.map.find(context);
+    if (it != m_propertyMappings.map.end())
+    {
+        mapping = &(it->second);
+    }
+    else
+    {
+        auto r = m_propertyMappings.map.insert({ context, std::vector<const Er::PropertyInfo*>{} });
+        ErAssert(r.second);
+
+        mapping = &(r.first->second);
+    }
+
+    ErAssert(mapping);
+
+    if (id >= mapping->size())
+        mapping->resize(id);
+
+    (*mapping)[id] = Er::allocateTransientProperty(type, name, readableName);
 }
 
 } // namespace Erp::Ipc::Grpc {}

@@ -31,12 +31,21 @@ static_assert(unsigned(PropertyType::Max) <= 0x10, "Align PropertyInfo so that w
 struct Property;
 struct PropertyInfo;
 
-ER_SYSTEM_EXPORT std::uint32_t registerProperty(const PropertyInfo* info);
-ER_SYSTEM_EXPORT void unregisterProperty(const PropertyInfo* info) noexcept;
+} // namespace Er {]
+
+namespace Erp
+{
+
+ER_SYSTEM_EXPORT std::uint32_t registerPersistentProperty(const Er::PropertyInfo* info);
+ER_SYSTEM_EXPORT std::string formatProperty(const Er::PropertyInfo* info, const Er::Property& prop);
+
+} // namespace Erp {}
+
+namespace Er
+{
+ER_SYSTEM_EXPORT const Er::PropertyInfo* allocateTransientProperty(Er::PropertyType type, const std::string& name, const std::string& readableName);
 ER_SYSTEM_EXPORT const PropertyInfo* lookupProperty(const std::string& name) noexcept;
 ER_SYSTEM_EXPORT void enumerateProperties(std::function<bool(const PropertyInfo*)> cb) noexcept;
-ER_SYSTEM_EXPORT std::string formatProperty(const PropertyInfo* info, const Property& prop);
-
 
 //
 // Yes, we DO need that large alignment value
@@ -46,6 +55,8 @@ ER_SYSTEM_EXPORT std::string formatProperty(const PropertyInfo* info, const Prop
 struct alignas(16) PropertyInfo 
 {
     using Formatter = std::function<std::string(const Property&)>;
+
+    static constexpr std::uint32_t InvalidUnique = std::uint32_t(-1);
 
     constexpr void* self()
     {
@@ -77,23 +88,31 @@ struct alignas(16) PropertyInfo
         return m_formatter;
     }
     
-    ~PropertyInfo()
-    {
-        unregisterProperty(this);
-    }
+    ~PropertyInfo() = default;
     
     PropertyInfo(PropertyType type, std::string_view name, std::string_view readableName, Formatter&& formatter = Formatter{})
         : m_type(type)
         , m_name(name)
         , m_readableName(readableName)
         , m_formatter(std::move(formatter))
-        , m_unique(registerProperty(this))
+        , m_unique(Erp::registerPersistentProperty(this))
+    {
+    }
+
+    struct Transient {};
+
+    PropertyInfo(Transient tag, std::uint32_t id, PropertyType type, std::string_view name, std::string_view readableName)
+        : m_type(type)
+        , m_name(name)
+        , m_readableName(readableName)
+        , m_formatter()
+        , m_unique(id)
     {
     }
 
     std::string format(const Property& prop) const
     {
-        return formatProperty(this, prop);
+        return Erp::formatProperty(this, prop);
     }
 
 private:
@@ -107,7 +126,7 @@ private:
 
 struct IPropertyMapping
 {
-    virtual const Er::PropertyInfo* mapProperty(std::uint32_t id, std::string_view context) = 0;
+    virtual const Er::PropertyInfo* mapProperty(std::uint32_t id, const std::string& context) = 0;
 
 protected:
     virtual ~IPropertyMapping() {}

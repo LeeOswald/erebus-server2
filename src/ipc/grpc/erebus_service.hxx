@@ -25,13 +25,16 @@ public:
     ErebusService(const Er::Ipc::Grpc::ServerArgs& params);
 
     grpc::ServerWriteReactor<erebus::PropertyInfo>* GetPropertyMapping(grpc::CallbackServerContext* context, const erebus::Void* request) override;
+    grpc::ServerReadReactor<erebus::PutPropertyMappingRequest>* PutPropertyMapping(grpc::CallbackServerContext*, ::erebus::Void* response) override;
     grpc::ServerUnaryReactor* GenericRpc(grpc::CallbackServerContext* context, const erebus::ServiceRequest* request, erebus::ServiceReply* reply) override;
     grpc::ServerWriteReactor<erebus::ServiceReply>* GenericStream(grpc::CallbackServerContext* context, const erebus::ServiceRequest* request) override;
 
     void registerService(std::string_view request, Er::Ipc::IService::Ptr service) override;
     void unregisterService(Er::Ipc::IService* service) override;
 
-    const Er::PropertyInfo* mapProperty(std::uint32_t id, std::string_view context) override;
+    const Er::PropertyInfo* mapProperty(std::uint32_t id, const std::string& context) override;
+
+    void registerPropertyMapping(std::uint32_t id, const std::string& context, Er::PropertyType type, const std::string& name, const std::string& readableName);
 
 private:
     class ExceptionMarshaler
@@ -332,16 +335,105 @@ private:
         erebus::PropertyInfo m_response;
     };
 
+    class PutPropertyMappingStreamReadReactor
+        : public grpc::ServerReadReactor<erebus::PutPropertyMappingRequest>
+    {
+    public:
+        ~PutPropertyMappingStreamReadReactor()
+        {
+            Er::Log2::debug(m_log, "{}.PutPropertyMappingStreamReadReactor::~PutPropertyMappingStreamReadReactor", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log);
+        }
+
+        PutPropertyMappingStreamReadReactor(Er::Log2::ILogger* log, ErebusService* owner)
+            : m_log(log)
+            , m_owner(owner)
+        {
+            Er::Log2::debug(m_log, "{}.PutPropertyMappingStreamReadReactor::PutPropertyMappingStreamReadReactor", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log);
+
+            Continue();
+        }
+
+        void OnReadDone(bool ok) override
+        {
+            Er::Log2::debug(m_log, "{}.PutPropertyMappingStreamReadReactor::OnReadDone", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log);
+
+            if (!ok)
+            {
+                Finish(grpc::Status(grpc::StatusCode::UNKNOWN, "Unexpected Failure"));
+            }
+            else
+            {
+                auto& cookie = m_request.cookie();
+
+                auto count = m_request.mapping_size();
+                for (decltype(count) i = 0; i < count; ++i)
+                {
+                    auto& rawInfo = m_request.mapping(i);
+
+                    auto type = static_cast<Er::PropertyType>(rawInfo.type());
+                    auto id = rawInfo.id();
+                    auto& name = rawInfo.name();
+                    auto& readableName = rawInfo.readable_name();
+
+                    m_owner->registerPropertyMapping(id, cookie, type, name, readableName);
+                }
+
+                Continue();
+            }
+        }
+
+    private:
+        void Continue()
+        {
+            Er::Log2::debug(m_log, "{}.PutPropertyMappingStreamReadReactor::Continue", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log);
+
+            m_request.Clear();
+            StartRead(&m_request);
+        }
+
+        void OnDone() override
+        {
+            Er::Log2::debug(m_log, "{}.PutPropertyMappingStreamReadReactor::OnDone", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log);
+
+            delete this;
+        }
+
+        void OnCancel() override
+        {
+            Er::Log2::debug(m_log, "{}.PutPropertyMappingStreamReadReactor::OnCancel", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log);
+        }
+
+        Er::Log2::ILogger* m_log;
+        ErebusService* m_owner;
+        erebus::PutPropertyMappingRequest m_request;
+    };
+
     Er::Ipc::IService::Ptr findService(const std::string& id) const;
-    static Er::PropertyBag unmarshalArgs(const erebus::ServiceRequest* request, Er::IPropertyMapping* mapping, std::string_view context);
+    static Er::PropertyBag unmarshalArgs(const erebus::ServiceRequest* request, Er::IPropertyMapping* mapping, const std::string& context);
     static void marshalReplyProps(const Er::PropertyBag& props, erebus::ServiceReply* reply);
     static void marshalException(erebus::ServiceReply* reply, const std::exception& e);
     static void marshalException(erebus::ServiceReply* reply, const Er::Exception& e);
 
     Er::Ipc::Grpc::ServerArgs m_params;
     std::unique_ptr<grpc::Server> m_server;
-    mutable std::shared_mutex m_servicesLock;
-    std::unordered_map<std::string, Er::Ipc::IService::Ptr> m_services;
+
+    struct
+    {
+        mutable std::shared_mutex lock;
+        std::unordered_map<std::string, Er::Ipc::IService::Ptr> map;
+    } m_services;
+
+    struct
+    {
+        mutable std::shared_mutex lock;
+        std::unordered_map<std::string, std::vector<const Er::PropertyInfo*>> map;
+    } m_propertyMappings;
 };
 
 } // namespace Erp::Ipc::Grpc {}
