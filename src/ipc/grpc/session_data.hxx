@@ -88,7 +88,7 @@ public:
         DataWrapper* w;
     };
 
-    Ref get(const KeyType& key)
+    [[nodiscard]] Ref get(const KeyType& key)
     {
         auto lock = [](DataWrapper* w, bool touch) -> Ref
         {

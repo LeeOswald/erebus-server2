@@ -27,6 +27,15 @@ const ResultMapping g_resultMapping[] =
     { Result::NotFound, "Not found" },
     { Result::InsufficientResources, "Insufficient resources" },
     { Result::SharingViolation, "Sharing violation" },
+    { Result::DeadlineExceeded, "Deadline exceeded" },
+    { Result::Unauthenticated, "Unauthenticated" },
+    { Result::ResourceExhausted, "Resource exhausted" },
+    { Result::FailedPrecondition, "Failed precondition" },
+    { Result::Aborted, "Aborted" },
+    { Result::OutOfRange, "Out of range" },
+    { Result::Unimplemented, "Unimplemented" },
+    { Result::Unavailable, "Unavailable" },
+    { Result::DataLoss, "Data loss" }
 };
 
 

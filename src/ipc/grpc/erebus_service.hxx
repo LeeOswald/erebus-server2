@@ -25,8 +25,9 @@ public:
     ~ErebusService();
     ErebusService(const Er::Ipc::Grpc::ServerArgs& params);
 
+    grpc::ServerUnaryReactor* Ping(grpc::CallbackServerContext* context, const erebus::PingRequest* request, erebus::PingReply* reply) override;
     grpc::ServerWriteReactor<erebus::PropertyInfo>* GetPropertyMapping(grpc::CallbackServerContext* context, const erebus::Void* request) override;
-    grpc::ServerReadReactor<erebus::PutPropertyMappingRequest>* PutPropertyMapping(grpc::CallbackServerContext*, ::erebus::Void* response) override;
+    grpc::ServerReadReactor<erebus::PutPropertyMappingRequest>* PutPropertyMapping(grpc::CallbackServerContext*, ::erebus::Void* reply) override;
     grpc::ServerUnaryReactor* GenericRpc(grpc::CallbackServerContext* context, const erebus::ServiceRequest* request, erebus::ServiceReply* reply) override;
     grpc::ServerWriteReactor<erebus::ServiceReply>* GenericStream(grpc::CallbackServerContext* context, const erebus::ServiceRequest* request) override;
 
@@ -35,6 +36,7 @@ public:
 
     const Er::PropertyInfo* mapProperty(std::uint32_t id, const std::string& context) override;
 
+    bool propertyMappingExists(const std::string& context);
     void registerPropertyMapping(std::uint32_t id, const std::string& context, Er::PropertyType type, const std::string& name, const std::string& readableName);
 
 private:
@@ -134,7 +136,7 @@ private:
             Er::Log2::Indent idt(m_log);
         }
 
-        Er::Log2::ILogger* m_log;
+        Er::Log2::ILogger* const m_log;
     };
 
     class ReplyStreamWriteReactor
@@ -182,9 +184,14 @@ private:
             }
 
             if (error)
+            {
+                m_response.set_result(erebus::FAILURE);
                 StartWriteAndFinish(&m_response, grpc::WriteOptions(), grpc::Status::OK); // just send the exception
+            }
             else
+            {
                 Continue();
+            }
         }
 
         void OnWriteDone(bool ok) override 
@@ -233,12 +240,14 @@ private:
                 }
                 else
                 {
+                    m_response.set_result(erebus::SUCCESS);
                     marshalReplyProps(item, &m_response);
                 }
             }
             catch (...)
             {
                 error = true;
+                m_response.set_result(erebus::FAILURE);
                 Er::dispatchException(std::current_exception(), xcptHandler);
             }
 
@@ -248,7 +257,7 @@ private:
                 StartWrite(&m_response);
         }
 
-        Er::Log2::ILogger* m_log;
+        Er::Log2::ILogger* const m_log;
         Er::Ipc::IService::Ptr m_service;
         Er::Ipc::IService::StreamId m_streamId = {};
         erebus::ServiceReply m_response;
@@ -330,7 +339,7 @@ private:
             StartWrite(&m_response);
         }
 
-        Er::Log2::ILogger* m_log;
+        Er::Log2::ILogger* const m_log;
         std::vector<const Er::PropertyInfo*> m_properties;
         std::size_t m_next = 0;
         erebus::PropertyInfo m_response;
@@ -363,7 +372,7 @@ private:
 
             if (!ok)
             {
-                Finish(grpc::Status(grpc::StatusCode::UNKNOWN, "Unexpected Failure"));
+                Finish(grpc::Status(grpc::StatusCode::UNKNOWN, "Unexpected failure"));
             }
             else
             {
@@ -410,18 +419,18 @@ private:
             Er::Log2::Indent idt(m_log);
         }
 
-        Er::Log2::ILogger* m_log;
-        ErebusService* m_owner;
+        Er::Log2::ILogger* const m_log;
+        ErebusService* const m_owner;
         erebus::PutPropertyMappingRequest m_request;
     };
 
     Er::Ipc::IService::Ptr findService(const std::string& id) const;
-    static Er::PropertyBag unmarshalArgs(const erebus::ServiceRequest* request, Er::IPropertyMapping* mapping, const std::string& context);
+    Er::PropertyBag unmarshalArgs(const erebus::ServiceRequest* request, const std::string& context);
     static void marshalReplyProps(const Er::PropertyBag& props, erebus::ServiceReply* reply);
     static void marshalException(erebus::ServiceReply* reply, const std::exception& e);
     static void marshalException(erebus::ServiceReply* reply, const Er::Exception& e);
 
-    Er::Ipc::Grpc::ServerArgs m_params;
+    const Er::Ipc::Grpc::ServerArgs m_params;
     std::unique_ptr<grpc::Server> m_server;
 
     struct

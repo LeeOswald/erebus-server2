@@ -7,13 +7,13 @@
 
 
 #if ER_WINDOWS
-    #ifdef ER_GRPC_EXPORTS
-        #define ER_GRPC_EXPORT __declspec(dllexport)
+    #ifdef ER_GRPC_SERVER_EXPORTS
+        #define ER_GRPC_SERVER_EXPORT __declspec(dllexport)
     #else
-        #define ER_GRPC_EXPORT __declspec(dllimport)
+        #define ER_GRPC_SERVER_EXPORT __declspec(dllimport)
     #endif
 #else
-    #define ER_GRPC_EXPORT __attribute__((visibility("default")))
+    #define ER_GRPC_SERVER_EXPORT __attribute__((visibility("default")))
 #endif
 
 namespace Er::Ipc::Grpc
@@ -56,10 +56,7 @@ struct ServerArgs
 };    
 
 
-ER_GRPC_EXPORT void initialize(Er::Log2::ILogger* log);
-ER_GRPC_EXPORT void finalize();
-
-[[nodiscard]] IServer::Ptr ER_GRPC_EXPORT create(const ServerArgs& params);
+[[nodiscard]] IServer::Ptr ER_GRPC_SERVER_EXPORT create(const ServerArgs& params);
     
 
 } // namespace Er::Ipc::Grpc {}

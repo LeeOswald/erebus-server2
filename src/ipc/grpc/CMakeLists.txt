@@ -3,9 +3,6 @@ file(MAKE_DIRECTORY ${EREBUS_GENERATED_DIR})
 
 get_filename_component(EREBUS_PROTO "${CMAKE_CURRENT_SOURCE_DIR}/erebus.proto" ABSOLUTE)
 
-include(Debug)
-dump_cmake_variables()
-
 add_custom_command(
     OUTPUT "${EREBUS_GENERATED_DIR}/erebus.pb.cc" "${EREBUS_GENERATED_DIR}/erebus.pb.h" "${EREBUS_GENERATED_DIR}/erebus.grpc.pb.cc" "${EREBUS_GENERATED_DIR}/erebus.grpc.pb.h"
     COMMAND ${PROTOC_PROGRAM}
@@ -18,10 +15,14 @@ add_custom_command(
 )
 
 add_library(erebus-grpc SHARED
+    ../../../include/erebus/ipc/client.hxx
+    ../../../include/erebus/ipc/server.hxx
+    ../../../include/erebus/ipc/service.hxx
     ../../../include/erebus/ipc/grpc/grpc_server.hxx
+    ../../../include/erebus/ipc/grpc/grpc_client.hxx
     erebus_service.hxx
     erebus_service.cxx
-    grpc_server.cxx
+    grpc_client.cxx
     protocol.hxx
     protocol.cxx
     session_data.hxx
@@ -57,5 +58,5 @@ target_include_directories(erebus-grpc PUBLIC "${absl_INCLUDE_DIR}")
 
 target_link_directories(erebus-grpc PUBLIC ${gRPC_INCLUDE_DIR}/../lib)
 
-target_compile_definitions(erebus-grpc PRIVATE ER_GRPC_EXPORTS)
+target_compile_definitions(erebus-grpc PRIVATE ER_GRPC_SERVER_EXPORTS ER_GRPC_CLIENT_EXPORTS)
 

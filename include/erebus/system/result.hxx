@@ -25,7 +25,16 @@ enum : std::int32_t
     Unsupported = -10,
     NotFound = -11,
     InsufficientResources = -12,
-    SharingViolation = -13
+    SharingViolation = -13,
+    DeadlineExceeded = -14,
+    Unauthenticated = -15,
+    ResourceExhausted = -16,
+    FailedPrecondition = -17,
+    Aborted = -18,
+    OutOfRange = -19,
+    Unimplemented = -20,
+    Unavailable = -21,
+    DataLoss = -22
 };
 
 

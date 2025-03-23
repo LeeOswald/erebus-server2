@@ -28,16 +28,34 @@ message Property {
   }
 }
 
+enum CallResult {
+    SUCCESS = 0;
+    PROPERTY_MAPPING_EXPIRED = 1;
+    FAILURE = 2;
+}
+
 message Exception {
   optional string message = 1;
   repeated Property props = 2;
 }
 
 service Erebus {
+  rpc Ping(PingRequest) returns(PingReply) {}
   rpc GetPropertyMapping(Void) returns(stream PropertyInfo) {}
   rpc PutPropertyMapping(stream PutPropertyMappingRequest) returns(Void) {}
   rpc GenericRpc(ServiceRequest) returns(ServiceReply) {}
   rpc GenericStream(ServiceRequest) returns(stream ServiceReply) {}
+}
+
+message PingRequest {
+    string cookie = 1;
+    uint64 timestamp = 2;
+    string payload = 3;
+}
+
+message PingReply {
+    uint64 timestamp = 1;
+    string payload = 2;
 }
 
 message PutPropertyMappingRequest {
@@ -52,6 +70,7 @@ message ServiceRequest {
 }
 
 message ServiceReply {
-  optional Exception exception = 1;  
-  repeated Property props = 2;
+  CallResult result = 1;
+  optional Exception exception = 2;  
+  repeated Property props = 3;
 }
