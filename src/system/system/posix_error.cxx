@@ -63,6 +63,6 @@ ER_SYSTEM_EXPORT Exception makePosixException(std::source_location location, std
 namespace Er::ExceptionProps
 {
 
-const PropertyInfo PosixError{ PropertyType::UInt32, "exception/posix_error", "POSIX error" };
+const PropertyInfo PosixError{ PropertyType::UInt32, "Er.Exception.posix_error", "POSIX error" };
 
 } // namespace Er::ExceptionProps {}
