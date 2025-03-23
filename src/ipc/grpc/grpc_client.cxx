@@ -4,6 +4,7 @@
 #include <grpcpp/grpcpp.h>
 
 #include <erebus/ipc/grpc/grpc_client.hxx>
+#include <erebus/system/system/packed_time.hxx>
 #include <erebus/system/property_info.hxx>
 
 #include <atomic>
@@ -59,8 +60,9 @@ public:
         ::grpc_shutdown();
     }
 
-    explicit ClientImpl(std::shared_ptr<grpc::Channel> channel, Er::Log2::ILogger* log)
-        : m_grpcReady(grpcInit())
+    explicit ClientImpl(const ChannelSettings& params, std::shared_ptr<grpc::Channel> channel, Er::Log2::ILogger* log)
+        : m_params(params)
+        , m_grpcReady(grpcInit())
         , m_stub(erebus::Erebus::NewStub(channel))
         , m_log(log)
         , m_cookie(makeNoise(CookieLength))
@@ -77,17 +79,14 @@ public:
         return nullptr;
     }
 
-    void ping(std::optional<std::chrono::milliseconds> timeout) override
+    void ping(std::size_t payloadSize, IPingCompletion* handler, void* context) override
     {
         Er::Log2::debug(m_log, "{}.ClientReadReactor::ping()", Er::Format::ptr(this));
         Er::Log2::Indent idt(m_log);
 
-        auto ctx = std::make_shared<PingContext>(m_cookie);
-        if (timeout)
-        {
-            ctx->context.set_deadline(std::chrono::system_clock::now() + *timeout);
-        }
-
+        auto ctx = std::make_shared<PingContext>(m_cookie, payloadSize, handler, context);
+        ctx->context.set_deadline(std::chrono::system_clock::now() + m_params.callTimeout);
+        
         m_stub->async()->Ping(
             &ctx->context,
             &ctx->request,
@@ -96,28 +95,29 @@ public:
             {
                 if (!status.ok())
                 {
-                    Er::Log2::error(m_log, "Failed to ping {}: {} ({})", ctx->context.peer(), mapGrpcStatus(status.error_code()), status.error_message());
+                    auto resultCode = mapGrpcStatus(status.error_code());
+                    auto errorMsg = status.error_message();
+                    Er::Log2::error(m_log, "Failed to ping {}: {} ({})", ctx->context.peer(), resultCode, errorMsg);
+
+                    ctx->handler->handleTransportError(ctx->userCtx, resultCode, std::move(errorMsg));
                 }
                 else
                 {
-                    auto finished = std::chrono::steady_clock::now();
-                    auto dura = finished - ctx->started;
-                    auto msecs = std::chrono::duration_cast<std::chrono::milliseconds>(dura);
-                    Er::Log2::info(m_log, "Pinged {} in {} ms", msecs.count());
+                    auto finished = Er::System::PackedTime::now();
+                    auto milliseconds = (finished - ctx->started) / 1000;
+                    
+                    ctx->handler->handleReply(ctx->userCtx, std::chrono::milliseconds(milliseconds));
                 }
             });
     }
 
-    void request(CallId callId, std::string_view request, const Er::PropertyBag& args, IReceiver* receiver, std::optional<std::chrono::milliseconds> timeout) override
+    void call(std::string_view request, const Er::PropertyBag& args, ICallCompletion* handler, void* context) override
     {
-        Er::Log2::debug(m_log, "{}.ClientReadReactor::request({}.{})", Er::Format::ptr(this), callId, request);
+        Er::Log2::debug(m_log, "{}.ClientReadReactor::call({})", Er::Format::ptr(this), request);
         Er::Log2::Indent idt(m_log);
 
-        auto ctx = std::make_shared<UnaryCallbackContext>(callId, request, args, m_cookie, receiver);
-        if (timeout)
-        {
-            ctx->context.set_deadline(std::chrono::system_clock::now() + *timeout);
-        }
+        auto ctx = std::make_shared<CallContext>(request, args, m_cookie, handler, context);
+        ctx->context.set_deadline(std::chrono::system_clock::now() + m_params.callTimeout);
 
         m_stub->async()->GenericRpc(
             &ctx->context,
@@ -127,25 +127,33 @@ public:
             {
                 if (!status.ok())
                 {
-                    ctx->receiver->receive(ctx->callId, mapGrpcStatus(status.error_code()), status.error_message());
+                    auto resultCode = mapGrpcStatus(status.error_code());
+                    auto errorMsg = status.error_message();
+                    Er::Log2::error(m_log, "Failed to call {}:{}: {} ({})", ctx->context.peer(), ctx->uri, resultCode, errorMsg);
+
+                    ctx->handler->handleTransportError(ctx->userCtx, resultCode, std::move(errorMsg));
                 }
                 else if (ctx->reply.has_exception())
                 {
-                    ctx->receiver->receive(ctx->callId, unmarshalException(ctx->reply));
+                    auto e = unmarshalException(ctx->reply);
+                    Er::Log2::error(m_log, "Failed to call {}:{}", ctx->context.peer(), ctx->uri, e.what());
+
+                    ctx->handler->handleException(ctx->uri, ctx->userCtx, std::move(e));
                 }
                 else
                 {
-                    ctx->receiver->receive(ctx->callId, unmarshal(ctx->reply));
+                    auto reply = unmarshal(ctx->reply);
+                    ctx->handler->handleReply(ctx->uri, ctx->userCtx, std::move(reply));
                 }
             });
     }
 
-    void requestStream(CallId callId, std::string_view request, const Er::PropertyBag& args, IStreamReceiver* receiver) override
+    void stream(std::string_view request, const Er::PropertyBag& args, IStreamCompletion* handler, void* context) override
     {
-        Er::Log2::debug(m_log, "{}.ClientReadReactor::requestStream({}.{})", Er::Format::ptr(this), callId, request);
+        Er::Log2::debug(m_log, "{}.ClientReadReactor::stream({})", Er::Format::ptr(this), request);
         Er::Log2::Indent idt(m_log);
 
-        new ClientReadReactor(this, m_stub.get(), callId, request, args, receiver);
+        new ClientReadReactor(this, m_stub.get(), request, args, handler, context);
     }
 
 private:
@@ -168,28 +176,39 @@ private:
     struct PingContext
         : public boost::noncopyable
     {
-        virtual ~PingContext() = default;
-
-        std::chrono::time_point<std::chrono::steady_clock> started = std::chrono::steady_clock::now();
+        IClient::IPingCompletion* handler;
+        void* userCtx;
+        Er::System::PackedTime::ValueType started;
         erebus::PingRequest request;
         grpc::ClientContext context;
         erebus::PingReply reply;
 
-        PingContext(const std::string& cookie)
+        PingContext(const std::string& cookie, std::size_t payloadSize, IClient::IPingCompletion* handler, void* userCtx)
+            : handler(handler)
+            , userCtx(userCtx)
+            , started(Er::System::PackedTime::now())
         {
             request.set_cookie(cookie);
+            request.set_timestamp(started);
+            auto payload = makeNoise(payloadSize);
+            request.set_payload(std::move(payload));
         }
     };
 
     struct CallContext
         : public boost::noncopyable
     {
-        virtual ~CallContext() = default;
-
+        std::string uri;
+        IClient::ICallCompletion* handler;
+        void* userCtx;
         erebus::ServiceRequest request;
         grpc::ClientContext context;
+        erebus::ServiceReply reply;
 
-        CallContext(std::string_view req, const Er::PropertyBag& args, const std::string& cookie)
+        CallContext(std::string_view req, const Er::PropertyBag& args, const std::string& cookie, IClient::ICallCompletion* handler, void* userCtx)
+            : uri(req)
+            , handler(handler)
+            , userCtx(userCtx)
         {
             request.set_request(std::string(req));
             request.set_cookie(cookie);
@@ -201,63 +220,55 @@ private:
             }
         }
     };
-
-    struct UnaryCallbackContext final
-        : public CallContext
-    {
-        CallId callId;
-        erebus::ServiceReply reply;
-        IReceiver* receiver;
-
-        UnaryCallbackContext(CallId callId, std::string_view req, const Er::PropertyBag& args, const std::string& cookie, IReceiver* receiver)
-            : CallContext(req, args, cookie)
-            , callId(callId)
-            , receiver(receiver)
-        {
-        }
-    };
-
+    
     class ClientReadReactor final
         : public grpc::ClientReadReactor<erebus::ServiceReply>
     {
     public:
         ~ClientReadReactor()
         {
-            Er::Log2::debug(m_owner->log(), "{}.ClientReadReactor::~ClientReadReactor({})", Er::Format::ptr(this), m_callId);
+            Er::Log2::debug(m_owner->log(), "{}.ClientReadReactor::~ClientReadReactor()", Er::Format::ptr(this));
             Er::Log2::Indent idt(m_owner->log());
         }
 
-        ClientReadReactor(ClientImpl* owner, erebus::Erebus::Stub* stub, CallId callId, std::string_view req, const Er::PropertyBag& args, IStreamReceiver* receiver)
+        ClientReadReactor(ClientImpl* owner, erebus::Erebus::Stub* stub, std::string_view req, const Er::PropertyBag& args, IStreamCompletion* handler, void* context)
             : m_owner(owner)
-            , m_context(req, args, owner->cookie())
-            , m_callId(callId)
-            , m_receiver(receiver)
+            , m_uri(req)
+            , m_handler(handler)
+            , m_userCtx(context)
         {
-            Er::Log2::debug(m_owner->log(), "{}.ClientReadReactor::ClientReadReactor({})", Er::Format::ptr(this), m_callId);
+            Er::Log2::debug(m_owner->log(), "{}.ClientReadReactor::ClientReadReactor({})", Er::Format::ptr(this), m_uri);
             Er::Log2::Indent idt(m_owner->log());
 
-            stub->async()->GenericStream(&m_context.context, &m_context.request, this);
+            stub->async()->GenericStream(&m_context, &m_request, this);
             StartRead(&m_reply);
             StartCall();
         }
 
         void OnReadDone(bool ok) override
         {
-            Er::Log2::debug(m_owner->log(), "{}.ClientReadReactor::OnReadDone({}, {})", Er::Format::ptr(this), m_callId, ok);
+            Er::Log2::debug(m_owner->log(), "{}.ClientReadReactor::OnReadDone({}, {})", Er::Format::ptr(this), m_uri, ok);
             Er::Log2::Indent idt(m_owner->log());
 
             if (ok)
             {
                 if (m_reply.has_exception())
                 {
-                    if (m_receiver->receive(m_callId, m_owner->unmarshalException(m_reply)) == IClient::IStreamReceiver::Result::Cancel)
+                    auto e = m_owner->unmarshalException(m_reply);
+                    Er::Log2::error(m_owner->log(), "Failed to call {}:{}", m_context.peer(), m_uri, e.what());
+
+                    if (m_handler->handleException(m_uri, m_userCtx, std::move(e)) == IClient::IStreamCompletion::Should::Cancel)
                     {
-                        m_context.context.TryCancel();
+                        m_context.TryCancel();
                     }
                 }
-                else if (m_receiver->receive(m_callId, m_owner->unmarshal(m_reply)) == IClient::IStreamReceiver::Result::Cancel)
+                else
                 {
-                    m_context.context.TryCancel();
+                    auto reply = m_owner->unmarshal(m_reply);
+                    if (m_handler->handleFrame(m_uri, m_userCtx, std::move(reply)) == IClient::IStreamCompletion::Should::Cancel)
+                    {
+                        m_context.TryCancel();
+                    }
                 }
 
                 // we have to drain the completion queue even if we cancel
@@ -267,16 +278,20 @@ private:
 
         void OnDone(const grpc::Status& status) override
         {
-            Er::Log2::debug(m_owner->log(), "{}.ClientReadReactor::OnDone({}, {})", Er::Format::ptr(this), m_callId, int(status.error_code()));
+            Er::Log2::debug(m_owner->log(), "{}.ClientReadReactor::OnDone({}, {})", Er::Format::ptr(this), m_uri, int(status.error_code()));
             Er::Log2::Indent idt(m_owner->log());
 
             if (!status.ok())
             {
-                m_receiver->finish(m_callId, mapGrpcStatus(status.error_code()), status.error_message());
+                auto resultCode = mapGrpcStatus(status.error_code());
+                auto errorMsg = status.error_message();
+                Er::Log2::error(m_owner->log(), "Stream from {} terminated with an error: {} ({})", m_context.peer(), resultCode, errorMsg);
+
+                m_handler->handleTransportError(m_userCtx, resultCode, std::move(errorMsg));
             }
             else
             {
-                m_receiver->finish(m_callId);
+                m_handler->handleEndOfStream(m_uri, m_userCtx);
             }
 
             delete this;
@@ -284,10 +299,12 @@ private:
 
     private:
         ClientImpl* const m_owner;
-        CallContext m_context;
-        CallId m_callId;
+        std::string m_uri;
+        IStreamCompletion* m_handler;
+        void* m_userCtx;
+        erebus::ServiceRequest m_request;
+        grpc::ClientContext m_context;
         erebus::ServiceReply m_reply;
-        IStreamReceiver* m_receiver;
     };
 
     Er::Exception unmarshalException(const erebus::ServiceReply& reply)
@@ -345,7 +362,9 @@ private:
         return cookie;
     }
 
-    static const size_t CookieLength = 32;
+    static constexpr size_t CookieLength = 32;
+
+    ChannelSettings m_params;
     bool m_grpcReady;
     const std::unique_ptr<erebus::Erebus::Stub> m_stub;
     Er::Log2::ILogger* const m_log;
@@ -390,9 +409,9 @@ ER_GRPC_CLIENT_EXPORT ChannelPtr createChannel(const ChannelSettings& params)
     }
 }
 
-ER_GRPC_CLIENT_EXPORT IClient::Ptr createClient(ChannelPtr channel, Er::Log2::ILogger* log)
+ER_GRPC_CLIENT_EXPORT IClient::Ptr createClient(const ChannelSettings& params, ChannelPtr channel, Er::Log2::ILogger* log)
 {
-    return std::make_unique<ClientImpl>(std::static_pointer_cast<grpc::Channel>(channel), log);
+    return std::make_unique<ClientImpl>(params, std::static_pointer_cast<grpc::Channel>(channel), log);
 }
 
 } // namespace Er::Ipc::Grpc {}

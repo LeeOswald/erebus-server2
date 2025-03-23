@@ -9,42 +9,48 @@ namespace Er::Ipc
 
 struct IClient
 {
-    using CallId = uintptr_t;
-
-    struct IReceiver
+    struct ICompletion
     {
-        virtual void receive(CallId callId, Er::PropertyBag&& result) = 0;
-        virtual void receive(CallId callId, Er::Exception&& exception) = 0;
-        virtual void receive(CallId callId, Er::ResultCode result, std::string&& message) = 0;
+        virtual void handleTransportError(void* context, Er::ResultCode result, std::string&& message) = 0;
 
     protected:
-        virtual ~IReceiver() = default;
+        virtual ~ICompletion() {}
     };
 
-    struct IStreamReceiver
+    struct IPingCompletion
+        : public ICompletion
     {
-        enum class Result
+        virtual void handleReply(void* context, std::chrono::milliseconds rtt) = 0;
+    };
+
+    struct ICallCompletion
+        : public ICompletion
+    {
+        virtual void handleReply(const std::string& uri, void* context, Er::PropertyBag&& reply) = 0;
+        virtual void handleException(const std::string& uri, void* context, Er::Exception&& exception) = 0;
+    };
+
+    struct IStreamCompletion
+        : public ICompletion
+    {
+        enum class Should
         {
             Continue,
             Cancel
         };
 
-        virtual Result receive(CallId callId, Er::PropertyBag&& result) = 0;
-        virtual Result receive(CallId callId, Er::Exception&& exception) = 0;
-        virtual void finish(CallId callId, Er::ResultCode result, std::string&& message) = 0;
-        virtual void finish(CallId callId) = 0;
-
-    protected:
-        virtual ~IStreamReceiver() = default;
+        virtual Should handleFrame(const std::string& uri, void* context, Er::PropertyBag&& frame) = 0;
+        virtual Should handleException(const std::string& uri, void* context, Er::Exception&& exception) = 0;
+        virtual void handleEndOfStream(const std::string& uri, void* context) = 0;
     };
 
     using Ptr = std::unique_ptr<IClient>;
 
-    virtual void ping(std::optional<std::chrono::milliseconds> timeout = std::nullopt) = 0;
-    virtual void request(CallId callId, std::string_view request, const Er::PropertyBag& args, IReceiver* receiver, std::optional<std::chrono::milliseconds> timeout = std::nullopt) = 0;
-    virtual void requestStream(CallId callId, std::string_view request, const Er::PropertyBag& args, IStreamReceiver* receiver) = 0;
+    virtual void ping(std::size_t payloadSize, IPingCompletion* handler, void* context) = 0;
+    virtual void call(std::string_view request, const Er::PropertyBag& args, ICallCompletion* handler, void* context) = 0;
+    virtual void stream(std::string_view request, const Er::PropertyBag& args, IStreamCompletion* handler, void* context) = 0;
 
-    virtual ~IClient() = default;
+    virtual ~IClient() {};
 };
 
 

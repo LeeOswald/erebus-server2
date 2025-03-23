@@ -3,6 +3,8 @@
 #include <erebus/system/logger2.hxx>
 #include <erebus/ipc/client.hxx>
 
+#include <chrono>
+
 
 #if ER_WINDOWS
 #ifdef ER_GRPC_CLIENT_EXPORTS
@@ -27,10 +29,17 @@ struct ChannelSettings
     std::string certificate;
     std::string privateKey;
     bool keepAlive = true;
+    std::chrono::milliseconds callTimeout = std::chrono::milliseconds(60 * 1000);
+
+    explicit ChannelSettings(std::string_view endpoint)
+        : endpoint(endpoint)
+        , useTls(false)
+    {
+    }
 
     explicit ChannelSettings(
         std::string_view endpoint,
-        bool ssl,
+        bool useTls,
         std::string_view rootCertificate,
         std::string_view certificate,
         std::string_view key
@@ -49,6 +58,6 @@ using ChannelPtr = std::shared_ptr<void>;
 
 ER_GRPC_CLIENT_EXPORT ChannelPtr createChannel(const ChannelSettings& params);
 
-ER_GRPC_CLIENT_EXPORT IClient::Ptr createClient(ChannelPtr channel, Er::Log2::ILogger* log);
+ER_GRPC_CLIENT_EXPORT IClient::Ptr createClient(const ChannelSettings& params, ChannelPtr channel, Er::Log2::ILogger* log);
 
 } // namespace Er::Ipc::Grpc {}
