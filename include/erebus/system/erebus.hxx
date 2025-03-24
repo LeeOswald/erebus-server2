@@ -62,6 +62,13 @@ enum class ThreadSafe
 };
 
 
+enum class CallbackResult
+{
+    Cancel = 0,
+    Continue = 1
+};
+
+
 } // namespace Er {}
 
 

@@ -377,19 +377,14 @@ private:
             else
             {
                 auto& cookie = m_request.cookie();
+                auto& rawInfo = m_request.mapping();
 
-                auto count = m_request.mapping_size();
-                for (decltype(count) i = 0; i < count; ++i)
-                {
-                    auto& rawInfo = m_request.mapping(i);
+                auto type = static_cast<Er::PropertyType>(rawInfo.type());
+                auto id = rawInfo.id();
+                auto& name = rawInfo.name();
+                auto& readableName = rawInfo.readable_name();
 
-                    auto type = static_cast<Er::PropertyType>(rawInfo.type());
-                    auto id = rawInfo.id();
-                    auto& name = rawInfo.name();
-                    auto& readableName = rawInfo.readable_name();
-
-                    m_owner->registerPropertyMapping(id, cookie, type, name, readableName);
-                }
+                m_owner->registerPropertyMapping(id, cookie, type, name, readableName);
 
                 Continue();
             }

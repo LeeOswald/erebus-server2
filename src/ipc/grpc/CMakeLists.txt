@@ -60,3 +60,8 @@ target_link_directories(erebus-grpc PUBLIC ${gRPC_INCLUDE_DIR}/../lib)
 
 target_compile_definitions(erebus-grpc PRIVATE ER_GRPC_SERVER_EXPORTS ER_GRPC_CLIENT_EXPORTS)
 
+set_property(TARGET erebus-grpc PROPERTY PREFIX "")
+
+if(NOT ER_BUILD_CLIENT_LIBS_ONLY)
+    add_subdirectory(tests)
+endif()

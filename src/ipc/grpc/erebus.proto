@@ -60,7 +60,7 @@ message PingReply {
 
 message PutPropertyMappingRequest {
   string cookie = 1;
-  repeated PropertyInfo mapping = 2;
+  PropertyInfo mapping = 2;
 }
 
 message ServiceRequest {

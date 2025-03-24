@@ -6,6 +6,7 @@
 #include <erebus/ipc/grpc/grpc_client.hxx>
 #include <erebus/system/system/packed_time.hxx>
 #include <erebus/system/property_info.hxx>
+#include <erebus/system/util/exception_util.hxx>
 
 #include <atomic>
 #include <chrono>
@@ -79,12 +80,23 @@ public:
         return nullptr;
     }
 
-    void ping(std::size_t payloadSize, IPingCompletion* handler, void* context) override
+    void adddPropertyMapping(const Er::PropertyInfo* pi) override
     {
-        Er::Log2::debug(m_log, "{}.ClientReadReactor::ping()", Er::Format::ptr(this));
+        std::unique_lock l(m_propertyMapping.lock);
+
+        auto index = pi->unique();
+        if (m_propertyMapping.map.size() <= index)
+            m_propertyMapping.map.resize(index + 1);
+
+        m_propertyMapping.map[index] = pi;
+    }
+    
+    void ping(std::size_t payloadSize, IPingCompletion::Ptr handler) override
+    {
+        Er::Log2::debug(m_log, "{}.ClientImpl::ping()", Er::Format::ptr(this));
         Er::Log2::Indent idt(m_log);
 
-        auto ctx = std::make_shared<PingContext>(m_cookie, payloadSize, handler, context);
+        auto ctx = std::make_shared<PingContext>(m_cookie, payloadSize, handler);
         ctx->context.set_deadline(std::chrono::system_clock::now() + m_params.callTimeout);
         
         m_stub->async()->Ping(
@@ -93,30 +105,32 @@ public:
             &ctx->reply,
             [this, ctx](grpc::Status status)
             {
-                if (!status.ok())
-                {
-                    auto resultCode = mapGrpcStatus(status.error_code());
-                    auto errorMsg = status.error_message();
-                    Er::Log2::error(m_log, "Failed to ping {}: {} ({})", ctx->context.peer(), resultCode, errorMsg);
-
-                    ctx->handler->handleTransportError(ctx->userCtx, resultCode, std::move(errorMsg));
-                }
-                else
-                {
-                    auto finished = Er::System::PackedTime::now();
-                    auto milliseconds = (finished - ctx->started) / 1000;
-                    
-                    ctx->handler->handleReply(ctx->userCtx, std::chrono::milliseconds(milliseconds));
-                }
+                completePing(ctx, status);
             });
     }
 
-    void call(std::string_view request, const Er::PropertyBag& args, ICallCompletion* handler, void* context) override
+    void getPropertyMapping(IGetPropertyMappingCompletion::Ptr handler) override
     {
-        Er::Log2::debug(m_log, "{}.ClientReadReactor::call({})", Er::Format::ptr(this), request);
+        Er::Log2::debug(m_log, "{}.ClientImpl::getPropertyMapping({})", Er::Format::ptr(this));
         Er::Log2::Indent idt(m_log);
 
-        auto ctx = std::make_shared<CallContext>(request, args, m_cookie, handler, context);
+        new PropertyMappingStreamReader(this, m_stub.get(), handler);
+    }
+
+    void putPropertyMapping(IPutPropertyMappingCompletion::Ptr handler) override
+    {
+        Er::Log2::debug(m_log, "{}.ClientImpl::putPropertyMapping({})", Er::Format::ptr(this));
+        Er::Log2::Indent idt(m_log);
+
+        new PropertyMappingStreamWriter(this, m_stub.get(), handler);
+    }
+    
+    void call(std::string_view request, const Er::PropertyBag& args, ICallCompletion::Ptr handler) override
+    {
+        Er::Log2::debug(m_log, "{}.ClientImpl::call({})", Er::Format::ptr(this), request);
+        Er::Log2::Indent idt(m_log);
+
+        auto ctx = std::make_shared<CallContext>(request, args, m_cookie, handler);
         ctx->context.set_deadline(std::chrono::system_clock::now() + m_params.callTimeout);
 
         m_stub->async()->GenericRpc(
@@ -125,35 +139,16 @@ public:
             &ctx->reply,
             [this, ctx](grpc::Status status)
             {
-                if (!status.ok())
-                {
-                    auto resultCode = mapGrpcStatus(status.error_code());
-                    auto errorMsg = status.error_message();
-                    Er::Log2::error(m_log, "Failed to call {}:{}: {} ({})", ctx->context.peer(), ctx->uri, resultCode, errorMsg);
-
-                    ctx->handler->handleTransportError(ctx->userCtx, resultCode, std::move(errorMsg));
-                }
-                else if (ctx->reply.has_exception())
-                {
-                    auto e = unmarshalException(ctx->reply);
-                    Er::Log2::error(m_log, "Failed to call {}:{}", ctx->context.peer(), ctx->uri, e.what());
-
-                    ctx->handler->handleException(ctx->uri, ctx->userCtx, std::move(e));
-                }
-                else
-                {
-                    auto reply = unmarshal(ctx->reply);
-                    ctx->handler->handleReply(ctx->uri, ctx->userCtx, std::move(reply));
-                }
+                completeCall(ctx, status);
             });
     }
 
-    void stream(std::string_view request, const Er::PropertyBag& args, IStreamCompletion* handler, void* context) override
+    void stream(std::string_view request, const Er::PropertyBag& args, IStreamCompletion::Ptr handler) override
     {
-        Er::Log2::debug(m_log, "{}.ClientReadReactor::stream({})", Er::Format::ptr(this), request);
+        Er::Log2::debug(m_log, "{}.ClientImpl::stream({})", Er::Format::ptr(this), request);
         Er::Log2::Indent idt(m_log);
 
-        new ClientReadReactor(this, m_stub.get(), request, args, handler, context);
+        new ServiceReplyStreamReader(this, m_stub.get(), request, args, handler);
     }
 
 private:
@@ -176,16 +171,14 @@ private:
     struct PingContext
         : public boost::noncopyable
     {
-        IClient::IPingCompletion* handler;
-        void* userCtx;
+        IClient::IPingCompletion::Ptr handler;
         Er::System::PackedTime::ValueType started;
         erebus::PingRequest request;
         grpc::ClientContext context;
         erebus::PingReply reply;
 
-        PingContext(const std::string& cookie, std::size_t payloadSize, IClient::IPingCompletion* handler, void* userCtx)
+        PingContext(const std::string& cookie, std::size_t payloadSize, IClient::IPingCompletion::Ptr handler)
             : handler(handler)
-            , userCtx(userCtx)
             , started(Er::System::PackedTime::now())
         {
             request.set_cookie(cookie);
@@ -199,16 +192,14 @@ private:
         : public boost::noncopyable
     {
         std::string uri;
-        IClient::ICallCompletion* handler;
-        void* userCtx;
+        IClient::ICallCompletion::Ptr handler;
         erebus::ServiceRequest request;
         grpc::ClientContext context;
         erebus::ServiceReply reply;
 
-        CallContext(std::string_view req, const Er::PropertyBag& args, const std::string& cookie, IClient::ICallCompletion* handler, void* userCtx)
+        CallContext(std::string_view req, const Er::PropertyBag& args, const std::string& cookie, IClient::ICallCompletion::Ptr handler)
             : uri(req)
             , handler(handler)
-            , userCtx(userCtx)
         {
             request.set_request(std::string(req));
             request.set_cookie(cookie);
@@ -221,23 +212,22 @@ private:
         }
     };
     
-    class ClientReadReactor final
+    class ServiceReplyStreamReader final
         : public grpc::ClientReadReactor<erebus::ServiceReply>
     {
     public:
-        ~ClientReadReactor()
+        ~ServiceReplyStreamReader()
         {
-            Er::Log2::debug(m_owner->log(), "{}.ClientReadReactor::~ClientReadReactor()", Er::Format::ptr(this));
+            Er::Log2::debug(m_owner->log(), "{}.ServiceReplyStreamReader::~ServiceReplyStreamReader()", Er::Format::ptr(this));
             Er::Log2::Indent idt(m_owner->log());
         }
 
-        ClientReadReactor(ClientImpl* owner, erebus::Erebus::Stub* stub, std::string_view req, const Er::PropertyBag& args, IStreamCompletion* handler, void* context)
+        ServiceReplyStreamReader(ClientImpl* owner, erebus::Erebus::Stub* stub, std::string_view req, const Er::PropertyBag& args, IStreamCompletion::Ptr handler)
             : m_owner(owner)
             , m_uri(req)
             , m_handler(handler)
-            , m_userCtx(context)
         {
-            Er::Log2::debug(m_owner->log(), "{}.ClientReadReactor::ClientReadReactor({})", Er::Format::ptr(this), m_uri);
+            Er::Log2::debug(m_owner->log(), "{}.ServiceReplyStreamReader::ServiceReplyStreamReader({})", Er::Format::ptr(this), m_uri);
             Er::Log2::Indent idt(m_owner->log());
 
             stub->async()->GenericStream(&m_context, &m_request, this);
@@ -247,28 +237,37 @@ private:
 
         void OnReadDone(bool ok) override
         {
-            Er::Log2::debug(m_owner->log(), "{}.ClientReadReactor::OnReadDone({}, {})", Er::Format::ptr(this), m_uri, ok);
+            Er::Log2::debug(m_owner->log(), "{}.ServiceReplyStreamReader::OnReadDone({}, {})", Er::Format::ptr(this), m_uri, ok);
             Er::Log2::Indent idt(m_owner->log());
 
             if (ok)
             {
-                if (m_reply.has_exception())
-                {
-                    auto e = m_owner->unmarshalException(m_reply);
-                    Er::Log2::error(m_owner->log(), "Failed to call {}:{}", m_context.peer(), m_uri, e.what());
+                Er::Util::ExceptionLogger xcptLogger(m_owner->log());
 
-                    if (m_handler->handleException(m_uri, m_userCtx, std::move(e)) == IClient::IStreamCompletion::Should::Cancel)
+                try
+                {
+                    if (m_reply.has_exception())
                     {
-                        m_context.TryCancel();
+                        auto e = m_owner->unmarshalException(m_reply);
+                        Er::Log2::error(m_owner->log(), "Failed to call {}:{}", m_context.peer(), m_uri, e.what());
+
+                        if (m_handler->handleException(std::move(e)) == Er::CallbackResult::Cancel)
+                        {
+                            m_context.TryCancel();
+                        }
+                    }
+                    else
+                    {
+                        auto reply = m_owner->unmarshal(m_reply);
+                        if (m_handler->handleFrame(std::move(reply)) == Er::CallbackResult::Cancel)
+                        {
+                            m_context.TryCancel();
+                        }
                     }
                 }
-                else
+                catch (...)
                 {
-                    auto reply = m_owner->unmarshal(m_reply);
-                    if (m_handler->handleFrame(m_uri, m_userCtx, std::move(reply)) == IClient::IStreamCompletion::Should::Cancel)
-                    {
-                        m_context.TryCancel();
-                    }
+                    Er::dispatchException(std::current_exception(), xcptLogger);
                 }
 
                 // we have to drain the completion queue even if we cancel
@@ -278,20 +277,25 @@ private:
 
         void OnDone(const grpc::Status& status) override
         {
-            Er::Log2::debug(m_owner->log(), "{}.ClientReadReactor::OnDone({}, {})", Er::Format::ptr(this), m_uri, int(status.error_code()));
+            Er::Log2::debug(m_owner->log(), "{}.ServiceReplyStreamReader::OnDone({}, {})", Er::Format::ptr(this), m_uri, int(status.error_code()));
             Er::Log2::Indent idt(m_owner->log());
 
-            if (!status.ok())
-            {
-                auto resultCode = mapGrpcStatus(status.error_code());
-                auto errorMsg = status.error_message();
-                Er::Log2::error(m_owner->log(), "Stream from {} terminated with an error: {} ({})", m_context.peer(), resultCode, errorMsg);
+            Er::Util::ExceptionLogger xcptLogger(m_owner->log());
 
-                m_handler->handleTransportError(m_userCtx, resultCode, std::move(errorMsg));
-            }
-            else
+            try
             {
-                m_handler->handleEndOfStream(m_uri, m_userCtx);
+                if (!status.ok())
+                {
+                    auto resultCode = mapGrpcStatus(status.error_code());
+                    auto errorMsg = status.error_message();
+                    Er::Log2::error(m_owner->log(), "Stream from {} terminated with an error: {} ({})", m_context.peer(), resultCode, errorMsg);
+
+                    m_handler->handleTransportError(resultCode, std::move(errorMsg));
+                }
+            }
+            catch (...)
+            {
+                Er::dispatchException(std::current_exception(), xcptLogger);
             }
 
             delete this;
@@ -300,12 +304,263 @@ private:
     private:
         ClientImpl* const m_owner;
         std::string m_uri;
-        IStreamCompletion* m_handler;
-        void* m_userCtx;
+        IStreamCompletion::Ptr m_handler;
         erebus::ServiceRequest m_request;
         grpc::ClientContext m_context;
         erebus::ServiceReply m_reply;
     };
+
+    class PropertyMappingStreamReader final
+        : public grpc::ClientReadReactor<erebus::PropertyInfo>
+    {
+    public:
+        ~PropertyMappingStreamReader()
+        {
+            Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamReader::~PropertyMappingStreamReader()", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_owner->log());
+        }
+
+        PropertyMappingStreamReader(ClientImpl* owner, erebus::Erebus::Stub* stub, IGetPropertyMappingCompletion::Ptr handler)
+            : m_owner(owner)
+            , m_handler(handler)
+        {
+            Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamReader::PropertyMappingStreamReader()", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_owner->log());
+
+            stub->async()->GetPropertyMapping(&m_context, &m_request, this);
+            StartRead(&m_reply);
+            StartCall();
+        }
+
+        void OnReadDone(bool ok) override
+        {
+            Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamReader::OnReadDone({})", Er::Format::ptr(this), ok);
+            Er::Log2::Indent idt(m_owner->log());
+
+            if (ok)
+            {
+                Er::Util::ExceptionLogger xcptLogger(m_owner->log());
+
+                try
+                {
+                    auto id = m_reply.id();
+                    auto type = static_cast<Er::PropertyType>(m_reply.type());
+                    auto& name = m_reply.name();
+                    auto& readableName = m_reply.readable_name();
+
+                    if (m_handler->handleProperty(id, type, name, readableName) == Er::CallbackResult::Cancel)
+                    {
+                        m_context.TryCancel();
+                    }
+
+                }
+                catch (...)
+                {
+                    Er::dispatchException(std::current_exception(), xcptLogger);
+                }
+
+                // we have to drain the completion queue even if we cancel
+                StartRead(&m_reply);
+            }
+        }
+
+        void OnDone(const grpc::Status& status) override
+        {
+            Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamReader::OnDone({}, {})", Er::Format::ptr(this), int(status.error_code()));
+            Er::Log2::Indent idt(m_owner->log());
+
+            Er::Util::ExceptionLogger xcptLogger(m_owner->log());
+
+            try
+            {
+                if (!status.ok())
+                {
+                    auto resultCode = mapGrpcStatus(status.error_code());
+                    auto errorMsg = status.error_message();
+                    Er::Log2::error(m_owner->log(), "Stream from {} terminated with an error: {} ({})", m_context.peer(), resultCode, errorMsg);
+
+                    m_handler->handleTransportError(resultCode, std::move(errorMsg));
+                }
+            }
+            catch (...)
+            {
+                Er::dispatchException(std::current_exception(), xcptLogger);
+            }
+
+            delete this;
+        }
+
+    private:
+        ClientImpl* const m_owner;
+        IGetPropertyMappingCompletion::Ptr m_handler;
+        erebus::Void m_request;
+        grpc::ClientContext m_context;
+        erebus::PropertyInfo m_reply;
+    };
+
+    class PropertyMappingStreamWriter final
+        : public grpc::ClientWriteReactor<erebus::PutPropertyMappingRequest>
+    {
+    public:
+        ~PropertyMappingStreamWriter()
+        {
+            Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamWriter::~PropertyMappingStreamWriter()", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_owner->log());
+        }
+
+        PropertyMappingStreamWriter(ClientImpl* owner, erebus::Erebus::Stub* stub, IPutPropertyMappingCompletion::Ptr handler)
+            : m_owner(owner)
+            , m_handler(handler)
+        {
+            Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamWriter::PropertyMappingStreamWriter()", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_owner->log());
+
+            Er::enumerateProperties(
+                [this](const Er::PropertyInfo* pi) -> bool
+                {
+                    m_mapping.push_back(pi);
+                    return true;
+                });
+
+            stub->async()->PutPropertyMapping(&m_context, &m_reply, this);
+
+            nextWrite();
+            StartCall();
+        }
+
+        void OnWriteDone(bool ok) override 
+        {
+            Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamWriter::OnWriteDone({})", Er::Format::ptr(this), ok);
+            Er::Log2::Indent idt(m_owner->log());
+
+            if (ok) 
+            { 
+                nextWrite(); 
+            }
+        }
+
+        void OnDone(const grpc::Status& status) override 
+        {
+            Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamWriter::OnWriteDone({})", Er::Format::ptr(this), static_cast<int>(status.error_code()));
+            Er::Log2::Indent idt(m_owner->log());
+
+            Er::Util::ExceptionLogger xcptLogger(m_owner->log());
+
+            try
+            {
+                if (!status.ok())
+                {
+                    auto resultCode = mapGrpcStatus(status.error_code());
+                    auto errorMsg = status.error_message();
+                    Er::Log2::error(m_owner->log(), "Stream to {} terminated with an error: {} ({})", m_context.peer(), resultCode, errorMsg);
+
+                    m_handler->handleTransportError(resultCode, std::move(errorMsg));
+                }
+            }
+            catch (...)
+            {
+                Er::dispatchException(std::current_exception(), xcptLogger);
+            }
+
+            delete this;
+        }
+
+    private:
+        void nextWrite()
+        {
+            ErAssert(m_nextIndex < m_mapping.size());
+
+            Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamWriter::nextWrite()", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_owner->log());
+
+            m_request.set_cookie(m_owner->cookie());
+
+            auto prop = m_mapping[m_nextIndex++];
+
+            auto m = m_request.mutable_mapping();
+            m->set_id(prop->unique());
+            m->set_type(static_cast<std::uint32_t>(prop->type()));
+            m->set_name(prop->name());
+            m->set_readable_name(prop->readableName());
+
+            StartWrite(&m_request);
+        }
+
+        ClientImpl* const m_owner;
+        IPutPropertyMappingCompletion::Ptr m_handler;
+        erebus::PutPropertyMappingRequest m_request;
+        grpc::ClientContext m_context;
+        erebus::Void m_reply;
+        std::vector<const Er::PropertyInfo*> m_mapping;
+        std::size_t m_nextIndex = 0;
+    };
+
+    void completePing(std::shared_ptr<PingContext> ctx, grpc::Status status)
+    {
+        Er::Log2::debug(m_log, "{}.ClientImpl::completePing({})", Er::Format::ptr(this), static_cast<int>(status.error_code()));
+        Er::Log2::Indent idt(m_log);
+
+        Er::Util::ExceptionLogger xcptLogger(m_log);
+
+        try
+        {
+            if (!status.ok())
+            {
+                auto resultCode = mapGrpcStatus(status.error_code());
+                auto errorMsg = status.error_message();
+                Er::Log2::error(m_log, "Failed to ping {}: {} ({})", ctx->context.peer(), resultCode, errorMsg);
+
+                ctx->handler->handleTransportError(resultCode, std::move(errorMsg));
+            }
+            else
+            {
+                auto finished = Er::System::PackedTime::now();
+                auto milliseconds = (finished - ctx->started) / 1000;
+
+                ctx->handler->handleReply(std::chrono::milliseconds(milliseconds));
+            }
+        }
+        catch (...)
+        {
+            Er::dispatchException(std::current_exception(), xcptLogger);
+        }
+    }
+
+    void completeCall(std::shared_ptr<CallContext> ctx, grpc::Status status)
+    {
+        Er::Log2::debug(m_log, "{}.ClientImpl::completeCall({})", Er::Format::ptr(this), static_cast<int>(status.error_code()));
+        Er::Log2::Indent idt(m_log);
+
+        Er::Util::ExceptionLogger xcptLogger(m_log);
+
+        try
+        {
+            if (!status.ok())
+            {
+                auto resultCode = mapGrpcStatus(status.error_code());
+                auto errorMsg = status.error_message();
+                Er::Log2::error(m_log, "Failed to call {}:{}: {} ({})", ctx->context.peer(), ctx->uri, resultCode, errorMsg);
+
+                ctx->handler->handleTransportError(resultCode, std::move(errorMsg));
+            }
+            else if (ctx->reply.has_exception())
+            {
+                auto e = unmarshalException(ctx->reply);
+                Er::Log2::error(m_log, "Failed to call {}:{}", ctx->context.peer(), ctx->uri, e.what());
+
+                ctx->handler->handleException(std::move(e));
+            }
+            else
+            {
+                auto reply = unmarshal(ctx->reply);
+                ctx->handler->handleReply(std::move(reply));
+            }
+        }
+        catch (...)
+        {
+            Er::dispatchException(std::current_exception(), xcptLogger);
+        }
+    }
 
     Er::Exception unmarshalException(const erebus::ServiceReply& reply)
     {
@@ -364,8 +619,8 @@ private:
 
     static constexpr size_t CookieLength = 32;
 
-    ChannelSettings m_params;
-    bool m_grpcReady;
+    const ChannelSettings m_params;
+    const bool m_grpcReady;
     const std::unique_ptr<erebus::Erebus::Stub> m_stub;
     Er::Log2::ILogger* const m_log;
     const std::string m_cookie;

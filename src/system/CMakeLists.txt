@@ -127,9 +127,8 @@ target_link_libraries(
 
 target_compile_definitions(erebus-system PRIVATE ER_SYSTEM_EXPORTS)
 
+set_property(TARGET erebus-system PROPERTY PREFIX "")
+
 if(NOT ER_BUILD_CLIENT_LIBS_ONLY)
-    include(CTest)
-    if(BUILD_TESTING)
-        add_subdirectory(tests)
-    endif()
+    add_subdirectory(tests)
 endif()

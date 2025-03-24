@@ -2,9 +2,10 @@
 
 #include "common.hpp"
 
-int InstanceCounter::instances = 0;
+std::uint16_t g_serverPort = 998;
 
-class App
+
+class App final
     : public Erp::Testing::TestApplication
 {
 public:
@@ -16,14 +17,13 @@ public:
     }
 
 private:
-    void addLoggers(Er::Log2::ITee* main) override
+    void addCmdLineOptions(boost::program_options::options_description& options) override
     {
-        Base::addLoggers(main);
+        Base::addCmdLineOptions(options);
 
-        {
-            auto sink = std::make_shared<CapturedStderr>();
-            main->addSink("capture", sink);
-        }
+        options.add_options()
+            ("port", boost::program_options::value<std::uint16_t>(&g_serverPort)->default_value(998), "TCP port to use")
+            ;
     }
 };
 
@@ -33,7 +33,7 @@ int main(int argc, char** argv)
     try
     {
         App app;
-        
+
         auto resut = app.exec(argc, argv);
 
         return resut;

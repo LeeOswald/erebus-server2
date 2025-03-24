@@ -28,6 +28,8 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+option(ER_BUILD_CLIENT_LIBS_ONLY "Build client libs only" OFF)
+
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/a")
@@ -99,6 +101,10 @@ include_directories(
 # Windows-specific settings
 if(ER_WINDOWS)
     add_definitions(-D_WIN32_WINNT=0x0602)
+endif()
+
+if(NOT ER_BUILD_CLIENT_LIBS_ONLY)
+    include(CTest)
 endif()
 
 add_subdirectory(src)

@@ -11,44 +11,59 @@ struct IClient
 {
     struct ICompletion
     {
-        virtual void handleTransportError(void* context, Er::ResultCode result, std::string&& message) = 0;
-
-    protected:
         virtual ~ICompletion() {}
+
+        virtual void handleTransportError(Er::ResultCode result, std::string&& message) = 0;
     };
 
     struct IPingCompletion
         : public ICompletion
     {
-        virtual void handleReply(void* context, std::chrono::milliseconds rtt) = 0;
+        using Ptr = std::shared_ptr<IPingCompletion>;
+
+        virtual void handleReply(std::chrono::milliseconds rtt) = 0;
     };
 
     struct ICallCompletion
         : public ICompletion
     {
-        virtual void handleReply(const std::string& uri, void* context, Er::PropertyBag&& reply) = 0;
-        virtual void handleException(const std::string& uri, void* context, Er::Exception&& exception) = 0;
+        using Ptr = std::shared_ptr<ICallCompletion>;
+
+        virtual void handleReply(Er::PropertyBag&& reply) = 0;
+        virtual void handleException(Er::Exception&& exception) = 0;
+    };
+
+    struct IGetPropertyMappingCompletion
+        : public ICompletion
+    {
+        using Ptr = std::shared_ptr<IGetPropertyMappingCompletion>;
+
+        virtual CallbackResult handleProperty(std::uint32_t id, Er::PropertyType type, const std::string& name, const std::string& readableName) = 0;
+    };
+
+    struct IPutPropertyMappingCompletion
+        : public ICompletion
+    {
+        using Ptr = std::shared_ptr<IPutPropertyMappingCompletion>;
     };
 
     struct IStreamCompletion
         : public ICompletion
     {
-        enum class Should
-        {
-            Continue,
-            Cancel
-        };
+        using Ptr = std::shared_ptr<IStreamCompletion>;
 
-        virtual Should handleFrame(const std::string& uri, void* context, Er::PropertyBag&& frame) = 0;
-        virtual Should handleException(const std::string& uri, void* context, Er::Exception&& exception) = 0;
-        virtual void handleEndOfStream(const std::string& uri, void* context) = 0;
+        virtual CallbackResult handleFrame(Er::PropertyBag&& frame) = 0;
+        virtual CallbackResult handleException(Er::Exception&& exception) = 0;
     };
 
     using Ptr = std::unique_ptr<IClient>;
 
-    virtual void ping(std::size_t payloadSize, IPingCompletion* handler, void* context) = 0;
-    virtual void call(std::string_view request, const Er::PropertyBag& args, ICallCompletion* handler, void* context) = 0;
-    virtual void stream(std::string_view request, const Er::PropertyBag& args, IStreamCompletion* handler, void* context) = 0;
+    virtual void ping(std::size_t payloadSize, IPingCompletion::Ptr handler) = 0;
+    virtual void getPropertyMapping(IGetPropertyMappingCompletion::Ptr handler) = 0;
+    virtual void putPropertyMapping(IPutPropertyMappingCompletion::Ptr handler) = 0;
+    virtual void adddPropertyMapping(const Er::PropertyInfo* pi) = 0;
+    virtual void call(std::string_view request, const Er::PropertyBag& args, ICallCompletion::Ptr handler) = 0;
+    virtual void stream(std::string_view request, const Er::PropertyBag& args, IStreamCompletion::Ptr handler) = 0;
 
     virtual ~IClient() {};
 };

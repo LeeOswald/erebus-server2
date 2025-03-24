@@ -1,6 +1,4 @@
 
-enable_testing()
-
 add_executable(
     erebus-system-tests
     common.hpp
@@ -20,6 +18,8 @@ add_executable(
     property_bag.cpp
 )
 
-target_link_libraries(erebus-system-tests PRIVATE gtest::gtest erebus-system)
+target_link_libraries(erebus-system-tests PRIVATE erebus::testing erebus::system)
+
+add_test(NAME erebus-system COMMAND erebus-system-tests)
 
 
