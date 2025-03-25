@@ -3,47 +3,8 @@
 #include <erebus/ipc/grpc/grpc_client.hxx>
 #include <erebus/ipc/grpc/grpc_server.hxx>
 
-#include <erebus/system/waitable.hxx>
-
-
-template <class Interface>
-struct CompletionBase
-    : public Interface
-{
-    bool wait(std::chrono::milliseconds timeout = g_operationTimeout)
-    {
-        return m_complete.waitValueFor(true, timeout);
-    }
-
-    const std::optional<Er::ResultCode>& error() const
-    {
-        return m_error;
-    }
-
-    const std::string& errorMessage() const
-    {
-        return m_errorMessage;
-    }
-
-    void handlePropertyMappingExpired() override
-    {
-        m_propertyMappingExpired = true;
-        m_complete.setAndNotifyAll(true);
-    }
-
-    void handleTransportError(Er::ResultCode result, std::string&& message) override
-    {
-        m_error = result;
-        m_errorMessage = std::move(message);
-        m_complete.setAndNotifyAll(true);
-    }
-
-protected:
-    Er::Waitable<bool> m_complete;
-    bool m_propertyMappingExpired = false;
-    std::optional<Er::ResultCode> m_error;
-    std::string m_errorMessage;
-};
+#include <thread>
+#include <vector>
 
 
 class TestClientServer
@@ -74,23 +35,33 @@ public:
         m_server.reset();
     }
 
-    void startClient()
+    void startClient(std::size_t count)
     {
+        if (!count)
+            return;
+
         Er::Ipc::Grpc::ChannelSettings args(Er::format("127.0.0.1:{}", m_port));
 
         auto channel = Er::Ipc::Grpc::createChannel(args);
-        m_client = Er::Ipc::Grpc::createClient(args, channel, Er::Log2::get());
+
+        m_clients.clear();
+        m_clients.reserve(count);
+
+        for (std::size_t i = 0; i < count; ++i)
+        {
+            m_clients.push_back(Er::Ipc::Grpc::createClient(args, channel, Er::Log2::get()));
+        }
     }
 
     void stopClient()
     {
-        m_client.reset();
+        m_clients.clear();
     }
 
 protected:
     std::uint16_t m_port;
     Er::Ipc::IServer::Ptr m_server;
-    Er::Ipc::IClient::Ptr m_client;
+    std::vector<Er::Ipc::IClient::Ptr> m_clients;
 };
 
 
@@ -120,12 +91,12 @@ struct PingCompletion
 
 TEST_F(TestClientServer, FailToConnect)
 {
-    startClient();
+    startClient(1);
 
     {
         auto completion = std::make_shared<PingCompletion>(1);
 
-        m_client->ping(0, completion);
+        m_clients.front()->ping(0, completion);
 
         ASSERT_TRUE(completion->wait());
 
@@ -138,7 +109,7 @@ TEST_F(TestClientServer, FailToConnect)
 TEST_F(TestClientServer, Ping)
 {
     startServer();
-    startClient();
+    startClient(1);
 
     // zero-length payload
     {
@@ -147,7 +118,7 @@ TEST_F(TestClientServer, Ping)
 
         for (long i = 0; i < pingCount; ++i)
         {
-            m_client->ping(0, completion);
+            m_clients.front()->ping(0, completion);
         }
 
         ASSERT_TRUE(completion->wait());
@@ -168,7 +139,7 @@ TEST_F(TestClientServer, Ping)
         {
             long size = (i + 1) * 1024;
             payloadSize += size;
-            m_client->ping(size, completion);
+            m_clients.front()->ping(size, completion);
         }
 
         ASSERT_TRUE(completion->wait());
@@ -176,5 +147,63 @@ TEST_F(TestClientServer, Ping)
         EXPECT_FALSE(completion->error());
         EXPECT_EQ(completion->remainingCount, 0);
         EXPECT_EQ(completion->totalPayload, payloadSize);
+    }
+}
+
+TEST_F(TestClientServer, ConcurrentPing)
+{
+    struct ClientData
+    {
+        Er::Ipc::IClient* client;
+        std::shared_ptr<PingCompletion> completion;
+        const long pingCount;
+        const long payloadSize;
+        std::jthread worker;
+
+        ClientData(Er::Ipc::IClient* client, long pingCount, long payloadSize)
+            : client(client)
+            , completion(std::make_shared<PingCompletion>(pingCount))
+            , pingCount(pingCount)
+            , payloadSize(payloadSize)
+            , worker([this]() { run();  })
+        {
+        }
+
+        void run()
+        {
+            for (long i = 0; i < pingCount; ++i)
+            {
+                client->ping(payloadSize, completion);
+            }
+        }
+    };
+
+    const long clientCount = 10;
+
+    startServer();
+    startClient(clientCount);
+
+    const long pingCount = 100;
+
+    std::vector<std::unique_ptr<ClientData>> clients;
+    clients.reserve(clientCount);
+    for (long i = 0; i < clientCount; ++i)
+    {
+        clients.push_back(std::make_unique<ClientData>(m_clients[i].get(), pingCount, (i + 1) * 32));
+    }
+
+    for (auto& cli : clients)
+    {
+        cli->completion->wait();
+    }
+
+    long i = 0;
+    for (auto& cli : clients)
+    {
+        EXPECT_FALSE(cli->completion->error());
+        EXPECT_EQ(cli->completion->remainingCount, 0);
+        EXPECT_EQ(cli->completion->totalPayload, clients[i]->payloadSize * pingCount);
+
+        ++i;
     }
 }
