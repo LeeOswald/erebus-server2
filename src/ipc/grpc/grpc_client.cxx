@@ -103,9 +103,9 @@ public:
             &ctx->context,
             &ctx->request,
             &ctx->reply,
-            [this, ctx](grpc::Status status)
+            [this, ctx, payloadSize](grpc::Status status)
             {
-                completePing(ctx, status);
+                completePing(ctx, status, payloadSize);
             });
     }
 
@@ -183,8 +183,11 @@ private:
         {
             request.set_cookie(cookie);
             request.set_timestamp(started);
-            auto payload = makeNoise(payloadSize);
-            request.set_payload(std::move(payload));
+            if (payloadSize)
+            {
+                auto payload = makeNoise(payloadSize);
+                request.set_payload(std::move(payload));
+            }
         }
     };
 
@@ -495,7 +498,7 @@ private:
         std::size_t m_nextIndex = 0;
     };
 
-    void completePing(std::shared_ptr<PingContext> ctx, grpc::Status status)
+    void completePing(std::shared_ptr<PingContext> ctx, grpc::Status status, std::size_t payloadSize)
     {
         Er::Log2::debug(m_log, "{}.ClientImpl::completePing({})", Er::Format::ptr(this), static_cast<int>(status.error_code()));
         Er::Log2::Indent idt(m_log);
@@ -517,7 +520,7 @@ private:
                 auto finished = Er::System::PackedTime::now();
                 auto milliseconds = (finished - ctx->started) / 1000;
 
-                ctx->handler->handleReply(std::chrono::milliseconds(milliseconds));
+                ctx->handler->handleReply(payloadSize, std::chrono::milliseconds(milliseconds));
             }
         }
         catch (...)

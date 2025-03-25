@@ -21,7 +21,7 @@ struct IClient
     {
         using Ptr = std::shared_ptr<IPingCompletion>;
 
-        virtual void handleReply(std::chrono::milliseconds rtt) = 0;
+        virtual void handleReply(std::size_t payloadSize, std::chrono::milliseconds rtt) = 0;
     };
 
     struct ICallCompletion

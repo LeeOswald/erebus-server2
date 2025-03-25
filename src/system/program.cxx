@@ -265,10 +265,20 @@ void Program::globalMakeLogger()
     auto verbose = m_args.count("verbose") > 0;
     m_logger->setLevel(verbose ? Log2::Level::Debug : Log2::Level::Info);
 
-    auto tee = Log2::makeTee(ThreadSafe::No); // tee is called from the single logger thread
-    m_logger->addSink("tee", std::static_pointer_cast<Log2::ISink>(tee));
+    if (m_options & SyncLogger)
+    {
+        auto tee = Log2::makeTee(ThreadSafe::Yes);
+        m_logger->addSink("tee", std::static_pointer_cast<Log2::ISink>(tee));
 
-    addLoggers(tee.get());
+        addLoggers(tee.get());
+    }
+    else
+    {
+        auto tee = Log2::makeTee(ThreadSafe::No); // tee is called from the single logger thread
+        m_logger->addSink("tee", std::static_pointer_cast<Log2::ISink>(tee));
+
+        addLoggers(tee.get());
+    }
 
     Log2::set(m_logger.get());
 }

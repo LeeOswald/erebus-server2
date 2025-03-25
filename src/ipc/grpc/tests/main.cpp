@@ -3,6 +3,7 @@
 #include "common.hpp"
 
 std::uint16_t g_serverPort = 998;
+std::chrono::milliseconds g_operationTimeout{ 5 * 60 * 1000 };
 
 
 class App final
