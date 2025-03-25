@@ -13,6 +13,7 @@ struct IClient
     {
         virtual ~ICompletion() {}
 
+        virtual void handlePropertyMappingExpired() = 0;
         virtual void handleTransportError(Er::ResultCode result, std::string&& message) = 0;
     };
 

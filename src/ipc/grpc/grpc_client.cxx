@@ -259,6 +259,20 @@ private:
                             m_context.TryCancel();
                         }
                     }
+                    else if (m_reply.result() != erebus::CallResult::SUCCESS)
+                    {
+                        auto code = m_reply.result();
+                        if (code == erebus::CallResult::PROPERTY_MAPPING_EXPIRED)
+                        {
+                            Er::Log2::debug(m_owner->log(), "Property mapping expired for {}:{}", m_context.peer(), m_uri);
+                            m_handler->handlePropertyMappingExpired();
+                        }
+                        else
+                        {
+                            auto message = Er::format("Unexpected error calling {}:{}: {}", m_context.peer(), m_uri, static_cast<int>(code));
+                            m_handler->handleTransportError(Er::Result::Failure, std::move(message));
+                        }
+                    }
                     else
                     {
                         auto reply = m_owner->unmarshal(m_reply);
@@ -552,6 +566,20 @@ private:
                 Er::Log2::error(m_log, "Failed to call {}:{}", ctx->context.peer(), ctx->uri, e.what());
 
                 ctx->handler->handleException(std::move(e));
+            }
+            else if (ctx->reply.result() != erebus::CallResult::SUCCESS)
+            {
+                auto code = ctx->reply.result();
+                if (code == erebus::CallResult::PROPERTY_MAPPING_EXPIRED)
+                {
+                    Er::Log2::debug(m_log, "Property mapping expired for {}:{}", ctx->context.peer(), ctx->uri);
+                    ctx->handler->handlePropertyMappingExpired();
+                }
+                else
+                {
+                    auto message = Er::format("Unexpected error calling {}:{}: {}", ctx->context.peer(), ctx->uri, static_cast<int>(code));
+                    ctx->handler->handleTransportError(Er::Result::Failure, std::move(message));
+                }
             }
             else
             {

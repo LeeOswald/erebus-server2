@@ -25,16 +25,22 @@ struct CompletionBase
         return m_errorMessage;
     }
 
+    void handlePropertyMappingExpired() override
+    {
+        m_propertyMappingExpired = true;
+        m_complete.setAndNotifyAll(true);
+    }
+
     void handleTransportError(Er::ResultCode result, std::string&& message) override
     {
         m_error = result;
         m_errorMessage = std::move(message);
-
         m_complete.setAndNotifyAll(true);
     }
 
 protected:
     Er::Waitable<bool> m_complete;
+    bool m_propertyMappingExpired = false;
     std::optional<Er::ResultCode> m_error;
     std::string m_errorMessage;
 };
@@ -88,39 +94,56 @@ protected:
 };
 
 
+struct PingCompletion
+    : public CompletionBase<Er::Ipc::IClient::IPingCompletion>
+{
+    PingCompletion(long count)
+        : remainingCount(count)
+    {
+    }
+
+    void handleReply(std::size_t payloadSize, std::chrono::milliseconds rtt) override
+    {
+        Er::Log2::info(Er::Log2::get(), "Pinged peer with {} bytes of data in {} ms", payloadSize, rtt.count());
+
+        --remainingCount;
+        totalPayload += payloadSize;
+
+        if (remainingCount <= 0)
+            m_complete.setAndNotifyAll(true);
+    }
+
+    long remainingCount;
+    long totalPayload = 0;
+};
+
+
+TEST_F(TestClientServer, FailToConnect)
+{
+    startClient();
+
+    {
+        auto completion = std::make_shared<PingCompletion>(1);
+
+        m_client->ping(0, completion);
+
+        ASSERT_TRUE(completion->wait());
+
+        EXPECT_TRUE(completion->error());
+        EXPECT_EQ(completion->remainingCount, 1);
+        EXPECT_EQ(completion->totalPayload, 0);
+    }
+}
+
 TEST_F(TestClientServer, Ping)
 {
-    struct PingCompletion
-        : public CompletionBase<Er::Ipc::IClient::IPingCompletion>
-    {
-        PingCompletion(long count, long totalPayload)
-            : remainingCount(count)
-            , remainingPayload(totalPayload)
-        {
-        }
-
-        void handleReply(std::size_t payloadSize, std::chrono::milliseconds rtt) override
-        {
-            Er::Log2::info(Er::Log2::get(), "Pinged peer with {} bytes of data in {} ms", payloadSize, rtt.count());
-
-            --remainingCount;
-            remainingPayload -= payloadSize;
-
-            if (remainingCount <= 0)
-                m_complete.setAndNotifyAll(true);
-        }
-
-        long remainingCount;
-        long remainingPayload;
-    };
-
     startServer();
     startClient();
 
     // zero-length payload
     {
         const long pingCount = 10;
-        auto completion = std::make_shared<PingCompletion>(pingCount, 0);
+        auto completion = std::make_shared<PingCompletion>(pingCount);
 
         for (long i = 0; i < pingCount; ++i)
         {
@@ -131,25 +154,20 @@ TEST_F(TestClientServer, Ping)
 
         EXPECT_FALSE(completion->error());
         EXPECT_EQ(completion->remainingCount, 0);
-        EXPECT_EQ(completion->remainingPayload, 0);
+        EXPECT_EQ(completion->totalPayload, 0);
     }
 
     // nonzero-length payload
     {
         const long pingCount = 10;
-
         long payloadSize = 0;
+       
+        auto completion = std::make_shared<PingCompletion>(pingCount);
+
         for (long i = 0; i < pingCount; ++i)
         {
             long size = (i + 1) * 1024;
             payloadSize += size;
-        }
-
-        auto completion = std::make_shared<PingCompletion>(pingCount, payloadSize);
-
-        for (long i = 0; i < pingCount; ++i)
-        {
-            long size = (i + 1) * 1024;
             m_client->ping(size, completion);
         }
 
@@ -157,6 +175,6 @@ TEST_F(TestClientServer, Ping)
 
         EXPECT_FALSE(completion->error());
         EXPECT_EQ(completion->remainingCount, 0);
-        EXPECT_EQ(completion->remainingPayload, 0);
+        EXPECT_EQ(completion->totalPayload, payloadSize);
     }
 }
