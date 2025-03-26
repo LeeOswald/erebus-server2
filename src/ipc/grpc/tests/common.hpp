@@ -36,6 +36,11 @@ struct CompletionBase
         return m_errorMessage;
     }
 
+    bool propertyMappingExpired() const
+    {
+        return m_propertyMappingExpired;
+    }
+
     void handlePropertyMappingExpired() override
     {
         m_propertyMappingExpired = true;

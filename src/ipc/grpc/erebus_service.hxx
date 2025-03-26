@@ -200,7 +200,7 @@ private:
             Er::Log2::Indent idt(m_log);
 
             if (!ok) 
-                Finish(grpc::Status(grpc::StatusCode::UNKNOWN, "Unexpected Failure"));
+                Finish(grpc::Status(grpc::StatusCode::INTERNAL, "Unexpected Failure"));
             else
                 Continue();
         }
@@ -303,7 +303,7 @@ private:
             Er::Log2::Indent idt(m_log);
 
             if (!ok)
-                Finish(grpc::Status(grpc::StatusCode::UNKNOWN, "Unexpected Failure"));
+                Finish(grpc::Status(grpc::StatusCode::INTERNAL, "Unexpected Failure"));
             else
                 Continue();
         }

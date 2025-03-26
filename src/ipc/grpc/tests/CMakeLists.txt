@@ -2,6 +2,7 @@
 add_executable(
     erebus-grpc-tests
     common.hpp
+    call.cpp
     main.cpp
     ping.cpp
 )

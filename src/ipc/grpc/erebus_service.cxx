@@ -189,7 +189,7 @@ grpc::ServerUnaryReactor* ErebusService::GenericRpc(grpc::CallbackServerContext*
     {
         auto msg = Er::format("No handlers for [{}]", requestStr);
         Er::Log2::writeln(m_params.log, Er::Log2::Level::Error, msg);
-        reactor->Finish(grpc::Status(grpc::UNAVAILABLE, msg));
+        reactor->Finish(grpc::Status(grpc::UNIMPLEMENTED, msg));
         return reactor.release();
     }
 
@@ -238,7 +238,7 @@ grpc::ServerWriteReactor<erebus::ServiceReply>* ErebusService::GenericStream(grp
     {
         auto msg = Er::format("No handlers for [{}]", requestStr);
         Er::Log2::writeln(m_params.log, Er::Log2::Level::Error, msg);
-        reactor->Finish(grpc::Status(grpc::UNAVAILABLE, msg));
+        reactor->Finish(grpc::Status(grpc::UNIMPLEMENTED, msg));
         return reactor.release();
     }
 

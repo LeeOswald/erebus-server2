@@ -7,17 +7,20 @@
 #include <vector>
 
 
-class TestClientServer
+namespace
+{
+
+class TestPing
     : public testing::Test
 {
 public:
-    ~TestClientServer()
+    ~TestPing()
     {
         stopClient();
         stopServer();
     }
 
-    TestClientServer()
+    TestPing()
         : m_port(g_serverPort)
     {
     }
@@ -75,7 +78,7 @@ struct PingCompletion
 
     void handleReply(std::size_t payloadSize, std::chrono::milliseconds rtt) override
     {
-        Er::Log2::info(Er::Log2::get(), "Pinged peer with {} bytes of data in {} ms", payloadSize, rtt.count());
+        Er::Log2::debug(Er::Log2::get(), "Pinged peer with {} bytes of data in {} ms", payloadSize, rtt.count());
 
         --remainingCount;
         totalPayload += payloadSize;
@@ -89,7 +92,10 @@ struct PingCompletion
 };
 
 
-TEST_F(TestClientServer, FailToConnect)
+} // namespace {}
+
+
+TEST_F(TestPing, FailToConnect)
 {
     startClient(1);
 
@@ -106,7 +112,7 @@ TEST_F(TestClientServer, FailToConnect)
     }
 }
 
-TEST_F(TestClientServer, Ping)
+TEST_F(TestPing, Ping)
 {
     startServer();
     startClient(1);
@@ -150,7 +156,7 @@ TEST_F(TestClientServer, Ping)
     }
 }
 
-TEST_F(TestClientServer, ConcurrentPing)
+TEST_F(TestPing, ConcurrentPing)
 {
     struct ClientData
     {

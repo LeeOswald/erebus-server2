@@ -16,15 +16,15 @@ public:
     struct Option
     {
         static constexpr Flag DateTime = 0;   
-        static constexpr Flag Time = 1;       // default
+        static constexpr Flag Time = 1;
         static constexpr Flag Level = 2;
         static constexpr Flag Tid = 3;
         static constexpr Flag TzUtc = 4;
-        static constexpr Flag TzLocal = 5;    // default
-        static constexpr Flag Lf = 6;         // default
+        static constexpr Flag TzLocal = 5;
+        static constexpr Flag Lf = 6;
         static constexpr Flag CrLf = 7;
         static constexpr Flag NoLf = 8;       // neiter CR nor LF
-        static constexpr Flag Component = 9;  // default
+        static constexpr Flag Component = 9;
     };
 
     using Options = FlagsPack<32, Option>;

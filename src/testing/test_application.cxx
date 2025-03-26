@@ -42,11 +42,24 @@ void TestApplication::addCmdLineOptions(boost::program_options::options_descript
 
 void TestApplication::addLoggers(Er::Log2::ITee* main)
 {
+#if ER_DEBUG
+    auto formatOptions = Er::Log2::SimpleFormatter::Options{
+        Er::Log2::SimpleFormatter::Option::Option::Time,
+        Er::Log2::SimpleFormatter::Option::Option::Level,
+        Er::Log2::SimpleFormatter::Option::Option::Tid,
+        Er::Log2::SimpleFormatter::Option::Option::TzLocal,
+        Er::Log2::SimpleFormatter::Option::Option::Lf,
+        Er::Log2::SimpleFormatter::Option::Option::Component
+    };
+#else
+    auto formatOptions = Er::Log2::SimpleFormatter::Options{ Er::Log2::SimpleFormatter::Option::Lf };
+#endif
+
 #if ER_WINDOWS
     if (Er::isDebuggerPresent())
     {
         auto sink = Er::Log2::makeDebuggerSink(
-            Er::Log2::SimpleFormatter::make(Er::Log2::SimpleFormatter::Options{ Er::Log2::SimpleFormatter::Option::Lf }),
+            Er::Log2::SimpleFormatter::make(formatOptions),
             Er::Log2::Filter{}
         );
 
@@ -57,11 +70,11 @@ void TestApplication::addLoggers(Er::Log2::ITee* main)
     {
         auto sink = Er::Log2::makeOStreamSink(
             std::cout,
-            Er::Log2::SimpleFormatter::make(Er::Log2::SimpleFormatter::Options{ Er::Log2::SimpleFormatter::Option::Lf }),
+            Er::Log2::SimpleFormatter::make(formatOptions),
             [](const Er::Log2::Record* r)
-        {
-            return r->level() < Er::Log2::Level::Error;
-        }
+            {
+                return r->level() < Er::Log2::Level::Error;
+            }
         );
 
         main->addSink("std::cout", sink);
@@ -70,11 +83,11 @@ void TestApplication::addLoggers(Er::Log2::ITee* main)
     {
         auto sink = Er::Log2::makeOStreamSink(
             std::cerr,
-            Er::Log2::SimpleFormatter::make(Er::Log2::SimpleFormatter::Options{ Er::Log2::SimpleFormatter::Option::Lf }),
+            Er::Log2::SimpleFormatter::make(formatOptions),
             [](const Er::Log2::Record* r)
-        {
-            return r->level() >= Er::Log2::Level::Error;
-        }
+            {
+                return r->level() >= Er::Log2::Level::Error;
+            }
         );
 
         main->addSink("std::cerr", sink);
