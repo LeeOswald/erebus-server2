@@ -41,9 +41,9 @@ message Exception {
 
 service Erebus {
   rpc Ping(PingRequest) returns(PingReply) {}
-  rpc GetPropertyMapping(Void) returns(stream PropertyInfo) {}
+  rpc GetPropertyMapping(Void) returns(stream GetPropertyMappingReply) {}
   rpc PutPropertyMapping(stream PutPropertyMappingRequest) returns(Void) {}
-  rpc GenericRpc(ServiceRequest) returns(ServiceReply) {}
+  rpc GenericCall(ServiceRequest) returns(ServiceReply) {}
   rpc GenericStream(ServiceRequest) returns(stream ServiceReply) {}
 }
 
@@ -60,17 +60,25 @@ message PingReply {
 
 message PutPropertyMappingRequest {
   string cookie = 1;
+  uint32 mappingVer = 2;
+  PropertyInfo mapping = 3;
+}
+
+message GetPropertyMappingReply {
+  uint32 mappingVer = 1;
   PropertyInfo mapping = 2;
 }
 
 message ServiceRequest {
   string request = 1;
   optional string cookie = 2;
-  repeated Property args = 3;
+  uint32 mappingVer = 3;
+  repeated Property args = 4;
 }
 
 message ServiceReply {
   CallResult result = 1;
   optional Exception exception = 2;  
-  repeated Property props = 3;
+  uint32 mappingVer = 3;
+  repeated Property props = 4;
 }

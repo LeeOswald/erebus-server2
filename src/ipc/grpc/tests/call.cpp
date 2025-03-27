@@ -16,6 +16,7 @@ public:
     void registerService(Er::Ipc::IServer* container) override
     {
         container->registerService("echo", shared_from_this());
+        container->registerService("throws", shared_from_this());
     }
 
     void unregisterService(Er::Ipc::IServer* container) override
@@ -27,7 +28,8 @@ public:
     {
         if (request == "echo")
             return echo(cookie, args);
-
+        else if (request == "throws")
+            return throws(cookie, args);
 
         ErThrow(Er::format("Unsupported request {}", request));
     }
@@ -50,6 +52,17 @@ private:
     Er::PropertyBag echo(std::string_view cookie, const Er::PropertyBag& args)
     {
         return args;
+    }
+
+    Er::PropertyBag throws(std::string_view cookie, const Er::PropertyBag& args)
+    {
+        Er::Exception e(std::source_location::current(), "This is my exception");
+        for (auto& prop : args)
+        {
+            e.add(prop);
+        }
+
+        throw e;
     }
 };
 
@@ -99,6 +112,22 @@ public:
         m_client.reset();
     }
 
+    bool putPropertyMapping()
+    {
+        auto completion = std::make_shared<CompletionBase<Er::Ipc::IClient::ICompletion>>();
+
+        m_client->putPropertyMapping(completion);
+        return completion->wait() && completion->success();
+    }
+
+    bool getPropertyMapping()
+    {
+        auto completion = std::make_shared<CompletionBase<Er::Ipc::IClient::ICompletion>>();
+
+        m_client->getPropertyMapping(completion);
+        return completion->wait() && completion->success();
+    }
+
 protected:
     std::uint16_t m_port;
     Er::Ipc::IServer::Ptr m_server;
@@ -132,7 +161,83 @@ struct CallCompletion
 } // namespace {}
 
 
-TEST_F(TestCall, PropertyMappingExpired)
+TEST_F(TestCall, NormalCall)
+{
+    startServer();
+    startClient();
+
+    {
+        auto completion = std::make_shared<CallCompletion>();
+
+        Er::PropertyBag args;
+        args.push_back(Er::Property(uint64_t(12), Er::Unspecified::UInt64));
+        args.push_back(Er::Property(std::string("Hello"), Er::Unspecified::String));
+
+        m_client->call("echo", args, completion);
+
+        ASSERT_TRUE(completion->wait());
+
+        EXPECT_FALSE(completion->error());
+        EXPECT_TRUE(completion->serverPropertyMappingExpired());
+    }
+
+    ASSERT_TRUE(putPropertyMapping());
+
+    {
+        auto completion = std::make_shared<CallCompletion>();
+
+        Er::PropertyBag args;
+        args.push_back(Er::Property(uint64_t(12), Er::Unspecified::UInt64));
+        args.push_back(Er::Property(std::string("Hello"), Er::Unspecified::String));
+
+        m_client->call("echo", args, completion);
+
+        ASSERT_TRUE(completion->wait());
+
+        EXPECT_FALSE(completion->error());
+        EXPECT_FALSE(completion->serverPropertyMappingExpired());
+        EXPECT_TRUE(completion->clientPropertyMappingExpired());
+    }
+
+    ASSERT_TRUE(getPropertyMapping());
+
+    {
+        auto completion = std::make_shared<CallCompletion>();
+
+        Er::PropertyBag args;
+        args.push_back(Er::Property(uint64_t(12), Er::Unspecified::UInt64));
+        args.push_back(Er::Property(std::string("Hello"), Er::Unspecified::String));
+
+        m_client->call("echo", args, completion);
+
+        ASSERT_TRUE(completion->wait());
+
+        EXPECT_FALSE(completion->error());
+        EXPECT_FALSE(completion->serverPropertyMappingExpired());
+        EXPECT_FALSE(completion->clientPropertyMappingExpired());
+
+        ASSERT_TRUE(completion->reply);
+
+        auto& reply = *completion->reply;
+        ASSERT_EQ(reply.size(), 2);
+
+        {
+            auto v = Er::get<uint64_t>(reply, Er::Unspecified::UInt64);
+            ASSERT_TRUE(v);
+
+            EXPECT_EQ(*v, 12);
+        }
+
+        {
+            auto v = Er::get<std::string>(reply, Er::Unspecified::String);
+            ASSERT_TRUE(v);
+
+            EXPECT_STREQ(v->c_str(), "Hello");
+        }
+    }
+}
+
+TEST_F(TestCall, NotImplemented)
 {
     startServer();
     startClient();
@@ -143,10 +248,51 @@ TEST_F(TestCall, PropertyMappingExpired)
     args.push_back(Er::Property(uint64_t(12), Er::Unspecified::UInt64));
     args.push_back(Er::Property(std::string("Hello"), Er::Unspecified::String));
 
-    m_client->call("echo", args, completion);
+    m_client->call("bark", args, completion);
+
+    ASSERT_TRUE(completion->wait());
+
+    EXPECT_TRUE(completion->error());
+    EXPECT_EQ(*completion->error(), Er::Result::Unimplemented);
+    
+}
+
+TEST_F(TestCall, Exception)
+{
+    startServer();
+    startClient();
+    ASSERT_TRUE(putPropertyMapping());
+    ASSERT_TRUE(getPropertyMapping());
+
+    auto completion = std::make_shared<CallCompletion>();
+
+    Er::PropertyBag args;
+    args.push_back(Er::Property(uint64_t(12), Er::Unspecified::UInt64));
+    args.push_back(Er::Property(std::string("Hello"), Er::Unspecified::String));
+
+    m_client->call("throws", args, completion);
 
     ASSERT_TRUE(completion->wait());
 
     EXPECT_FALSE(completion->error());
-    EXPECT_TRUE(completion->propertyMappingExpired());
+    EXPECT_TRUE(completion->exception);
+
+    auto& e = *completion->exception;
+    auto& props = e.properties();
+
+    ASSERT_EQ(props.size(), 2);
+
+    {
+        auto v = Er::get<uint64_t>(props, Er::Unspecified::UInt64);
+        ASSERT_TRUE(v);
+
+        EXPECT_EQ(*v, 12);
+    }
+
+    {
+        auto v = Er::get<std::string>(props, Er::Unspecified::String);
+        ASSERT_TRUE(v);
+
+        EXPECT_STREQ(v->c_str(), "Hello");
+    }
 }

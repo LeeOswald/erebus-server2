@@ -21,6 +21,8 @@ template <class Interface>
 struct CompletionBase
     : public Interface
 {
+    CompletionBase() = default;
+
     bool wait(std::chrono::milliseconds timeout = g_operationTimeout)
     {
         return m_complete.waitValueFor(true, timeout);
@@ -36,14 +38,30 @@ struct CompletionBase
         return m_errorMessage;
     }
 
-    bool propertyMappingExpired() const
+    bool serverPropertyMappingExpired() const
     {
-        return m_propertyMappingExpired;
+        return m_serverPropertyMappingExpired;
     }
 
-    void handlePropertyMappingExpired() override
+    bool clientPropertyMappingExpired() const
     {
-        m_propertyMappingExpired = true;
+        return m_clientPropertyMappingExpired;
+    }
+
+    bool success() const
+    {
+        return m_success;
+    }
+
+    void handleServerPropertyMappingExpired() override
+    {
+        m_serverPropertyMappingExpired = true;
+        m_complete.setAndNotifyAll(true);
+    }
+
+    void handleClientPropertyMappingExpired() override
+    {
+        m_clientPropertyMappingExpired = true;
         m_complete.setAndNotifyAll(true);
     }
 
@@ -54,9 +72,17 @@ struct CompletionBase
         m_complete.setAndNotifyAll(true);
     }
 
+    void handleSuccess() override
+    {
+        m_success = true;
+        m_complete.setAndNotifyAll(true);
+    }
+
 protected:
     Er::Waitable<bool> m_complete;
-    bool m_propertyMappingExpired = false;
+    bool m_success = false;
+    bool m_serverPropertyMappingExpired = false;
+    bool m_clientPropertyMappingExpired = false;
     std::optional<Er::ResultCode> m_error;
     std::string m_errorMessage;
 };

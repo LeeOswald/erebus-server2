@@ -26,9 +26,9 @@ public:
     ErebusService(const Er::Ipc::Grpc::ServerArgs& params);
 
     grpc::ServerUnaryReactor* Ping(grpc::CallbackServerContext* context, const erebus::PingRequest* request, erebus::PingReply* reply) override;
-    grpc::ServerWriteReactor<erebus::PropertyInfo>* GetPropertyMapping(grpc::CallbackServerContext* context, const erebus::Void* request) override;
+    grpc::ServerWriteReactor<erebus::GetPropertyMappingReply>* GetPropertyMapping(grpc::CallbackServerContext* context, const erebus::Void* request) override;
     grpc::ServerReadReactor<erebus::PutPropertyMappingRequest>* PutPropertyMapping(grpc::CallbackServerContext*, ::erebus::Void* reply) override;
-    grpc::ServerUnaryReactor* GenericRpc(grpc::CallbackServerContext* context, const erebus::ServiceRequest* request, erebus::ServiceReply* reply) override;
+    grpc::ServerUnaryReactor* GenericCall(grpc::CallbackServerContext* context, const erebus::ServiceRequest* request, erebus::ServiceReply* reply) override;
     grpc::ServerWriteReactor<erebus::ServiceReply>* GenericStream(grpc::CallbackServerContext* context, const erebus::ServiceRequest* request) override;
 
     void registerService(std::string_view request, Er::Ipc::IService::Ptr service) override;
@@ -36,8 +36,8 @@ public:
 
     const Er::PropertyInfo* mapProperty(std::uint32_t id, const std::string& context) override;
 
-    bool propertyMappingExists(const std::string& context);
-    void registerPropertyMapping(std::uint32_t id, const std::string& context, Er::PropertyType type, const std::string& name, const std::string& readableName);
+    std::pair<bool, std::uint32_t> propertyMappingValid(const std::string& context, std::uint32_t mappingVer);
+    void registerPropertyMapping(std::uint32_t version, std::uint32_t id, const std::string& context, Er::PropertyType type, const std::string& name, const std::string& readableName);
 
 private:
     class ExceptionMarshaler
@@ -157,9 +157,20 @@ private:
 
         ReplyStreamWriteReactor(Er::Log2::ILogger* log) noexcept
             : m_log(log)
+            , m_mappingVersion(Erp::propertyMappingVersion())
         {
             Er::Log2::debug(m_log, "{}.ReplyStreamWriteReactor::ReplyStreamWriteReactor", Er::Format::ptr(this));
             Er::Log2::Indent idt(m_log);
+        }
+
+        void SendPropertyMappingExpired()
+        {
+            Er::Log2::debug(m_log, "{}.ReplyStreamWriteReactor::SendPropertyMappingExpired", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log);
+
+            m_response.set_result(erebus::PROPERTY_MAPPING_EXPIRED);
+            m_response.set_mappingver(m_mappingVersion);
+            StartWriteAndFinish(&m_response, grpc::WriteOptions(), grpc::Status::OK);
         }
 
         void Begin(Er::Ipc::IService::Ptr service, std::string_view request, std::string_view cookie, const Er::PropertyBag& args)
@@ -186,6 +197,7 @@ private:
             if (error)
             {
                 m_response.set_result(erebus::FAILURE);
+                m_response.set_mappingver(m_mappingVersion);
                 StartWriteAndFinish(&m_response, grpc::WriteOptions(), grpc::Status::OK); // just send the exception
             }
             else
@@ -234,6 +246,7 @@ private:
                 auto item = m_service->next(m_streamId);
                 if (item.empty())
                 {
+                    Er::Log2::debug(m_log, "End of stream");
                     // end of stream
                     Finish(grpc::Status::OK);
                     return;
@@ -241,6 +254,7 @@ private:
                 else
                 {
                     m_response.set_result(erebus::SUCCESS);
+                    m_response.set_mappingver(m_mappingVersion);
                     marshalReplyProps(item, &m_response);
                 }
             }
@@ -258,13 +272,14 @@ private:
         }
 
         Er::Log2::ILogger* const m_log;
+        std::uint32_t m_mappingVersion;
         Er::Ipc::IService::Ptr m_service;
         Er::Ipc::IService::StreamId m_streamId = {};
         erebus::ServiceReply m_response;
     };
 
     class PropertyInfoStreamWriteReactor
-        : public grpc::ServerWriteReactor<erebus::PropertyInfo>
+        : public grpc::ServerWriteReactor<erebus::GetPropertyMappingReply>
     {
     public:
         ~PropertyInfoStreamWriteReactor()
@@ -288,11 +303,13 @@ private:
             ErAssert(m_properties.empty());
             ErAssert(m_next == 0);
 
-            Er::enumerateProperties([this](const Er::PropertyInfo* pi) -> bool
+            m_version = Er::enumerateProperties([this](const Er::PropertyInfo* pi) -> bool
             {
                 m_properties.push_back(pi);
                 return true;
             });
+
+            Er::Log2::debug(m_log, "Found {} local properties ver {}", Er::Format::ptr(this), m_properties.size(), m_version);
 
             Continue();
         }
@@ -328,21 +345,32 @@ private:
             Er::Log2::debug(m_log, "{}.PropertyInfoStreamWriteReactor::Continue", Er::Format::ptr(this));
             Er::Log2::Indent idt(m_log);
 
-            m_response.Clear();
-            
-            auto pi = m_properties[m_next++];
-            m_response.set_id(pi->unique());
-            m_response.set_type(static_cast<std::uint32_t>(pi->type()));
-            m_response.set_name(pi->name());
-            m_response.set_readable_name(pi->readableName());
+            if (m_next < m_properties.size())
+            {
+                m_response.Clear();
 
-            StartWrite(&m_response);
+                auto pi = m_properties[m_next++];
+                auto m = m_response.mutable_mapping();
+                m->set_id(pi->unique());
+                m->set_type(static_cast<std::uint32_t>(pi->type()));
+                m->set_name(pi->name());
+                m->set_readable_name(pi->readableName());
+
+                m_response.set_mappingver(m_version);
+
+                StartWrite(&m_response);
+            }
+            else
+            {
+                Finish(grpc::Status::OK);
+            }
         }
 
         Er::Log2::ILogger* const m_log;
+        std::uint32_t m_version = std::uint32_t(-1);
         std::vector<const Er::PropertyInfo*> m_properties;
         std::size_t m_next = 0;
-        erebus::PropertyInfo m_response;
+        erebus::GetPropertyMappingReply m_response;
     };
 
     class PutPropertyMappingStreamReadReactor
@@ -365,14 +393,15 @@ private:
             Continue();
         }
 
+    private:
         void OnReadDone(bool ok) override
         {
-            Er::Log2::debug(m_log, "{}.PutPropertyMappingStreamReadReactor::OnReadDone", Er::Format::ptr(this));
+            Er::Log2::debug(m_log, "{}.PutPropertyMappingStreamReadReactor::OnReadDone({})", Er::Format::ptr(this), ok);
             Er::Log2::Indent idt(m_log);
 
             if (!ok)
             {
-                Finish(grpc::Status(grpc::StatusCode::UNKNOWN, "Unexpected failure"));
+                Finish(grpc::Status::OK);
             }
             else
             {
@@ -384,13 +413,14 @@ private:
                 auto& name = rawInfo.name();
                 auto& readableName = rawInfo.readable_name();
 
-                m_owner->registerPropertyMapping(id, cookie, type, name, readableName);
+                auto version = m_request.mappingver();
+
+                m_owner->registerPropertyMapping(version, id, cookie, type, name, readableName);
 
                 Continue();
             }
         }
 
-    private:
         void Continue()
         {
             Er::Log2::debug(m_log, "{}.PutPropertyMappingStreamReadReactor::Continue", Er::Format::ptr(this));
@@ -434,7 +464,13 @@ private:
         std::unordered_map<std::string, Er::Ipc::IService::Ptr> map; // uri -> service
     } m_services;
 
-    Erp::SessionData<std::string, std::vector<const Er::PropertyInfo*>> m_propertyMappings;
+    struct SessionData
+    {
+        std::vector<const Er::PropertyInfo*> propertyMapping;
+        std::uint32_t mappingVersion = std::uint32_t(-1);
+    };
+
+    Erp::SessionData<std::string, SessionData> m_sessions;
 };
 
 } // namespace Erp::Ipc::Grpc {}

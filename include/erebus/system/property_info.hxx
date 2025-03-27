@@ -38,14 +38,17 @@ namespace Erp
 
 ER_SYSTEM_EXPORT std::uint32_t registerPersistentProperty(const Er::PropertyInfo* info);
 ER_SYSTEM_EXPORT std::string formatProperty(const Er::PropertyInfo* info, const Er::Property& prop);
+ER_SYSTEM_EXPORT std::uint32_t propertyMappingVersion() noexcept;
+ER_SYSTEM_EXPORT const Er::PropertyInfo* allocateTransientProperty(Er::PropertyType type, const std::string& name, const std::string& readableName);
 
 } // namespace Erp {}
 
 namespace Er
 {
-ER_SYSTEM_EXPORT const Er::PropertyInfo* allocateTransientProperty(Er::PropertyType type, const std::string& name, const std::string& readableName);
+
 ER_SYSTEM_EXPORT const PropertyInfo* lookupProperty(const std::string& name) noexcept;
-ER_SYSTEM_EXPORT void enumerateProperties(std::function<bool(const PropertyInfo*)> cb) noexcept;
+ER_SYSTEM_EXPORT std::uint32_t enumerateProperties(std::function<bool(const PropertyInfo*)> cb) noexcept;
+
 
 //
 // Yes, we DO need that large alignment value

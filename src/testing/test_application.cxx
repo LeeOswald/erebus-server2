@@ -36,7 +36,7 @@ void TestApplication::addCmdLineOptions(boost::program_options::options_descript
 {
     options.add_options()
         ("gtest_list_tests", "list all tests")
-        ("gtest_filter", "run specific tests")
+        ("gtest_filter", boost::program_options::value<std::string>(), "run specific tests")
         ;
 }
 

@@ -79,10 +79,14 @@ ER_SYSTEM_EXPORT std::string formatProperty(const Er::PropertyInfo* info, const 
     return f(prop);
 }
 
-} // namespace Erp {}
-
-namespace Er
+ER_SYSTEM_EXPORT std::uint32_t propertyMappingVersion() noexcept
 {
+    auto& r = registry();
+
+    std::shared_lock l(r.mutex);
+
+    return r.unique;
+}
 
 ER_SYSTEM_EXPORT const Er::PropertyInfo* allocateTransientProperty(Er::PropertyType type, const std::string& name, const std::string& readableName)
 {
@@ -129,6 +133,11 @@ ER_SYSTEM_EXPORT const Er::PropertyInfo* allocateTransientProperty(Er::PropertyT
     return pi;
 }
 
+} // namespace Erp {}
+
+namespace Er
+{
+
 ER_SYSTEM_EXPORT const PropertyInfo* lookupProperty(const std::string& name) noexcept
 {
     auto& r = registry();
@@ -146,7 +155,7 @@ ER_SYSTEM_EXPORT const PropertyInfo* lookupProperty(const std::string& name) noe
     return nullptr;
 }
 
-ER_SYSTEM_EXPORT void enumerateProperties(std::function<bool(const PropertyInfo*)> cb) noexcept
+ER_SYSTEM_EXPORT std::uint32_t enumerateProperties(std::function<bool(const PropertyInfo*)> cb) noexcept
 {
     auto& r = registry();
 
@@ -163,6 +172,8 @@ ER_SYSTEM_EXPORT void enumerateProperties(std::function<bool(const PropertyInfo*
         if (!cb(pi.second.get()))
             break;
     }
+
+    return r.unique;
 }
 
 
