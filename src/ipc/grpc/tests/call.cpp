@@ -4,9 +4,15 @@
 #include <erebus/ipc/grpc/grpc_server.hxx>
 #include <erebus/system/exception.hxx>
 
+#include <thread>
+#include <vector>
 
 namespace
 {
+
+
+using SimpleCompletion = CompletionBase<Er::Ipc::IClient::ICompletion>;
+
 
 class TestService
     : public Er::Ipc::IService
@@ -68,70 +74,38 @@ private:
 
 
 class TestCall
-    : public testing::Test
+    : public TestClientBase
 {
 public:
-    ~TestCall()
-    {
-        stopClient();
-        stopServer();
-    }
-
-    TestCall()
-        : m_port(g_serverPort)
-    {
-    }
+    TestCall() = default;
 
     void startServer()
     {
-        Er::Ipc::Grpc::ServerArgs args(Er::Log2::get());
-        args.endpoints.push_back(Er::Ipc::Grpc::ServerArgs::Endpoint(Er::format("127.0.0.1:{}", m_port)));
-
-        m_server = Er::Ipc::Grpc::create(args);
+        TestClientBase::startServer();
 
         auto service = std::make_shared<TestService>();
         service->registerService(m_server.get());
     }
 
-    void stopServer()
+    bool putPropertyMapping(std::size_t client)
     {
-        m_server.reset();
-    }
+        ErAssert(client < m_clients.size());
 
-    void startClient()
-    {
-        Er::Ipc::Grpc::ChannelSettings args(Er::format("127.0.0.1:{}", m_port));
+        auto completion = std::make_shared<SimpleCompletion>();
 
-        auto channel = Er::Ipc::Grpc::createChannel(args);
-
-        m_client = Er::Ipc::Grpc::createClient(args, channel, Er::Log2::get());
-    }
-
-    void stopClient()
-    {
-        m_client.reset();
-    }
-
-    bool putPropertyMapping()
-    {
-        auto completion = std::make_shared<CompletionBase<Er::Ipc::IClient::ICompletion>>();
-
-        m_client->putPropertyMapping(completion);
+        m_clients[client]->putPropertyMapping(completion);
         return completion->wait() && completion->success();
     }
 
-    bool getPropertyMapping()
+    bool getPropertyMapping(std::size_t client)
     {
-        auto completion = std::make_shared<CompletionBase<Er::Ipc::IClient::ICompletion>>();
+        ErAssert(client < m_clients.size());
 
-        m_client->getPropertyMapping(completion);
+        auto completion = std::make_shared<SimpleCompletion>();
+
+        m_clients[client]->getPropertyMapping(completion);
         return completion->wait() && completion->success();
     }
-
-protected:
-    std::uint16_t m_port;
-    Er::Ipc::IServer::Ptr m_server;
-    Er::Ipc::IClient::Ptr m_client;
 };
 
 
@@ -164,7 +138,7 @@ struct CallCompletion
 TEST_F(TestCall, NormalCall)
 {
     startServer();
-    startClient();
+    startClient(1);
 
     {
         auto completion = std::make_shared<CallCompletion>();
@@ -173,7 +147,7 @@ TEST_F(TestCall, NormalCall)
         args.push_back(Er::Property(uint64_t(12), Er::Unspecified::UInt64));
         args.push_back(Er::Property(std::string("Hello"), Er::Unspecified::String));
 
-        m_client->call("echo", args, completion);
+        m_clients.front()->call("echo", args, completion);
 
         ASSERT_TRUE(completion->wait());
 
@@ -181,7 +155,7 @@ TEST_F(TestCall, NormalCall)
         EXPECT_TRUE(completion->serverPropertyMappingExpired());
     }
 
-    ASSERT_TRUE(putPropertyMapping());
+    ASSERT_TRUE(putPropertyMapping(0));
 
     {
         auto completion = std::make_shared<CallCompletion>();
@@ -190,7 +164,7 @@ TEST_F(TestCall, NormalCall)
         args.push_back(Er::Property(uint64_t(12), Er::Unspecified::UInt64));
         args.push_back(Er::Property(std::string("Hello"), Er::Unspecified::String));
 
-        m_client->call("echo", args, completion);
+        m_clients.front()->call("echo", args, completion);
 
         ASSERT_TRUE(completion->wait());
 
@@ -199,7 +173,7 @@ TEST_F(TestCall, NormalCall)
         EXPECT_TRUE(completion->clientPropertyMappingExpired());
     }
 
-    ASSERT_TRUE(getPropertyMapping());
+    ASSERT_TRUE(getPropertyMapping(0));
 
     {
         auto completion = std::make_shared<CallCompletion>();
@@ -208,7 +182,7 @@ TEST_F(TestCall, NormalCall)
         args.push_back(Er::Property(uint64_t(12), Er::Unspecified::UInt64));
         args.push_back(Er::Property(std::string("Hello"), Er::Unspecified::String));
 
-        m_client->call("echo", args, completion);
+        m_clients.front()->call("echo", args, completion);
 
         ASSERT_TRUE(completion->wait());
 
@@ -240,7 +214,7 @@ TEST_F(TestCall, NormalCall)
 TEST_F(TestCall, NotImplemented)
 {
     startServer();
-    startClient();
+    startClient(1);
 
     auto completion = std::make_shared<CallCompletion>();
 
@@ -248,7 +222,7 @@ TEST_F(TestCall, NotImplemented)
     args.push_back(Er::Property(uint64_t(12), Er::Unspecified::UInt64));
     args.push_back(Er::Property(std::string("Hello"), Er::Unspecified::String));
 
-    m_client->call("bark", args, completion);
+    m_clients.front()->call("bark", args, completion);
 
     ASSERT_TRUE(completion->wait());
 
@@ -260,9 +234,9 @@ TEST_F(TestCall, NotImplemented)
 TEST_F(TestCall, Exception)
 {
     startServer();
-    startClient();
-    ASSERT_TRUE(putPropertyMapping());
-    ASSERT_TRUE(getPropertyMapping());
+    startClient(1);
+    ASSERT_TRUE(putPropertyMapping(0));
+    ASSERT_TRUE(getPropertyMapping(0));
 
     auto completion = std::make_shared<CallCompletion>();
 
@@ -270,7 +244,7 @@ TEST_F(TestCall, Exception)
     args.push_back(Er::Property(uint64_t(12), Er::Unspecified::UInt64));
     args.push_back(Er::Property(std::string("Hello"), Er::Unspecified::String));
 
-    m_client->call("throws", args, completion);
+    m_clients.front()->call("throws", args, completion);
 
     ASSERT_TRUE(completion->wait());
 
@@ -294,5 +268,139 @@ TEST_F(TestCall, Exception)
         ASSERT_TRUE(v);
 
         EXPECT_STREQ(v->c_str(), "Hello");
+    }
+}
+
+TEST_F(TestCall, ConcurrentCall)
+{
+    struct ClientWorker
+    {
+        Er::Ipc::IClient* client;
+        long id;
+        long callCount;
+        std::jthread worker;
+        std::vector<std::string> requests;
+        std::vector<std::shared_ptr<CallCompletion>> completions;
+        
+        ~ClientWorker()
+        {
+            Er::Log2::info(Er::Log2::get(), "~ClientWorker({})", id);
+        }
+
+        ClientWorker(Er::Ipc::IClient* client, long id, long callCount)
+            : client(client)
+            , id(id)
+            , callCount(callCount)
+            , worker([this]() { run();  })
+        {
+            Er::Log2::info(Er::Log2::get(), "ClientWorker({})", id);
+        }
+
+        void run()
+        {
+            for (long i = 0; i < callCount; ++i)
+            {
+                auto c = std::make_shared<CallCompletion>();
+
+                auto s = Er::format("Call[{}][{}]", id, i);
+                Er::PropertyBag args;
+                args.push_back(Er::Property(s, Er::Unspecified::String));
+
+                client->call("echo", args, c);
+
+                requests.push_back(std::move(s));
+                completions.push_back(c);
+            }
+        }
+
+        bool wait()
+        {
+            long succeeded = 0;
+            for (long i = 0; i < callCount; ++i)
+            {
+                if (completions[i]->wait())
+                {
+                    ++succeeded;
+                }
+                else
+                {
+                    Er::Log2::error(Er::Log2::get(), "Call[{}][{}] did not complete", id, i);
+                }
+            }
+
+            return succeeded == callCount;
+        }
+
+        bool check()
+        {
+            long succeeded = 0;
+            for (long i = 0; i < callCount; ++i)
+            {
+                if (!completions[i]->error())
+                {
+                    if (completions[i]->reply)
+                    {
+                        auto& reply = *completions[i]->reply;
+
+                        auto v = Er::get<std::string>(reply, Er::Unspecified::String);
+                        if (v)
+                        {
+                            auto s = Er::format("Call[{}][{}]", id, i);
+                            if (*v == s)
+                            {
+                                ++succeeded;
+                            }
+                            else
+                            {
+                                Er::Log2::error(Er::Log2::get(), "Call[{}][{}] reply was [{}] instead of [{}]", *v, s);
+                            }
+                        }
+                        else
+                        {
+                            Er::Log2::error(Er::Log2::get(), "Call[{}][{}] did not yield a reply string");
+                        }
+                    }
+                    else
+                    {
+                        Er::Log2::error(Er::Log2::get(), "Call[{}][{}] did not yield a reply");
+                    }
+                }
+                else
+                {
+                    Er::Log2::error(Er::Log2::get(), "Call[{}][{}] failed: {} ({})", id, i, *completions[i]->error(), completions[i]->errorMessage());
+                }
+            }
+
+            return succeeded == callCount;
+        }
+    };
+
+    const long clientCount = 5;
+    const long callCount = 10;
+
+    startServer();
+    startClient(clientCount);
+
+    for (long i = 0; i < clientCount; ++i)
+    {
+        ASSERT_TRUE(putPropertyMapping(i));
+        ASSERT_TRUE(getPropertyMapping(i));
+    }
+
+    std::vector<std::unique_ptr<ClientWorker>> clients;
+    clients.reserve(clientCount);
+    for (long i = 0; i < clientCount; ++i)
+    {
+        clients.push_back(std::make_unique<ClientWorker>(m_clients[i].get(), i, callCount));
+    }
+
+    for (long i = 0; i < clientCount; ++i)
+    {
+        ASSERT_TRUE(clients[i]->wait());
+    }
+
+    for (long i = 0; i < clientCount; ++i)
+    {
+        ASSERT_TRUE(clients[i]->check());
     }
 }

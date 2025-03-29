@@ -1,71 +1,8 @@
 #include "common.hpp"
 
-#include <erebus/ipc/grpc/grpc_client.hxx>
-#include <erebus/ipc/grpc/grpc_server.hxx>
-
-#include <thread>
-#include <vector>
-
 
 namespace
 {
-
-class TestPing
-    : public testing::Test
-{
-public:
-    ~TestPing()
-    {
-        stopClient();
-        stopServer();
-    }
-
-    TestPing()
-        : m_port(g_serverPort)
-    {
-    }
-
-    void startServer()
-    {
-        Er::Ipc::Grpc::ServerArgs args(Er::Log2::get());
-        args.endpoints.push_back(Er::Ipc::Grpc::ServerArgs::Endpoint(Er::format("127.0.0.1:{}", m_port)));
-
-        m_server = Er::Ipc::Grpc::create(args);
-    }
-
-    void stopServer()
-    {
-        m_server.reset();
-    }
-
-    void startClient(std::size_t count)
-    {
-        if (!count)
-            return;
-
-        Er::Ipc::Grpc::ChannelSettings args(Er::format("127.0.0.1:{}", m_port));
-
-        auto channel = Er::Ipc::Grpc::createChannel(args);
-
-        m_clients.clear();
-        m_clients.reserve(count);
-
-        for (std::size_t i = 0; i < count; ++i)
-        {
-            m_clients.push_back(Er::Ipc::Grpc::createClient(args, channel, Er::Log2::get()));
-        }
-    }
-
-    void stopClient()
-    {
-        m_clients.clear();
-    }
-
-protected:
-    std::uint16_t m_port;
-    Er::Ipc::IServer::Ptr m_server;
-    std::vector<Er::Ipc::IClient::Ptr> m_clients;
-};
 
 
 struct PingCompletion
@@ -91,6 +28,8 @@ struct PingCompletion
     long totalPayload = 0;
 };
 
+
+using TestPing = TestClientBase;
 
 } // namespace {}
 
@@ -158,7 +97,7 @@ TEST_F(TestPing, Ping)
 
 TEST_F(TestPing, ConcurrentPing)
 {
-    struct ClientData
+    struct ClientWorker
     {
         Er::Ipc::IClient* client;
         std::shared_ptr<PingCompletion> completion;
@@ -166,7 +105,7 @@ TEST_F(TestPing, ConcurrentPing)
         const long payloadSize;
         std::jthread worker;
 
-        ClientData(Er::Ipc::IClient* client, long pingCount, long payloadSize)
+        ClientWorker(Er::Ipc::IClient* client, long pingCount, long payloadSize)
             : client(client)
             , completion(std::make_shared<PingCompletion>(pingCount))
             , pingCount(pingCount)
@@ -191,16 +130,16 @@ TEST_F(TestPing, ConcurrentPing)
 
     const long pingCount = 100;
 
-    std::vector<std::unique_ptr<ClientData>> clients;
+    std::vector<std::unique_ptr<ClientWorker>> clients;
     clients.reserve(clientCount);
     for (long i = 0; i < clientCount; ++i)
     {
-        clients.push_back(std::make_unique<ClientData>(m_clients[i].get(), pingCount, (i + 1) * 32));
+        clients.push_back(std::make_unique<ClientWorker>(m_clients[i].get(), pingCount, (i + 1) * 32));
     }
 
     for (auto& cli : clients)
     {
-        cli->completion->wait();
+        ASSERT_TRUE(cli->completion->wait());
     }
 
     long i = 0;

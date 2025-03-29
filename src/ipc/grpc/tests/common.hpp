@@ -2,15 +2,19 @@
 
 #include <gtest/gtest.h>
 
-
+#include <erebus/system/exception.hxx>
 #include <erebus/system/logger2.hxx>
 #include <erebus/system/result.hxx>
 #include <erebus/system/waitable.hxx>
+#include <erebus/ipc/grpc/grpc_client.hxx>
+#include <erebus/ipc/grpc/grpc_server.hxx>
+
 
 #include <chrono>
 #include <iostream>
 #include <mutex>
-
+#include <thread>
+#include <vector>
 
 extern std::uint16_t g_serverPort;
 extern std::chrono::milliseconds g_operationTimeout;
@@ -85,4 +89,66 @@ protected:
     bool m_clientPropertyMappingExpired = false;
     std::optional<Er::ResultCode> m_error;
     std::string m_errorMessage;
+};
+
+
+class TestClientBase
+    : public testing::Test
+{
+public:
+    ~TestClientBase()
+    {
+        stopClient();
+        stopServer();
+    }
+
+    TestClientBase()
+        : m_port(g_serverPort)
+    {
+    }
+
+    void startServer()
+    {
+        Er::Ipc::Grpc::ServerArgs args(Er::Log2::get());
+        args.endpoints.push_back(Er::Ipc::Grpc::ServerArgs::Endpoint(Er::format("127.0.0.1:{}", m_port)));
+
+        m_server = Er::Ipc::Grpc::create(args);
+    }
+
+    void stopServer()
+    {
+        m_server.reset();
+    }
+
+    void startClient(std::size_t count)
+    {
+        ErAssert(count);
+
+        Er::Ipc::Grpc::ChannelSettings args(Er::format("127.0.0.1:{}", m_port));
+
+        auto channel = Er::Ipc::Grpc::createChannel(args);
+
+        m_clients.clear();
+        m_clients.reserve(count);
+
+        for (std::size_t i = 0; i < count; ++i)
+        {
+            m_clients.push_back(Er::Ipc::Grpc::createClient(args, channel, Er::Log2::get()));
+        }
+    }
+
+    void stopClient()
+    {
+        m_clients.clear();
+    }
+
+    std::size_t clientCount() const
+    {
+        return m_clients.size();
+    }
+
+protected:
+    std::uint16_t m_port;
+    Er::Ipc::IServer::Ptr m_server;
+    std::vector<Er::Ipc::IClient::Ptr> m_clients;
 };
