@@ -104,7 +104,7 @@ ER_SYSTEM_EXPORT const Er::PropertyInfo* allocateTransientProperty(Er::PropertyT
                 static_cast<unsigned>(type), static_cast<unsigned>(it->second->type())));
         }
 
-        Er::Log2::debug(Er::Log2::get(), "Transient property mapped to persistent property {} [{}] of type {}", name, readableName, static_cast<std::uint32_t>(type));
+        Er::Log2::debug(Er::Log2::get(), "Transient property mapped to persistent property {} [{}] of type {}", name, readableName, Er::propertyTypeToString(type));
         return it->second;
     }
 
@@ -117,7 +117,7 @@ ER_SYSTEM_EXPORT const Er::PropertyInfo* allocateTransientProperty(Er::PropertyT
                 static_cast<unsigned>(type), static_cast<unsigned>(it2->second->type())));
         }
 
-        Er::Log2::debug(Er::Log2::get(), "Transient property found: {} [{}] of type {}", name, readableName, static_cast<std::uint32_t>(type));
+        Er::Log2::debug(Er::Log2::get(), "Transient property found: {} [{}] of type {}", name, readableName, Er::propertyTypeToString(type));
         return it2->second.get();
     }
 
@@ -128,7 +128,7 @@ ER_SYSTEM_EXPORT const Er::PropertyInfo* allocateTransientProperty(Er::PropertyT
 
     r.transientProps.insert({ name, std::move(prop) });
 
-    Er::Log2::debug(Er::Log2::get(), "Transient property registered: {} [{}] of type {}", name, readableName, static_cast<std::uint32_t>(type));
+    Er::Log2::debug(Er::Log2::get(), "Transient property registered: {} [{}] of type {}", name, readableName, Er::propertyTypeToString(type));
 
     return pi;
 }

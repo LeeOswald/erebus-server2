@@ -91,6 +91,8 @@ protected:
     std::string m_errorMessage;
 };
 
+using SimpleCompletion = CompletionBase<Er::Ipc::IClient::ICompletion>;
+
 
 class TestClientBase
     : public testing::Test
@@ -169,6 +171,26 @@ public:
         return log;
     }
 
+    bool putPropertyMapping(std::size_t client)
+    {
+        ErAssert(client < m_clients.size());
+
+        auto completion = std::make_shared<SimpleCompletion>();
+
+        m_clients[client]->putPropertyMapping(completion);
+        return completion->wait() && completion->success();
+    }
+
+    bool getPropertyMapping(std::size_t client)
+    {
+        ErAssert(client < m_clients.size());
+
+        auto completion = std::make_shared<SimpleCompletion>();
+
+        m_clients[client]->getPropertyMapping(completion);
+        return completion->wait() && completion->success();
+    }
+
 protected:
     Er::Log2::ILogger::Ptr m_serverLog;
     Er::Log2::ILogger::Ptr m_clientLog;
@@ -177,3 +199,5 @@ protected:
     Er::Ipc::IServer::Ptr m_server;
     std::vector<Er::Ipc::IClient::Ptr> m_clients;
 };
+
+

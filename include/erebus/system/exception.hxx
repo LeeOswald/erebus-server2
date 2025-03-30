@@ -19,6 +19,8 @@ class ER_SYSTEM_EXPORT Exception
     : public std::exception
 {
 public:
+    Exception() noexcept = default;
+
     explicit Exception(std::source_location location, auto&& message) noexcept
         : m_context(std::make_shared<Context>(location, std::forward<decltype(message)>(message)))
     {
@@ -66,6 +68,11 @@ public:
         }
 
         return nullptr;
+    }
+
+    operator bool() const noexcept
+    {
+        return m_context.operator bool();
     }
 
 protected:

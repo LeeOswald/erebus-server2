@@ -77,11 +77,14 @@ public:
 
     const Er::PropertyInfo* mapProperty(std::uint32_t id, const std::string& context) override
     {
-        std::shared_lock l(m_propertyMapping.lock);
-                
-        if (id < m_propertyMapping.map.size())
-            return m_propertyMapping.map[id];
+        {
+            std::shared_lock l(m_propertyMapping.lock);
 
+            if (id < m_propertyMapping.map.size())
+                return m_propertyMapping.map[id];
+        }
+
+        Er::Log2::error(m_log, "{}.ClientImpl::mapProperty({}.[{}]) -> NULL", Er::Format::ptr(this), id, context);
         return nullptr;
     }
     
@@ -108,7 +111,7 @@ public:
         Er::Log2::debug(m_log, "{}.ClientImpl::getPropertyMapping()", Er::Format::ptr(this));
         Er::Log2::Indent idt(m_log);
 
-        new PropertyMappingStreamReader(this, m_stub.get(), handler);
+        new PropertyMappingStreamReader(this, m_logRef, m_stub.get(), handler);
     }
 
     void putPropertyMapping(ICompletion::Ptr handler) override
@@ -116,7 +119,7 @@ public:
         Er::Log2::debug(m_log, "{}.ClientImpl::putPropertyMapping()", Er::Format::ptr(this));
         Er::Log2::Indent idt(m_log);
 
-        new PropertyMappingStreamWriter(this, m_stub.get(), handler);
+        new PropertyMappingStreamWriter(this, m_logRef, m_stub.get(), handler);
     }
     
     void call(std::string_view request, const Er::PropertyBag& args, ICallCompletion::Ptr handler) override
@@ -142,15 +145,10 @@ public:
         Er::Log2::debug(m_log, "{}.ClientImpl::stream({})", Er::Format::ptr(this), request);
         Er::Log2::Indent idt(m_log);
 
-        new ServiceReplyStreamReader(this, m_stub.get(), request, args, m_cookie, handler);
+        new ServiceReplyStreamReader(this, m_logRef, m_stub.get(), request, args, m_cookie, handler);
     }
 
 private:
-    Er::Log2::ILogger* log() const noexcept
-    {
-        return m_log;
-    }
-
     const std::string& cookie() const noexcept
     {
         return m_cookie;
@@ -216,24 +214,25 @@ private:
     public:
         ~ServiceReplyStreamReader()
         {
-            Er::Log2::debug(m_owner->log(), "{}.ServiceReplyStreamReader::~ServiceReplyStreamReader()", Er::Format::ptr(this));
-            Er::Log2::Indent idt(m_owner->log());
+            Er::Log2::debug(m_log.get(), "{}.ServiceReplyStreamReader::~ServiceReplyStreamReader()", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log.get());
         }
 
-        ServiceReplyStreamReader(ClientImpl* owner, erebus::Erebus::Stub* stub, std::string_view req, const Er::PropertyBag& args, const std::string& cookie, IStreamCompletion::Ptr handler)
+        ServiceReplyStreamReader(ClientImpl* owner, Er::Log2::ILogger::Ptr log, erebus::Erebus::Stub* stub, std::string_view req, const Er::PropertyBag& args, const std::string& cookie, IStreamCompletion::Ptr handler)
             : m_owner(owner)
+            , m_log(log)
             , m_uri(req)
             , m_handler(handler)
         {
-            Er::Log2::debug(m_owner->log(), "{}.ServiceReplyStreamReader::ServiceReplyStreamReader({})", Er::Format::ptr(this), m_uri);
-            Er::Log2::Indent idt(m_owner->log());
+            Er::Log2::debug(m_log.get(), "{}.ServiceReplyStreamReader::ServiceReplyStreamReader({})", Er::Format::ptr(this), m_uri);
+            Er::Log2::Indent idt(m_log.get());
 
             m_request.set_request(std::string(req));
             m_request.set_cookie(cookie);
             auto ver = Erp::propertyMappingVersion();
             m_request.set_mappingver(ver);
 
-            Er::Log2::debug(m_owner->log(), "Sending property mapping v.{}", ver);
+            Er::Log2::debug(m_log.get(), "Sending property mapping v.{}", ver);
 
             for (auto& arg : args)
             {
@@ -248,64 +247,83 @@ private:
 
         void OnReadDone(bool ok) override
         {
-            Er::Log2::debug(m_owner->log(), "{}.ServiceReplyStreamReader::OnReadDone({}, {})", Er::Format::ptr(this), m_uri, ok);
-            Er::Log2::Indent idt(m_owner->log());
+            Er::Log2::debug(m_log.get(), "{}.ServiceReplyStreamReader::OnReadDone({}, {})", Er::Format::ptr(this), m_uri, ok);
+            Er::Log2::Indent idt(m_log.get());
 
-            if (ok)
+            if (!ok)
+                return;
+
+            Er::Util::ExceptionLogger xcptLogger(m_log.get());
+
+            try
             {
-                Er::Util::ExceptionLogger xcptLogger(m_owner->log());
-
-                try
+                if (m_reply.result() != erebus::CallResult::SUCCESS)
                 {
-                    if (m_reply.has_exception())
+                    auto code = m_reply.result();
+                    if (code == erebus::CallResult::PROPERTY_MAPPING_EXPIRED)
                     {
-                        auto e = m_owner->unmarshalException(m_reply);
-                        Er::Log2::error(m_owner->log(), "Failed to call {}:{}", m_context.peer(), m_uri, e.what());
+                        Er::Log2::debug(m_log.get(), "Server property mapping expired for {}:{}", m_context.peer(), m_uri);
+                        m_handler->handleServerPropertyMappingExpired();
+                        
+                        m_context.TryCancel();
+                        return StartRead(&m_reply);
+                    }
+                    else if (!m_reply.has_exception())
+                    {
+                        auto message = Er::format("Unexpected error streaming from {}:{}: {}", m_context.peer(), m_uri, static_cast<int>(code));
+                        m_handler->handleTransportError(Er::Result::Failure, std::move(message));
 
-                        if (m_handler->handleException(std::move(e)) == Er::CallbackResult::Cancel)
-                        {
-                            m_context.TryCancel();
-                        }
-                    }
-                    else if (m_reply.result() != erebus::CallResult::SUCCESS)
-                    {
-                        auto code = m_reply.result();
-                        if (code == erebus::CallResult::PROPERTY_MAPPING_EXPIRED)
-                        {
-                            Er::Log2::debug(m_owner->log(), "Server property mapping expired for {}:{}", m_context.peer(), m_uri);
-                            m_handler->handleServerPropertyMappingExpired();
-                        }
-                        else
-                        {
-                            auto message = Er::format("Unexpected error calling {}:{}: {}", m_context.peer(), m_uri, static_cast<int>(code));
-                            m_handler->handleTransportError(Er::Result::Failure, std::move(message));
-                        }
-                    }
-                    else
-                    {
-                        auto reply = m_owner->unmarshal(m_reply);
-                        if (m_handler->handleFrame(std::move(reply)) == Er::CallbackResult::Cancel)
-                        {
-                            m_context.TryCancel();
-                        }
+                        m_context.TryCancel();
+                        return StartRead(&m_reply);
                     }
                 }
-                catch (...)
+
+                auto remoteMappingVer = m_reply.mappingver();
+                auto localMappingVer = m_owner-> m_propertyMapping.version;
+                if (remoteMappingVer != localMappingVer)
                 {
-                    Er::dispatchException(std::current_exception(), xcptLogger);
+                    Er::Log2::debug(m_log.get(), "Client property mapping expired for {}:{} (remote v.{} local v.{})", m_context.peer(), m_uri, remoteMappingVer, localMappingVer);
+                    m_handler->handleClientPropertyMappingExpired();
+
+                    m_context.TryCancel();
+                    return StartRead(&m_reply);
                 }
 
-                // we have to drain the completion queue even if we cancel
-                StartRead(&m_reply);
+                if (m_reply.has_exception())
+                {
+                    auto e = m_owner->unmarshalException(m_reply);
+                    Er::Log2::error(m_log.get(), "Exception while streaming from {}:{}: {}", m_context.peer(), m_uri, e.what());
+
+                    if (m_handler->handleException(std::move(e)) == Er::CallbackResult::Cancel)
+                    {
+                        m_context.TryCancel();
+                    }
+
+                    return StartRead(&m_reply);
+                }
+                
+                auto reply = m_owner->unmarshal(m_reply);
+                if (m_handler->handleFrame(std::move(reply)) == Er::CallbackResult::Cancel)
+                {
+                    m_context.TryCancel();
+                }
+                
             }
+            catch (...)
+            {
+                Er::dispatchException(std::current_exception(), xcptLogger);
+            }
+
+            // we have to drain the completion queue even if we cancel
+            StartRead(&m_reply);
         }
 
         void OnDone(const grpc::Status& status) override
         {
-            Er::Log2::debug(m_owner->log(), "{}.ServiceReplyStreamReader::OnDone({}, {})", Er::Format::ptr(this), m_uri, int(status.error_code()));
-            Er::Log2::Indent idt(m_owner->log());
+            Er::Log2::debug(m_log.get(), "{}.ServiceReplyStreamReader::OnDone({}, {})", Er::Format::ptr(this), m_uri, int(status.error_code()));
+            Er::Log2::Indent idt(m_log.get());
 
-            Er::Util::ExceptionLogger xcptLogger(m_owner->log());
+            Er::Util::ExceptionLogger xcptLogger(m_log.get());
 
             try
             {
@@ -313,7 +331,7 @@ private:
                 {
                     auto resultCode = mapGrpcStatus(status.error_code());
                     auto errorMsg = status.error_message();
-                    Er::Log2::error(m_owner->log(), "Stream from {} terminated with an error: {} ({})", m_context.peer(), resultCode, errorMsg);
+                    Er::Log2::error(m_log.get(), "Stream from {} terminated with an error: {} ({})", m_context.peer(), resultCode, errorMsg);
 
                     m_handler->handleTransportError(resultCode, std::move(errorMsg));
                 }
@@ -328,6 +346,7 @@ private:
 
     private:
         ClientImpl* const m_owner;
+        Er::Log2::ILogger::Ptr m_log;
         std::string m_uri;
         IStreamCompletion::Ptr m_handler;
         erebus::ServiceRequest m_request;
@@ -341,16 +360,17 @@ private:
     public:
         ~PropertyMappingStreamReader()
         {
-            Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamReader::~PropertyMappingStreamReader()", Er::Format::ptr(this));
-            Er::Log2::Indent idt(m_owner->log());
+            Er::Log2::debug(m_log.get(), "{}.PropertyMappingStreamReader::~PropertyMappingStreamReader()", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log.get());
         }
 
-        PropertyMappingStreamReader(ClientImpl* owner, erebus::Erebus::Stub* stub, ICompletion::Ptr handler)
+        PropertyMappingStreamReader(ClientImpl* owner, Er::Log2::ILogger::Ptr log, erebus::Erebus::Stub* stub, ICompletion::Ptr handler)
             : m_owner(owner)
+            , m_log(log)
             , m_handler(handler)
         {
-            Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamReader::PropertyMappingStreamReader()", Er::Format::ptr(this));
-            Er::Log2::Indent idt(m_owner->log());
+            Er::Log2::debug(m_log.get(), "{}.PropertyMappingStreamReader::PropertyMappingStreamReader()", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log.get());
 
             stub->async()->GetPropertyMapping(&m_context, &m_request, this);
             StartRead(&m_reply);
@@ -359,12 +379,12 @@ private:
 
         void OnReadDone(bool ok) override
         {
-            Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamReader::OnReadDone({})", Er::Format::ptr(this), ok);
-            Er::Log2::Indent idt(m_owner->log());
+            Er::Log2::debug(m_log.get(), "{}.PropertyMappingStreamReader::OnReadDone({})", Er::Format::ptr(this), ok);
+            Er::Log2::Indent idt(m_log.get());
 
             if (ok)
             {
-                Er::Util::ExceptionLogger xcptLogger(m_owner->log());
+                Er::Util::ExceptionLogger xcptLogger(m_log.get());
 
                 try
                 {
@@ -389,10 +409,10 @@ private:
 
         void OnDone(const grpc::Status& status) override
         {
-            Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamReader::OnDone({})", Er::Format::ptr(this), int(status.error_code()));
-            Er::Log2::Indent idt(m_owner->log());
+            Er::Log2::debug(m_log.get(), "{}.PropertyMappingStreamReader::OnDone({})", Er::Format::ptr(this), int(status.error_code()));
+            Er::Log2::Indent idt(m_log.get());
 
-            Er::Util::ExceptionLogger xcptLogger(m_owner->log());
+            Er::Util::ExceptionLogger xcptLogger(m_log.get());
 
             try
             {
@@ -400,7 +420,7 @@ private:
                 {
                     auto resultCode = mapGrpcStatus(status.error_code());
                     auto errorMsg = status.error_message();
-                    Er::Log2::error(m_owner->log(), "Stream from {} terminated with an error: {} ({})", m_context.peer(), resultCode, errorMsg);
+                    Er::Log2::error(m_log.get(), "Stream from {} terminated with an error: {} ({})", m_context.peer(), resultCode, errorMsg);
 
                     m_handler->handleTransportError(resultCode, std::move(errorMsg));
                 }
@@ -419,6 +439,7 @@ private:
 
     private:
         ClientImpl* const m_owner;
+        Er::Log2::ILogger::Ptr m_log;
         ICompletion::Ptr m_handler;
         erebus::Void m_request;
         grpc::ClientContext m_context;
@@ -431,16 +452,17 @@ private:
     public:
         ~PropertyMappingStreamWriter()
         {
-            Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamWriter::~PropertyMappingStreamWriter()", Er::Format::ptr(this));
-            Er::Log2::Indent idt(m_owner->log());
+            Er::Log2::debug(m_log.get(), "{}.PropertyMappingStreamWriter::~PropertyMappingStreamWriter()", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log.get());
         }
 
-        PropertyMappingStreamWriter(ClientImpl* owner, erebus::Erebus::Stub* stub, ICompletion::Ptr handler)
+        PropertyMappingStreamWriter(ClientImpl* owner, Er::Log2::ILogger::Ptr log, erebus::Erebus::Stub* stub, ICompletion::Ptr handler)
             : m_owner(owner)
+            , m_log(log)
             , m_handler(handler)
         {
-            Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamWriter::PropertyMappingStreamWriter()", Er::Format::ptr(this));
-            Er::Log2::Indent idt(m_owner->log());
+            Er::Log2::debug(m_log.get(), "{}.PropertyMappingStreamWriter::PropertyMappingStreamWriter()", Er::Format::ptr(this));
+            Er::Log2::Indent idt(m_log.get());
 
             m_mappingVer = Er::enumerateProperties(
                 [this](const Er::PropertyInfo* pi) -> bool
@@ -449,7 +471,7 @@ private:
                     return true;
                 });
 
-            Er::Log2::debug(m_owner->log(), "Sending local property mapping v.{}", m_mappingVer);
+            Er::Log2::debug(m_log.get(), "Sending local property mapping v.{}", m_mappingVer);
 
             stub->async()->PutPropertyMapping(&m_context, &m_reply, this);
 
@@ -459,8 +481,8 @@ private:
 
         void OnWriteDone(bool ok) override 
         {
-            Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamWriter::OnWriteDone({})", Er::Format::ptr(this), ok);
-            Er::Log2::Indent idt(m_owner->log());
+            Er::Log2::debug(m_log.get(), "{}.PropertyMappingStreamWriter::OnWriteDone({})", Er::Format::ptr(this), ok);
+            Er::Log2::Indent idt(m_log.get());
 
             if (ok) 
             { 
@@ -470,10 +492,10 @@ private:
 
         void OnDone(const grpc::Status& status) override 
         {
-            Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamWriter::OnDone({})", Er::Format::ptr(this), static_cast<int>(status.error_code()));
-            Er::Log2::Indent idt(m_owner->log());
+            Er::Log2::debug(m_log.get(), "{}.PropertyMappingStreamWriter::OnDone({})", Er::Format::ptr(this), static_cast<int>(status.error_code()));
+            Er::Log2::Indent idt(m_log.get());
 
-            Er::Util::ExceptionLogger xcptLogger(m_owner->log());
+            Er::Util::ExceptionLogger xcptLogger(m_log.get());
 
             try
             {
@@ -481,7 +503,7 @@ private:
                 {
                     auto resultCode = mapGrpcStatus(status.error_code());
                     auto errorMsg = status.error_message();
-                    Er::Log2::error(m_owner->log(), "Stream to {} terminated with an error: {} ({})", m_context.peer(), resultCode, errorMsg);
+                    Er::Log2::error(m_log.get(), "Stream to {} terminated with an error: {} ({})", m_context.peer(), resultCode, errorMsg);
 
                     m_handler->handleTransportError(resultCode, std::move(errorMsg));
                 }
@@ -503,8 +525,8 @@ private:
         {
             if (m_nextIndex < m_mapping.size())
             {
-                Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamWriter::nextWrite(#{} of {})", Er::Format::ptr(this), m_nextIndex, m_mapping.size());
-                Er::Log2::Indent idt(m_owner->log());
+                Er::Log2::debug(m_log.get(), "{}.PropertyMappingStreamWriter::nextWrite(#{} of {})", Er::Format::ptr(this), m_nextIndex, m_mapping.size());
+                Er::Log2::Indent idt(m_log.get());
 
                 m_request.set_cookie(m_owner->cookie());
                 m_request.set_mappingver(m_mappingVer);
@@ -521,14 +543,15 @@ private:
             }
             else
             {
-                Er::Log2::debug(m_owner->log(), "{}.PropertyMappingStreamWriter::nextWrite(): end of stream", Er::Format::ptr(this));
-                Er::Log2::Indent idt(m_owner->log());
+                Er::Log2::debug(m_log.get(), "{}.PropertyMappingStreamWriter::nextWrite(): end of stream", Er::Format::ptr(this));
+                Er::Log2::Indent idt(m_log.get());
 
                 StartWritesDone();
             }
         }
 
         ClientImpl* const m_owner;
+        Er::Log2::ILogger::Ptr m_log;
         ICompletion::Ptr m_handler;
         erebus::PutPropertyMappingRequest m_request;
         grpc::ClientContext m_context;
@@ -602,6 +625,7 @@ private:
                 {
                     auto message = Er::format("Unexpected error calling {}:{}: {}", ctx->context.peer(), ctx->uri, static_cast<int>(code));
                     ctx->handler->handleTransportError(Er::Result::Failure, std::move(message));
+                    return;
                 }
             }
 
@@ -609,7 +633,7 @@ private:
             auto localMappingVer = m_propertyMapping.version;
             if (remoteMappingVer != localMappingVer)
             {
-                Er::Log2::debug(m_log, "Client property mapping expired for {}:{} (remote v{} local v.{})", ctx->context.peer(), ctx->uri, remoteMappingVer, localMappingVer);
+                Er::Log2::debug(m_log, "Client property mapping expired for {}:{} (remote v.{} local v.{})", ctx->context.peer(), ctx->uri, remoteMappingVer, localMappingVer);
                 ctx->handler->handleClientPropertyMappingExpired();
                 return;
             }
@@ -617,7 +641,7 @@ private:
             if (ctx->reply.has_exception())
             {
                 auto e = unmarshalException(ctx->reply);
-                Er::Log2::error(m_log, "Failed to call {}:{}", ctx->context.peer(), ctx->uri, e.what());
+                Er::Log2::error(m_log, "Failed to call {}:{}: {}", ctx->context.peer(), ctx->uri, e.what());
 
                 ctx->handler->handleException(std::move(e));
 

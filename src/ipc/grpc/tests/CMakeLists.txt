@@ -5,6 +5,7 @@ add_executable(
     call.cpp
     main.cpp
     ping.cpp
+    stream.cpp
 )
 
 target_link_libraries(erebus-grpc-tests PRIVATE erebus::testing erebus::system erebus::grpc)

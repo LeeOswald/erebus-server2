@@ -4,9 +4,6 @@ namespace
 {
 
 
-using SimpleCompletion = CompletionBase<Er::Ipc::IClient::ICompletion>;
-
-
 class TestService
     : public Er::Ipc::IService
     , public std::enable_shared_from_this<TestService>
@@ -78,26 +75,6 @@ public:
 
         auto service = std::make_shared<TestService>();
         service->registerService(m_server.get());
-    }
-
-    bool putPropertyMapping(std::size_t client)
-    {
-        ErAssert(client < m_clients.size());
-
-        auto completion = std::make_shared<SimpleCompletion>();
-
-        m_clients[client]->putPropertyMapping(completion);
-        return completion->wait() && completion->success();
-    }
-
-    bool getPropertyMapping(std::size_t client)
-    {
-        ErAssert(client < m_clients.size());
-
-        auto completion = std::make_shared<SimpleCompletion>();
-
-        m_clients[client]->getPropertyMapping(completion);
-        return completion->wait() && completion->success();
     }
 };
 
