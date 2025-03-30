@@ -58,6 +58,6 @@ using ChannelPtr = std::shared_ptr<void>;
 
 ER_GRPC_CLIENT_EXPORT ChannelPtr createChannel(const ChannelSettings& params);
 
-ER_GRPC_CLIENT_EXPORT IClient::Ptr createClient(const ChannelSettings& params, ChannelPtr channel, Er::Log2::ILogger* log);
+ER_GRPC_CLIENT_EXPORT IClient::Ptr createClient(const ChannelSettings& params, ChannelPtr channel, Er::Log2::ILogger::Ptr log);
 
 } // namespace Er::Ipc::Grpc {}

@@ -1,12 +1,5 @@
 #include "common.hpp"
 
-#include <erebus/ipc/grpc/grpc_client.hxx>
-#include <erebus/ipc/grpc/grpc_server.hxx>
-#include <erebus/system/exception.hxx>
-
-#include <thread>
-#include <vector>
-
 namespace
 {
 
@@ -303,13 +296,17 @@ TEST_F(TestCall, ConcurrentCall)
                 auto c = std::make_shared<CallCompletion>();
 
                 auto s = Er::format("Call[{}][{}]", id, i);
-                Er::PropertyBag args;
-                args.push_back(Er::Property(s, Er::Unspecified::String));
-
-                client->call("echo", args, c);
-
+                
                 requests.push_back(std::move(s));
                 completions.push_back(c);
+            }
+
+            for (long i = 0; i < callCount; ++i)
+            {
+                Er::PropertyBag args;
+                args.push_back(Er::Property(requests[i], Er::Unspecified::String));
+
+                client->call("echo", args, completions[i]);
             }
         }
 

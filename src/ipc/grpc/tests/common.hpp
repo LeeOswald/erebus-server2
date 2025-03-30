@@ -104,12 +104,24 @@ public:
 
     TestClientBase()
         : m_port(g_serverPort)
+        , m_serverLog(makeLogger("server", Er::Log2::Level::Debug))
+        , m_clientLog(makeLogger("client", Er::Log2::Level::Debug))
     {
+    }
+
+    Er::Log2::ILogger* serverLog() noexcept
+    {
+        return m_serverLog.get();
+    }
+
+    Er::Log2::ILogger* clientLog() noexcept
+    {
+        return m_clientLog.get();
     }
 
     void startServer()
     {
-        Er::Ipc::Grpc::ServerArgs args(Er::Log2::get());
+        Er::Ipc::Grpc::ServerArgs args(m_serverLog);
         args.endpoints.push_back(Er::Ipc::Grpc::ServerArgs::Endpoint(Er::format("127.0.0.1:{}", m_port)));
 
         m_server = Er::Ipc::Grpc::create(args);
@@ -133,7 +145,7 @@ public:
 
         for (std::size_t i = 0; i < count; ++i)
         {
-            m_clients.push_back(Er::Ipc::Grpc::createClient(args, channel, Er::Log2::get()));
+            m_clients.push_back(Er::Ipc::Grpc::createClient(args, channel, m_clientLog));
         }
     }
 
@@ -147,7 +159,20 @@ public:
         return m_clients.size();
     }
 
+    Er::Log2::ILogger::Ptr makeLogger(std::string_view component, Er::Log2::Level level)
+    {
+        auto underlying = Er::Log2::strongRef();
+        ErAssert(underlying);
+        auto log = Er::Log2::makeSyncLogger(component);
+        log->addSink("global", std::static_pointer_cast<Er::Log2::ISink>(underlying));
+        log->setLevel(level);
+        return log;
+    }
+
 protected:
+    Er::Log2::ILogger::Ptr m_serverLog;
+    Er::Log2::ILogger::Ptr m_clientLog;
+
     std::uint16_t m_port;
     Er::Ipc::IServer::Ptr m_server;
     std::vector<Er::Ipc::IClient::Ptr> m_clients;

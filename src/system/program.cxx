@@ -30,6 +30,7 @@ Program* Program::s_instance = nullptr;
 
 Program::~Program()
 {
+    Erp ::Log2::set(nullptr);
     s_instance = nullptr;
 }
 
@@ -260,7 +261,7 @@ void Program::globalMakeLogger()
     if (m_options & SyncLogger)
         m_logger = Log2::makeSyncLogger();
     else
-        m_logger = Log2::makeLogger(std::chrono::milliseconds(m_loggerThreshold));
+        m_logger = Log2::makeLogger({}, std::chrono::milliseconds(m_loggerThreshold));
 
     auto verbose = m_args.count("verbose") > 0;
     m_logger->setLevel(verbose ? Log2::Level::Debug : Log2::Level::Info);
@@ -280,7 +281,7 @@ void Program::globalMakeLogger()
         addLoggers(tee.get());
     }
 
-    Log2::set(m_logger.get());
+    Erp::Log2::set(m_logger.get());
 }
 
 int Program::exec(int argc, char** argv) noexcept

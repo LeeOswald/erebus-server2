@@ -456,6 +456,7 @@ private:
     static void marshalException(erebus::ServiceReply* reply, const Er::Exception& e);
 
     const Er::Ipc::Grpc::ServerArgs m_params;
+    Er::Log2::ILogger* const m_log;
     std::unique_ptr<grpc::Server> m_server;
 
     struct

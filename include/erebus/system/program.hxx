@@ -30,6 +30,16 @@ public:
     virtual ~Program();
     Program(int options = 0) noexcept;
 
+    Log2::ILogger::Ptr log() noexcept
+    {
+        return m_logger;
+    }
+
+    static Program* instance() noexcept
+    {
+        return s_instance;
+    }
+
     bool isDaemon() noexcept
     {
         return m_isDaemon;

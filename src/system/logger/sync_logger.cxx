@@ -24,8 +24,9 @@ public:
     {
     }
 
-    SyncLogger()
-        : m_level(Level::Debug)
+    SyncLogger(std::string_view component)
+        : m_component(component)
+        , m_level(Level::Debug)
         , m_tee(makeTee(ThreadSafe::Yes))
     {
     }
@@ -60,12 +61,15 @@ public:
         if (!r) [[unlikely]]
             return;
 
-        if (r->level() < m_level) [[unlikely]]
+        if (r->level() < m_level)
             return;
 
         auto indent = m_threadData.data().indent;
         if (indent > 0)
             r->setIndent(indent);
+
+        if (!m_component.empty() && r->component().empty())
+            r->setComponent(m_component);
 
         m_tee->write(r);
     }
@@ -96,6 +100,7 @@ private:
     };
 
     using ThreadDataHolder = ThreadData<PerThread>;
+    std::string_view m_component;
     Level m_level;
     ITee::Ptr m_tee;
     ThreadDataHolder m_threadData;
@@ -105,9 +110,9 @@ private:
 } // namespace {}
 
 
-ER_SYSTEM_EXPORT ILogger::Ptr makeSyncLogger()
+ER_SYSTEM_EXPORT ILogger::Ptr makeSyncLogger(std::string_view component)
 {
-    return std::make_shared<SyncLogger>();
+    return std::make_shared<SyncLogger>(component);
 }
 
 } // namespace Er::Log2 {}

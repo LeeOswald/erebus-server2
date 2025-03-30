@@ -45,11 +45,11 @@ struct ServerArgs
         }
     };
 
-    Er::Log2::ILogger* log = nullptr;
+    Er::Log2::ILogger::Ptr log;
     std::vector<Endpoint> endpoints;
     bool keepAlive = true;
 
-    explicit ServerArgs(Er::Log2::ILogger* log) noexcept
+    explicit ServerArgs(Er::Log2::ILogger::Ptr log) noexcept
         : log(log)
     {
     }

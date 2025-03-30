@@ -24,8 +24,9 @@ public:
     {
     }
 
-    AsyncLogger(std::chrono::milliseconds threshold)
-        : m_threshold(threshold)
+    AsyncLogger(std::string_view component, std::chrono::milliseconds threshold)
+        : m_component(component)
+        , m_threshold(threshold)
         , m_level(Level::Debug)
         , m_tee(makeTee(ThreadSafe::Yes))
         , m_worker([this](std::stop_token stop) { run(stop); })
@@ -62,8 +63,11 @@ public:
         if (!r) [[unlikely]]
             return;
 
-        if (r->level() < m_level) [[unlikely]]
+        if (r->level() < m_level)
             return;
+
+        if (!m_component.empty() && r->component().empty())
+            r->setComponent(m_component);
 
         auto indent = m_threadData.data().indent;
         if (indent > 0)
@@ -185,6 +189,7 @@ private:
         }
     }
 
+    std::string_view m_component;
     std::chrono::milliseconds m_threshold;
     Level m_level;
     ITee::Ptr m_tee;
@@ -201,9 +206,9 @@ private:
 } // namespace {}
 
 
-ER_SYSTEM_EXPORT ILogger::Ptr makeLogger(std::chrono::milliseconds threshold)
+ER_SYSTEM_EXPORT ILogger::Ptr makeLogger(std::string_view component, std::chrono::milliseconds threshold)
 {
-    return std::make_shared<AsyncLogger>(threshold);
+    return std::make_shared<AsyncLogger>(component, threshold);
 }
 
 } // namespace Er::Log2 {}

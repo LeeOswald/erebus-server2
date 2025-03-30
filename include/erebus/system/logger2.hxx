@@ -80,6 +80,13 @@ public:
         return m_indent;
     }
 
+    void setComponent(std::string_view component) noexcept
+    {
+        // use in the top level logger only
+        // since the structure may be shared between many consumers
+        m_component = component;
+    }
+
     void setIndent(unsigned indent) noexcept
     {
         // use in the top level logger only
@@ -98,7 +105,7 @@ public:
     }
 
 private:
-    const std::string_view m_component;
+    std::string_view m_component;
     const Level m_level = Level::Info;
     const System::PackedTime::ValueType m_time;
     const uintptr_t m_tid = 0;
@@ -199,6 +206,7 @@ ER_SYSTEM_EXPORT ITee::Ptr makeTee(ThreadSafe mode);
 
 
 struct ILogger
+    : public ITee
 {
     using Ptr = std::shared_ptr<ILogger>;
 
@@ -208,15 +216,10 @@ struct ILogger
     virtual Level setLevel(Level level) noexcept = 0;
     virtual void indent() noexcept = 0;
     virtual void unindent() noexcept = 0;
-    virtual void write(Record::Ptr r) = 0;
-    virtual void flush() = 0;
-    virtual void addSink(std::string_view name, ISink::Ptr sink) = 0;
-    virtual void removeSink(std::string_view name) = 0;
-    virtual ISink::Ptr findSink(std::string_view name) = 0;
 };
 
-ER_SYSTEM_EXPORT ILogger::Ptr makeLogger(std::chrono::milliseconds threshold = {});
-ER_SYSTEM_EXPORT ILogger::Ptr makeSyncLogger();
+ER_SYSTEM_EXPORT ILogger::Ptr makeLogger(std::string_view component = {}, std::chrono::milliseconds threshold = {});
+ER_SYSTEM_EXPORT ILogger::Ptr makeSyncLogger(std::string_view component = {});
 
 
 struct Indent
@@ -382,9 +385,14 @@ void fatal(std::string_view component, ILogger* sink, std::string_view format, A
 }
 
 
-// per-thread loggers
 ER_SYSTEM_EXPORT ILogger* get() noexcept;
-ER_SYSTEM_EXPORT ILogger* set(ILogger* log) noexcept;
-
+ER_SYSTEM_EXPORT ILogger::Ptr strongRef() noexcept;
 
 } // namespace Er::Log2 {}
+
+namespace Erp::Log2
+{
+
+ER_SYSTEM_EXPORT Er::Log2::ILogger* set(Er::Log2::ILogger* log) noexcept;
+
+} // namespace Erp::Log2 {}

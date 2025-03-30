@@ -14,6 +14,7 @@ ErebusService::~ErebusService()
 
 ErebusService::ErebusService(const Er::Ipc::Grpc::ServerArgs& params)
     : m_params(params)
+    , m_log(params.log.get())
     , m_sessions(std::chrono::seconds(600)) // 10 mins
 {
     ::grpc_init();
@@ -143,13 +144,13 @@ void ErebusService::marshalException(erebus::ServiceReply* reply, const Er::Exce
 
 grpc::ServerUnaryReactor* ErebusService::Ping(grpc::CallbackServerContext* context, const erebus::PingRequest* request, erebus::PingReply* reply)
 {
-    Er::Log2::debug(m_params.log, "{}.ErebusService::GenericRpc", Er::Format::ptr(this));
-    Er::Log2::Indent idt(m_params.log);
+    Er::Log2::debug(m_log, "{}.ErebusService::GenericRpc", Er::Format::ptr(this));
+    Er::Log2::Indent idt(m_log);
 
-    auto reactor = std::make_unique<ReplyUnaryReactor>(m_params.log);
+    auto reactor = std::make_unique<ReplyUnaryReactor>(m_log);
     if (context->IsCancelled()) [[unlikely]]
     {
-        Er::Log2::warning(m_params.log, "Request cancelled");
+        Er::Log2::warning(m_log, "Request cancelled");
         return reactor.release();
     }
 
@@ -160,7 +161,7 @@ grpc::ServerUnaryReactor* ErebusService::Ping(grpc::CallbackServerContext* conte
     reply->set_payload(payload);
     
     auto& cookie = request->cookie();
-    Er::Log2::info(m_params.log, "Ping with {} bytes of data from {}:{}", payload.length(), context->peer(), cookie);
+    Er::Log2::info(m_log, "Ping with {} bytes of data from {}:{}", payload.length(), context->peer(), cookie);
 
     // touch session data
     [[maybe_unused]] auto session = m_sessions.get(cookie);
@@ -171,13 +172,13 @@ grpc::ServerUnaryReactor* ErebusService::Ping(grpc::CallbackServerContext* conte
 
 grpc::ServerUnaryReactor* ErebusService::GenericCall(grpc::CallbackServerContext* context, const erebus::ServiceRequest* request, erebus::ServiceReply* reply)
 {
-    Er::Log2::debug(m_params.log, "{}.ErebusService::GenericCall", Er::Format::ptr(this));
-    Er::Log2::Indent idt(m_params.log);
+    Er::Log2::debug(m_log, "{}.ErebusService::GenericCall", Er::Format::ptr(this));
+    Er::Log2::Indent idt(m_log);
 
-    auto reactor = std::make_unique<ReplyUnaryReactor>(m_params.log);
+    auto reactor = std::make_unique<ReplyUnaryReactor>(m_log);
     if (context->IsCancelled()) [[unlikely]]
     {
-        Er::Log2::warning(m_params.log, "Request cancelled");
+        Er::Log2::warning(m_log, "Request cancelled");
         return reactor.release();
     }
 
@@ -187,7 +188,7 @@ grpc::ServerUnaryReactor* ErebusService::GenericCall(grpc::CallbackServerContext
     if (!service) [[unlikely]]
     {
         auto msg = Er::format("No handlers for [{}]", requestStr);
-        Er::Log2::writeln(m_params.log, Er::Log2::Level::Error, msg);
+        Er::Log2::writeln(m_log, Er::Log2::Level::Error, msg);
         reactor->Finish(grpc::Status(grpc::UNIMPLEMENTED, msg));
         return reactor.release();
     }
@@ -197,11 +198,11 @@ grpc::ServerUnaryReactor* ErebusService::GenericCall(grpc::CallbackServerContext
     static std::string empty;
     const std::string& cookie = request->has_cookie() ? request->cookie() : empty;
 
-    Er::Log2::info(m_params.log, "Req [{}] from {}:{}", requestStr, context->peer(), cookie);
+    Er::Log2::info(m_log, "Req [{}] from {}:{}", requestStr, context->peer(), cookie);
 
     auto mappingVer = request->mappingver();
 
-    ExceptionMarshaler xcptHandler(m_params.log, *reply);
+    ExceptionMarshaler xcptHandler(m_log, *reply);
     try
     {
         auto valid = propertyMappingValid(cookie, mappingVer);
@@ -233,19 +234,19 @@ grpc::ServerUnaryReactor* ErebusService::GenericCall(grpc::CallbackServerContext
 
 grpc::ServerWriteReactor<erebus::ServiceReply>* ErebusService::GenericStream(grpc::CallbackServerContext* context, const erebus::ServiceRequest* request)
 {
-    Er::Log2::debug(m_params.log, "{}.ErebusService::GenericStream", Er::Format::ptr(this));
-    Er::Log2::Indent idt(m_params.log);
+    Er::Log2::debug(m_log, "{}.ErebusService::GenericStream", Er::Format::ptr(this));
+    Er::Log2::Indent idt(m_log);
 
-    auto reactor = std::make_unique<ReplyStreamWriteReactor>(m_params.log);
+    auto reactor = std::make_unique<ReplyStreamWriteReactor>(m_log);
 
     auto& requestStr = request->request();
-    Er::Log2::info(m_params.log, "Strm [{}] to {}", requestStr, context->peer());
+    Er::Log2::info(m_log, "Strm [{}] to {}", requestStr, context->peer());
 
     auto service = findService(requestStr);
     if (!service)
     {
         auto msg = Er::format("No handlers for [{}]", requestStr);
-        Er::Log2::writeln(m_params.log, Er::Log2::Level::Error, msg);
+        Er::Log2::writeln(m_log, Er::Log2::Level::Error, msg);
         reactor->Finish(grpc::Status(grpc::UNIMPLEMENTED, msg));
         return reactor.release();
     }
@@ -256,7 +257,7 @@ grpc::ServerWriteReactor<erebus::ServiceReply>* ErebusService::GenericStream(grp
     auto mappingVer = request->mappingver();
 
     std::string errorMsg;
-    Er::Util::ExceptionLogger xcptLogger(m_params.log);
+    Er::Util::ExceptionLogger xcptLogger(m_log);
     try
     {
         auto valid = propertyMappingValid(cookie, mappingVer);
@@ -285,12 +286,12 @@ grpc::ServerWriteReactor<erebus::ServiceReply>* ErebusService::GenericStream(grp
 
 grpc::ServerWriteReactor<erebus::GetPropertyMappingReply>* ErebusService::GetPropertyMapping(grpc::CallbackServerContext* context, const erebus::Void* request)
 {
-    Er::Log2::debug(m_params.log, "{}.ErebusService::GetPropertyMapping", Er::Format::ptr(this));
-    Er::Log2::Indent idt(m_params.log);
+    Er::Log2::debug(m_log, "{}.ErebusService::GetPropertyMapping", Er::Format::ptr(this));
+    Er::Log2::Indent idt(m_log);
 
-    Er::Log2::info(m_params.log, "Request from {}", context->peer());
+    Er::Log2::info(m_log, "Request from {}", context->peer());
 
-    auto reactor = std::make_unique<PropertyInfoStreamWriteReactor>(m_params.log);
+    auto reactor = std::make_unique<PropertyInfoStreamWriteReactor>(m_log);
     reactor->Begin();
     
     return reactor.release();
@@ -298,12 +299,12 @@ grpc::ServerWriteReactor<erebus::GetPropertyMappingReply>* ErebusService::GetPro
 
 grpc::ServerReadReactor<erebus::PutPropertyMappingRequest>* ErebusService::PutPropertyMapping(grpc::CallbackServerContext* context, ::erebus::Void* response)
 {
-    Er::Log2::debug(m_params.log, "{}.ErebusService::PutPropertyMapping", Er::Format::ptr(this));
-    Er::Log2::Indent idt(m_params.log);
+    Er::Log2::debug(m_log, "{}.ErebusService::PutPropertyMapping", Er::Format::ptr(this));
+    Er::Log2::Indent idt(m_log);
 
-    Er::Log2::info(m_params.log, "Request from {}", context->peer());
+    Er::Log2::info(m_log, "Request from {}", context->peer());
 
-    auto reactor = std::make_unique<PutPropertyMappingStreamReadReactor>(m_params.log, this);
+    auto reactor = std::make_unique<PutPropertyMappingStreamReadReactor>(m_log, this);
     return reactor.release();
 }
 
@@ -316,7 +317,7 @@ void ErebusService::registerService(std::string_view request, Er::Ipc::IService:
     if (it != m_services.map.end())
         ErThrow(Er::format("Service for [{}] is already registered", id));
 
-    Er::Log2::info(m_params.log, "Registered service {} for [{}]", Er::Format::ptr(service.get()), id);
+    Er::Log2::info(m_log, "Registered service {} for [{}]", Er::Format::ptr(service.get()), id);
 
     m_services.map.insert({ std::move(id), service });
 }
@@ -330,7 +331,7 @@ void ErebusService::unregisterService(Er::Ipc::IService* service)
     {
         if (it->second.get() == service)
         {
-            Er::Log2::info(m_params.log, "Unregistered service {}", Er::Format::ptr(service));
+            Er::Log2::info(m_log, "Unregistered service {}", Er::Format::ptr(service));
 
             auto next = std::next(it);
             m_services.map.erase(it);
@@ -345,7 +346,7 @@ void ErebusService::unregisterService(Er::Ipc::IService* service)
     }
 
     if (!success)
-        Er::Log2::error(m_params.log, "Service {} is not registered", Er::Format::ptr(service));
+        Er::Log2::error(m_log, "Service {} is not registered", Er::Format::ptr(service));
 }
 
 const Er::PropertyInfo* ErebusService::mapProperty(std::uint32_t id, const std::string& context)
@@ -375,8 +376,8 @@ std::pair<bool, std::uint32_t> ErebusService::propertyMappingValid(const std::st
 
 void ErebusService::registerPropertyMapping(std::uint32_t version, std::uint32_t id, const std::string& context, Er::PropertyType type, const std::string& name, const std::string& readableName)
 {
-    Er::Log2::debug(m_params.log, "{}.ErebusService::registerPropertyMapping(v.{} {}.{} -> {}[{}])", Er::Format::ptr(this), version, context, id, name, readableName);
-    Er::Log2::Indent idt(m_params.log);
+    Er::Log2::debug(m_log, "{}.ErebusService::registerPropertyMapping(v.{} {}.{} -> {}[{}])", Er::Format::ptr(this), version, context, id, name, readableName);
+    Er::Log2::Indent idt(m_log);
 
     auto session = m_sessions.get(context);
     ErAssert(session);

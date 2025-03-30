@@ -64,11 +64,12 @@ public:
         ::grpc_shutdown();
     }
 
-    explicit ClientImpl(const ChannelSettings& params, std::shared_ptr<grpc::Channel> channel, Er::Log2::ILogger* log)
+    explicit ClientImpl(const ChannelSettings& params, std::shared_ptr<grpc::Channel> channel, Er::Log2::ILogger::Ptr log)
         : m_params(params)
         , m_grpcReady(grpcInit())
         , m_stub(erebus::Erebus::NewStub(channel))
-        , m_log(log)
+        , m_logRef(log)
+        , m_log(log.get())
         , m_cookie(makeNoise(CookieLength))
     {
         Er::Log2::debug(m_log, "{}.ClientImpl::ClientImpl()", Er::Format::ptr(this));
@@ -709,6 +710,7 @@ private:
     const ChannelSettings m_params;
     const bool m_grpcReady;
     const std::unique_ptr<erebus::Erebus::Stub> m_stub;
+    Er::Log2::ILogger::Ptr m_logRef;
     Er::Log2::ILogger* const m_log;
     const std::string m_cookie;
 
@@ -754,7 +756,7 @@ ER_GRPC_CLIENT_EXPORT ChannelPtr createChannel(const ChannelSettings& params)
     }
 }
 
-ER_GRPC_CLIENT_EXPORT IClient::Ptr createClient(const ChannelSettings& params, ChannelPtr channel, Er::Log2::ILogger* log)
+ER_GRPC_CLIENT_EXPORT IClient::Ptr createClient(const ChannelSettings& params, ChannelPtr channel, Er::Log2::ILogger::Ptr log)
 {
     return std::make_unique<ClientImpl>(params, std::static_pointer_cast<grpc::Channel>(channel), log);
 }
