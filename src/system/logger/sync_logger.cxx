@@ -26,21 +26,8 @@ public:
 
     SyncLogger(std::string_view component)
         : m_component(component)
-        , m_level(Level::Debug)
         , m_tee(makeTee(ThreadSafe::Yes))
     {
-    }
-
-    Level level() const noexcept override
-    {
-        return m_level;
-    }
-
-    Level setLevel(Level level) noexcept override
-    {
-        auto prev = m_level;
-        m_level = level;
-        return prev;
     }
 
     void indent() noexcept override
@@ -101,7 +88,6 @@ private:
 
     using ThreadDataHolder = ThreadData<PerThread>;
     std::string_view m_component;
-    Level m_level;
     ITee::Ptr m_tee;
     ThreadDataHolder m_threadData;
 };

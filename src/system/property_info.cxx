@@ -60,12 +60,15 @@ ER_SYSTEM_EXPORT std::uint32_t registerPersistentProperty(const Er::PropertyInfo
                 static_cast<unsigned>(info->type()), static_cast<unsigned>(it->second->type())));
         }
 
+        Er::Log2::warning(Erp::Log2::fallback(), "Property already registered: {} [{}] of type {}", info->name(), info->readableName(), Er::propertyTypeToString(info->type()));
         return it->second->unique();
     }
 
     auto id = r.unique++;
     auto result = r.persistentProps.insert({ info->name(), info });
     ErAssert(result.second);
+
+    Er::Log2::debug(Erp::Log2::fallback(), "Property {} registered: {} [{}] of type {}", id, info->name(), info->readableName(), Er::propertyTypeToString(info->type()));
     
     return id;
 }
@@ -104,7 +107,7 @@ ER_SYSTEM_EXPORT const Er::PropertyInfo* allocateTransientProperty(Er::PropertyT
                 static_cast<unsigned>(type), static_cast<unsigned>(it->second->type())));
         }
 
-        Er::Log2::debug(Er::Log2::get(), "Transient property mapped to persistent property {} [{}] of type {}", name, readableName, Er::propertyTypeToString(type));
+        Er::Log2::debug(Erp::Log2::fallback(), "Transient property mapped to persistent property {} [{}] of type {}", name, readableName, Er::propertyTypeToString(type));
         return it->second;
     }
 
@@ -117,7 +120,7 @@ ER_SYSTEM_EXPORT const Er::PropertyInfo* allocateTransientProperty(Er::PropertyT
                 static_cast<unsigned>(type), static_cast<unsigned>(it2->second->type())));
         }
 
-        Er::Log2::debug(Er::Log2::get(), "Transient property found: {} [{}] of type {}", name, readableName, Er::propertyTypeToString(type));
+        Er::Log2::debug(Erp::Log2::fallback(), "Transient property found: {} [{}] of type {}", name, readableName, Er::propertyTypeToString(type));
         return it2->second.get();
     }
 
@@ -128,7 +131,7 @@ ER_SYSTEM_EXPORT const Er::PropertyInfo* allocateTransientProperty(Er::PropertyT
 
     r.transientProps.insert({ name, std::move(prop) });
 
-    Er::Log2::debug(Er::Log2::get(), "Transient property registered: {} [{}] of type {}", name, readableName, Er::propertyTypeToString(type));
+    Er::Log2::debug(Erp::Log2::fallback(), "Transient property registered: {} [{}] of type {}", name, readableName, Er::propertyTypeToString(type));
 
     return pi;
 }

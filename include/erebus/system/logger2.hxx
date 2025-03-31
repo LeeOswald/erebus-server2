@@ -212,10 +212,23 @@ struct ILogger
 
     virtual ~ILogger() = default;
 
-    virtual Level level() const noexcept = 0;
-    virtual Level setLevel(Level level) noexcept = 0;
+    Level level() const noexcept
+    {
+        return m_level;
+    }
+
+    Level setLevel(Level level) noexcept
+    {
+        auto prev = m_level;
+        m_level = level;
+        return prev;
+    }
+
     virtual void indent() noexcept = 0;
     virtual void unindent() noexcept = 0;
+
+protected:
+    Level m_level = Level::Debug;
 };
 
 ER_SYSTEM_EXPORT ILogger::Ptr makeLogger(std::string_view component = {}, std::chrono::milliseconds threshold = {});
@@ -276,39 +289,31 @@ void write(ILogger* sink, Level level, std::string_view format, Args&&... args)
 template <class... Args>
 void debug(ILogger* sink, std::string_view format, Args&&... args)
 {
-    if (sink->level() <= Level::Debug)
-        write(sink, Level::Debug, format, std::forward<Args>(args)...);
+    write(sink, Level::Debug, format, std::forward<Args>(args)...);
 }
 
 template <class... Args>
 void info(ILogger* sink, std::string_view format, Args&&... args)
 {
-    if (sink->level() <= Level::Info)
-        write(sink, Level::Info, format, std::forward<Args>(args)...);
+    write(sink, Level::Info, format, std::forward<Args>(args)...);
 }
 
 template <class... Args>
 void warning(ILogger* sink, std::string_view format, Args&&... args)
 {
-    if (sink->level() <= Level::Warning)
-        write(sink, Level::Warning, format, std::forward<Args>(args)...);
+    write(sink, Level::Warning, format, std::forward<Args>(args)...);
 }
 
 template <class... Args>
 void error(ILogger* sink, std::string_view format, Args&&... args)
 {
-    if (sink->level() <= Level::Error)
-        write(sink, Level::Error, format, std::forward<Args>(args)...);
+    write(sink, Level::Error, format, std::forward<Args>(args)...);
 }
 
 template <class... Args>
 void fatal(ILogger* sink, std::string_view format, Args&&... args)
 {
-    if (sink->level() <= Level::Fatal)
-    {
-        write(sink, Level::Fatal, format, std::forward<Args>(args)...);
-        sink->flush();
-    }
+    write(sink, Level::Fatal, format, std::forward<Args>(args)...);
 }
 
 
@@ -331,6 +336,12 @@ ER_SYSTEM_EXPORT ILogger::Ptr global() noexcept;
 
 namespace Erp::Log2
 {
+
+ER_SYSTEM_EXPORT Er::Log2::ILogger* fallback() noexcept;
+
+//
+// not thread-safe
+//
 
 ER_SYSTEM_EXPORT void setGlobal(Er::Log2::ILogger::Ptr log) noexcept;
 

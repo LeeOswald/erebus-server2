@@ -1,26 +1,17 @@
 #include <erebus/system/logger2.hxx>
 
+#include <mutex>
+#include <queue>
 
 namespace Er::Log2
 {
 
-class NullLogger
+struct NullLogger
     : public ILogger
     , public boost::noncopyable
 {
-public:
     ~NullLogger() = default;
     NullLogger() = default;
-
-    Level level() const noexcept override
-    {
-        return Level::Debug;
-    }
-
-    Level setLevel(Level level) noexcept override
-    {
-        return Level::Debug;
-    }
 
     void indent() noexcept override
     {
@@ -32,6 +23,20 @@ public:
 
     void write(Record::Ptr r) override
     {
+        std::lock_guard l(m_mutex);
+        m_pending.push(r);
+    }
+
+    Record::Ptr pop()
+    {
+        std::lock_guard l(m_mutex);
+        if (m_pending.empty())
+            return {};
+
+        auto r = m_pending.front();
+        m_pending.pop();
+
+        return r;
     }
 
     void flush() override
@@ -50,6 +55,10 @@ public:
     {
         return ISink::Ptr();
     }
+
+private:
+    std::mutex m_mutex;
+    std::queue<Record::Ptr> m_pending;
 };
 
 

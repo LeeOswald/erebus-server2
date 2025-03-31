@@ -27,22 +27,9 @@ public:
     AsyncLogger(std::string_view component, std::chrono::milliseconds threshold)
         : m_component(component)
         , m_threshold(threshold)
-        , m_level(Level::Debug)
         , m_tee(makeTee(ThreadSafe::Yes))
         , m_worker([this](std::stop_token stop) { run(stop); })
     {
-    }
-
-    Level level() const noexcept override
-    {
-        return m_level;
-    }
-
-    Level setLevel(Level level) noexcept override
-    {
-        auto prev = m_level;
-        m_level = level;
-        return prev;
     }
     
     void indent() noexcept override
@@ -191,7 +178,6 @@ private:
 
     std::string_view m_component;
     std::chrono::milliseconds m_threshold;
-    Level m_level;
     ITee::Ptr m_tee;
     ThreadDataHolder m_threadData;
     std::mutex m_mutexQueue;
