@@ -41,7 +41,7 @@ public:
             if (r.second)
             {
                 // really added
-                Er::Log2::debug(m_log, "Registered type [{}] -> {}", key, id);
+                ErLogDebug2(m_log, "Registered type [{}] -> {}", key, id);
             }
 
             return entry;

@@ -254,7 +254,7 @@ TEST_F(TestCall, ConcurrentCall)
         
         ~ClientWorker()
         {
-            Er::Log2::info(Er::Log2::get(), "~ClientWorker({})", id);
+            ErLogInfo("~ClientWorker({})", id);
         }
 
         ClientWorker(Er::Ipc::IClient* client, long id, long callCount)
@@ -263,7 +263,7 @@ TEST_F(TestCall, ConcurrentCall)
             , callCount(callCount)
             , worker([this]() { run();  })
         {
-            Er::Log2::info(Er::Log2::get(), "ClientWorker({})", id);
+            ErLogInfo("ClientWorker({})", id);
         }
 
         void run()
@@ -298,7 +298,7 @@ TEST_F(TestCall, ConcurrentCall)
                 }
                 else
                 {
-                    Er::Log2::error(Er::Log2::get(), "Call[{}][{}] did not complete", id, i);
+                    ErLogError("Call[{}][{}] did not complete", id, i);
                 }
             }
 
@@ -326,22 +326,22 @@ TEST_F(TestCall, ConcurrentCall)
                             }
                             else
                             {
-                                Er::Log2::error(Er::Log2::get(), "Call[{}][{}] reply was [{}] instead of [{}]", *v, s);
+                                ErLogError("Call[{}][{}] reply was [{}] instead of [{}]", *v, s);
                             }
                         }
                         else
                         {
-                            Er::Log2::error(Er::Log2::get(), "Call[{}][{}] did not yield a reply string");
+                            ErLogError("Call[{}][{}] did not yield a reply string");
                         }
                     }
                     else
                     {
-                        Er::Log2::error(Er::Log2::get(), "Call[{}][{}] did not yield a reply");
+                        ErLogError("Call[{}][{}] did not yield a reply");
                     }
                 }
                 else
                 {
-                    Er::Log2::error(Er::Log2::get(), "Call[{}][{}] failed: {} ({})", id, i, *completions[i]->error(), completions[i]->errorMessage());
+                    ErLogError("Call[{}][{}] failed: {} ({})", id, i, *completions[i]->error(), completions[i]->errorMessage());
                 }
             }
 

@@ -15,7 +15,7 @@ struct PingCompletion
 
     void handleReply(std::size_t payloadSize, std::chrono::milliseconds rtt) override
     {
-        Er::Log2::debug(Er::Log2::get(), "Pinged peer with {} bytes of data in {} ms", payloadSize, rtt.count());
+        ErLogDebug("Pinged peer with {} bytes of data in {} ms", payloadSize, rtt.count());
 
         --remainingCount;
         totalPayload += payloadSize;

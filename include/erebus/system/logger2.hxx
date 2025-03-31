@@ -235,23 +235,38 @@ ER_SYSTEM_EXPORT ILogger::Ptr makeLogger(std::string_view component = {}, std::c
 ER_SYSTEM_EXPORT ILogger::Ptr makeSyncLogger(std::string_view component = {});
 
 
-struct Indent
+struct IndentScope
     : public boost::noncopyable
 {
-    ~Indent()
+    ~IndentScope()
     {
-        log->unindent();
+        if (m_enable)
+            m_log->unindent();
     }
 
-    Indent(ILogger* log)
-        : log(log)
+    template <class... Args>
+    IndentScope(ILogger* log, Level level, std::string_view format, Args&&... args)
+        : m_log(log)
+        , m_enable(log->level() <= level)
     {
         ErAssert(log);
-        log->indent();
+        
+        if (m_enable)
+        {
+            log->write(Record::make(
+                level,
+                System::PackedTime::now(),
+                System::CurrentThread::id(),
+                Format::vformat(format, Format::make_format_args(args...))
+            ));
+
+            log->indent();
+        }
     }
 
 private:
-    ILogger* log;
+    ILogger* m_log;
+    bool m_enable;
 };
 
 
@@ -346,3 +361,56 @@ ER_SYSTEM_EXPORT Er::Log2::ILogger* fallback() noexcept;
 ER_SYSTEM_EXPORT void setGlobal(Er::Log2::ILogger::Ptr log) noexcept;
 
 } // namespace Erp::Log2 {}
+
+
+#define ErLogDebug(format, ...) \
+    if (::Er::Log2::get()->level() <= ::Er::Log2::Level::Debug) \
+        ::Er::Log2::debug(::Er::Log2::get(), format, ##__VA_ARGS__)
+
+#define ErLogDebug2(sink, format, ...) \
+    if (sink->level() <= ::Er::Log2::Level::Debug) \
+        ::Er::Log2::debug(sink, format, ##__VA_ARGS__)
+
+
+#define ErLogInfo(format, ...) \
+    if (::Er::Log2::get()->level() <= ::Er::Log2::Level::Info) \
+        ::Er::Log2::info(::Er::Log2::get(), format, ##__VA_ARGS__)
+
+#define ErLogInfo2(sink, format, ...) \
+    if (sink->level() <= ::Er::Log2::Level::Info) \
+        ::Er::Log2::info(sink, format, ##__VA_ARGS__)
+
+
+#define ErLogWarning(format, ...) \
+    if (::Er::Log2::get()->level() <= ::Er::Log2::Level::Warning) \
+        ::Er::Log2::warning(::Er::Log2::get(), format, ##__VA_ARGS__)
+
+#define ErLogWarning2(sink, format, ...) \
+    if (sink->level() <= ::Er::Log2::Level::Warning) \
+        ::Er::Log2::warning(sink, format, ##__VA_ARGS__)
+
+
+#define ErLogError(format, ...) \
+    if (::Er::Log2::get()->level() <= ::Er::Log2::Level::Error) \
+        ::Er::Log2::error(::Er::Log2::get(), format, ##__VA_ARGS__)
+
+#define ErLogError2(sink, format, ...) \
+    if (sink->level() <= ::Er::Log2::Level::Error) \
+        ::Er::Log2::error(sink, format, ##__VA_ARGS__)
+
+
+#define ErLogFatal(format, ...) \
+    if (::Er::Log2::get()->level() <= ::Er::Log2::Level::Fatal) \
+        ::Er::Log2::fatal(::Er::Log2::get(), format, ##__VA_ARGS__)
+
+#define ErLogFatal2(sink, format, ...) \
+    if (sink->level() <= ::Er::Log2::Level::Fatal) \
+        ::Er::Log2::fatal(sink, format, ##__VA_ARGS__)
+
+
+
+#define ErLogIndent(level, format, ...) \
+    ::Er::Log2::IndentScope __ids(::Er::Log2::get(), level, format, ##__VA_ARGS__)
+
+#define ErLogIndent2(sink, level, format, ...) \
+    ::Er::Log2::IndentScope __ids(sink, level, format, ##__VA_ARGS__)
