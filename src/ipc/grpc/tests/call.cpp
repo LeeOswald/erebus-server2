@@ -254,7 +254,7 @@ TEST_F(TestCall, ConcurrentCall)
         
         ~ClientWorker()
         {
-            ErLogInfo("~ClientWorker({})", id);
+            ErLogDebug("~ClientWorker({})", id);
         }
 
         ClientWorker(Er::Ipc::IClient* client, long id, long callCount)
@@ -263,7 +263,7 @@ TEST_F(TestCall, ConcurrentCall)
             , callCount(callCount)
             , worker([this]() { run();  })
         {
-            ErLogInfo("ClientWorker({})", id);
+            ErLogDebug("ClientWorker({})", id);
         }
 
         void run()

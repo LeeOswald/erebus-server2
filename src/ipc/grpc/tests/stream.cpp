@@ -345,5 +345,190 @@ TEST_F(TestStream, NormalStream)
             EXPECT_EQ(*tif, ThrowNever);
         }
     }
+}
 
+TEST_F(TestStream, ConcurrentStreams)
+{
+    struct ClientWorker
+    {
+        Er::Ipc::IClient* client;
+        std::int64_t id;
+        std::uint32_t frameCount;
+        std::shared_ptr<StreamCompletion> completion;
+        std::jthread worker;
+        
+        ~ClientWorker()
+        {
+            ErLogDebug("~ClientWorker({})", id);
+        }
+
+        ClientWorker(Er::Ipc::IClient* client, std::int64_t id, std::uint32_t frameCount)
+            : client(client)
+            , id(id)
+            , frameCount(frameCount)
+            , completion(std::make_shared<StreamCompletion>(frameCount))
+            , worker([this]() { run();  })
+        {
+            ErLogDebug("ClientWorker({})", id);
+        }
+
+        void run()
+        {
+            Er::PropertyBag args;
+            args.push_back(Er::Property(id, Er::Unspecified::Int64));
+            args.push_back(Er::Property(int32_t(frameCount), ReplyFrameCount));
+            args.push_back(Er::Property(int32_t(ThrowNever), ThrowInFrame));
+
+            client->stream("simple_stream", args, completion);
+        }
+
+        bool wait()
+        {
+            if (!completion->wait())
+            {
+                ErLogError("Stream {} did not complete", id);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool check()
+        {
+            if (completion->error())
+            {
+                ErLogError("Stream {} completed with an error {} ({})", id, *completion->error(), completion->errorMessage());
+                return false;
+            }
+
+            if (completion->serverPropertyMappingExpired())
+            {
+                ErLogError("Stream {} has server mapping expired", id);
+                return false;
+            }
+
+            if (completion->clientPropertyMappingExpired())
+            {
+                ErLogError("Stream {} has client mapping expired", id);
+                return false;
+            }
+
+            if (completion->receivedFrames != frameCount)
+            {
+                ErLogError("Stream {} received {} frames out of {}", id, completion->receivedFrames, frameCount);
+                return false;
+            }
+
+            if (completion->receivedExceptions != 0)
+            {
+                ErLogError("Stream {} has {} exceptions", id, completion->receivedExceptions);
+                return false;
+            }
+
+            for (std::uint32_t i = 0; i < frameCount; ++i)
+            {
+                if (completion->frames[i].empty())
+                {
+                    ErLogError("Stream {} frame #{} empty", id, i);
+                    return false;
+                }
+
+                if (completion->exceptions[i])
+                {
+                    ErLogError("Stream {} frame #{} has an exception", id, i);
+                    return false;
+                }
+
+                auto& props = completion->frames[i];
+                if (props.size() != 4)
+                {
+                    ErLogError("Stream {} frame #{} has {} props instead of {}", id, i, props.size(), 4);
+                    return false;
+                }
+
+                auto rfi = Er::get<std::int32_t>(props, ReplyFrameIndex);
+                if (!rfi)
+                {
+                    ErLogError("Stream {} frame #{} has no ReplyFrameIndex", id, i);
+                    return false;
+                }
+
+                if (*rfi != i)
+                {
+                    ErLogError("Stream {} frame #{} has ReplyFrameIndex {}", id, i, *rfi);
+                    return false;
+                }
+
+                auto i64 = Er::get<std::int64_t>(props, Er::Unspecified::Int64);
+                if (!i64)
+                {
+                    ErLogError("Stream {} frame #{} has no Er::Unspecified::Int64", id, i);
+                    return false;
+                }
+
+                if (*i64 != id)
+                {
+                    ErLogError("Stream {} frame #{} has Er::Unspecified::Int64 {}", id, i, *i64);
+                    return false;
+                }
+
+                auto fc = Er::get<std::int32_t>(props, ReplyFrameCount);
+                if (!fc)
+                {
+                    ErLogError("Stream {} frame #{} has no ReplyFrameCount", id, i);
+                    return false;
+                }
+
+                if (*fc != frameCount)
+                {
+                    ErLogError("Stream {} frame #{} has ReplyFrameCount {}", id, i, *fc);
+                    return false;
+                }
+
+                auto tif = Er::get<std::int32_t>(props, ThrowInFrame);
+                if (!tif)
+                {
+                    ErLogError("Stream {} frame #{} has no ThrowInFrame", id, i);
+                    return false;
+                }
+
+                if (*tif != ThrowNever)
+                {
+                    ErLogError("Stream {} frame #{} has ThrowInFrame {}", id, i, *tif);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    };
+
+    const long clientCount = 5;
+    const std::uint32_t frameCount = 1000;
+
+    startServer();
+    startClient(clientCount);
+
+    for (long i = 0; i < clientCount; ++i)
+    {
+        ASSERT_TRUE(putPropertyMapping(i));
+        ASSERT_TRUE(getPropertyMapping(i));
+    }
+
+    std::vector<std::unique_ptr<ClientWorker>> clients;
+    clients.reserve(clientCount);
+    for (long i = 0; i < clientCount; ++i)
+    {
+        clients.push_back(std::make_unique<ClientWorker>(m_clients[i].get(), i, frameCount));
+    }
+
+    for (long i = 0; i < clientCount; ++i)
+    {
+        ASSERT_TRUE(clients[i]->wait());
+    }
+
+    for (long i = 0; i < clientCount; ++i)
+    {
+        ASSERT_TRUE(clients[i]->check());
+    }
 }
