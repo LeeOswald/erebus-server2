@@ -70,7 +70,13 @@ int LuaState::print()
         lua_pop(m_l, 1);
     }
 
-    Log2::writeln("lua", m_log, Log2::Level::Info, ss.str());
+    m_log->write(Er::Log2::Record::make(
+        "lua",
+        Er::Log2::Level::Info,
+        Er::System::PackedTime::now(),
+        Er::System::CurrentThread::id(),
+        ss.str()
+    ));
 
     return 0;
 }

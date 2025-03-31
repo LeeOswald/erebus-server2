@@ -252,32 +252,9 @@ inline void writeln(ILogger* sink, Level level, const std::string& text)
     ));
 }
 
-
-inline void writeln(std::string_view component, ILogger* sink, Level level, const std::string& text)
-{
-    sink->write(Record::make(
-        component,
-        level,
-        System::PackedTime::now(),
-        System::CurrentThread::id(),
-        text
-    ));
-}
-
 inline void writeln(ILogger* sink, Level level, std::string&& text)
 {
     sink->write(Record::make(
-        level,
-        System::PackedTime::now(),
-        System::CurrentThread::id(),
-        std::move(text)
-    ));
-}
-
-inline void writeln(std::string_view component, ILogger* sink, Level level, std::string&& text)
-{
-    sink->write(Record::make(
-        component,
         level,
         System::PackedTime::now(),
         System::CurrentThread::id(),
@@ -297,29 +274,10 @@ void write(ILogger* sink, Level level, std::string_view format, Args&&... args)
 }
 
 template <class... Args>
-void write(std::string_view component, ILogger* sink, Level level, std::string_view format, Args&&... args)
-{
-    sink->write(Record::make(
-        component,
-        level,
-        System::PackedTime::now(),
-        System::CurrentThread::id(),
-        Format::vformat(format, Format::make_format_args(args...))
-    ));
-}
-
-template <class... Args>
 void debug(ILogger* sink, std::string_view format, Args&&... args)
 {
     if (sink->level() <= Level::Debug)
         write(sink, Level::Debug, format, std::forward<Args>(args)...);
-}
-
-template <class... Args>
-void debug(std::string_view component, ILogger* sink, std::string_view format, Args&&... args)
-{
-    if (sink->level() <= Level::Debug)
-        write(component, sink, Level::Debug, format, std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -330,13 +288,6 @@ void info(ILogger* sink, std::string_view format, Args&&... args)
 }
 
 template <class... Args>
-void info(std::string_view component, ILogger* sink, std::string_view format, Args&&... args)
-{
-    if (sink->level() <= Level::Info)
-        write(component, sink, Level::Info, format, std::forward<Args>(args)...);
-}
-
-template <class... Args>
 void warning(ILogger* sink, std::string_view format, Args&&... args)
 {
     if (sink->level() <= Level::Warning)
@@ -344,24 +295,10 @@ void warning(ILogger* sink, std::string_view format, Args&&... args)
 }
 
 template <class... Args>
-void warning(std::string_view component, ILogger* sink, std::string_view format, Args&&... args)
-{
-    if (sink->level() <= Level::Warning)
-        write(component, sink, Level::Warning, format, std::forward<Args>(args)...);
-}
-
-template <class... Args>
 void error(ILogger* sink, std::string_view format, Args&&... args)
 {
     if (sink->level() <= Level::Error)
         write(sink, Level::Error, format, std::forward<Args>(args)...);
-}
-
-template <class... Args>
-void error(std::string_view component, ILogger* sink, std::string_view format, Args&&... args)
-{
-    if (sink->level() <= Level::Error)
-        write(component, sink, Level::Error, format, std::forward<Args>(args)...);
 }
 
 template <class... Args>
@@ -374,25 +311,27 @@ void fatal(ILogger* sink, std::string_view format, Args&&... args)
     }
 }
 
-template <class... Args>
-void fatal(std::string_view component, ILogger* sink, std::string_view format, Args&&... args)
+
+extern ER_SYSTEM_EXPORT ILogger* g_global;
+extern ER_SYSTEM_EXPORT bool g_verbose;
+
+inline ILogger* get() noexcept
 {
-    if (sink->level() <= Level::Fatal)
-    {
-        write(component, sink, Level::Fatal, format, std::forward<Args>(args)...);
-        sink->flush();
-    }
+    return g_global;
 }
 
+inline bool verbose() noexcept
+{
+    return g_verbose;
+}
 
-ER_SYSTEM_EXPORT ILogger* get() noexcept;
-ER_SYSTEM_EXPORT ILogger::Ptr strongRef() noexcept;
+ER_SYSTEM_EXPORT ILogger::Ptr global() noexcept;
 
 } // namespace Er::Log2 {}
 
 namespace Erp::Log2
 {
 
-ER_SYSTEM_EXPORT Er::Log2::ILogger* set(Er::Log2::ILogger* log) noexcept;
+ER_SYSTEM_EXPORT void setGlobal(Er::Log2::ILogger::Ptr log) noexcept;
 
 } // namespace Erp::Log2 {}

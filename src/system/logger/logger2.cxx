@@ -1,11 +1,9 @@
-#include <erebus/system/program.hxx>
 #include <erebus/system/logger/null_logger2.hxx>
 
 
 
 namespace Er::Log2
 {
-    
 
 ILogger* nullLogger() noexcept
 {
@@ -13,21 +11,15 @@ ILogger* nullLogger() noexcept
     return &dummy;
 }
 
-Er::Log2::ILogger* g_logger = nullLogger();
+ER_SYSTEM_EXPORT ILogger* g_global = nullLogger();
+ER_SYSTEM_EXPORT bool g_verbose = false;
+
+static ILogger::Ptr s_global;
 
 
-ER_SYSTEM_EXPORT Log2::ILogger* get() noexcept
+ER_SYSTEM_EXPORT ILogger::Ptr global() noexcept
 {
-    return g_logger;
-}
-
-ER_SYSTEM_EXPORT ILogger::Ptr strongRef() noexcept
-{
-    auto program = Er::Program::instance();
-    if (!program)
-        return {};
-
-    return program->log();
+    return s_global;
 }
 
 } // namespace Er::Log2 {}
@@ -36,11 +28,10 @@ ER_SYSTEM_EXPORT ILogger::Ptr strongRef() noexcept
 namespace Erp::Log2
 {
 
-ER_SYSTEM_EXPORT Er::Log2::ILogger* set(Er::Log2::ILogger* log) noexcept
+ER_SYSTEM_EXPORT void setGlobal(Er::Log2::ILogger::Ptr log) noexcept
 {
-    auto prev = Er::Log2::g_logger;
-    Er::Log2::g_logger = log ? log : Er::Log2::nullLogger();
-    return prev;
+    Er::Log2::s_global = log;
+    Er::Log2::g_global = log ? log.get() : Er::Log2::nullLogger();
 }
 
 } // namespace Erp::Log2 {}

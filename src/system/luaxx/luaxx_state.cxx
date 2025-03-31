@@ -117,7 +117,13 @@ bool State::loadString(std::string_view str, const char* name)
 
 void State::exceptionHandler(int luaStatusCode, std::string msg, std::exception_ptr exception)
 {
-    Er::Log2::error("lua", m_log, "{}", msg);
+    m_log->write(Er::Log2::Record::make(
+        "lua",
+        Er::Log2::Level::Error,
+        Er::System::PackedTime::now(),
+        Er::System::CurrentThread::id(),
+        std::move(msg)
+    ));
 }
 
 void State::openLib(const std::string& name, lua_CFunction openf)

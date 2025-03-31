@@ -106,8 +106,8 @@ public:
 
     TestClientBase()
         : m_port(g_serverPort)
-        , m_serverLog(makeLogger("server", Er::Log2::Level::Debug))
-        , m_clientLog(makeLogger("client", Er::Log2::Level::Debug))
+        , m_serverLog(makeLogger("server", Er::Log2::g_verbose ? Er::Log2::Level::Debug : Er::Log2::Level::Warning))
+        , m_clientLog(makeLogger("client", Er::Log2::g_verbose ? Er::Log2::Level::Debug : Er::Log2::Level::Warning))
     {
     }
 
@@ -163,7 +163,7 @@ public:
 
     Er::Log2::ILogger::Ptr makeLogger(std::string_view component, Er::Log2::Level level)
     {
-        auto underlying = Er::Log2::strongRef();
+        auto underlying = Er::Log2::global();
         ErAssert(underlying);
         auto log = Er::Log2::makeSyncLogger(component);
         log->addSink("global", std::static_pointer_cast<Er::Log2::ISink>(underlying));

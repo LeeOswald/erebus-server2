@@ -30,7 +30,7 @@ Program* Program::s_instance = nullptr;
 
 Program::~Program()
 {
-    Erp ::Log2::set(nullptr);
+    Erp::Log2::setGlobal({});
     s_instance = nullptr;
 }
 
@@ -266,6 +266,8 @@ void Program::globalMakeLogger()
     auto verbose = m_args.count("verbose") > 0;
     m_logger->setLevel(verbose ? Log2::Level::Debug : Log2::Level::Info);
 
+    Er::Log2::g_verbose = verbose;
+
     if (m_options & SyncLogger)
     {
         auto tee = Log2::makeTee(ThreadSafe::Yes);
@@ -281,7 +283,7 @@ void Program::globalMakeLogger()
         addLoggers(tee.get());
     }
 
-    Erp::Log2::set(m_logger.get());
+    Erp::Log2::setGlobal(m_logger);
 }
 
 int Program::exec(int argc, char** argv) noexcept
