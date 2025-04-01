@@ -20,17 +20,17 @@ public:
         container->unregisterService(this);
     }
 
-    Er::PropertyBag request(std::string_view request, std::string_view cookie, const Er::PropertyBag& args) override
+    Er::PropertyBag request(std::string_view request, std::uint32_t clientId, const Er::PropertyBag& args) override
     {
         if (request == "echo")
-            return echo(cookie, args);
+            return echo(clientId, args);
         else if (request == "throws")
-            return throws(cookie, args);
+            return throws(clientId, args);
 
         ErThrow(Er::format("Unsupported request {}", request));
     }
 
-    StreamId beginStream(std::string_view request, std::string_view cookie, const Er::PropertyBag& args) override
+    StreamId beginStream(std::string_view request, std::uint32_t clientId, const Er::PropertyBag& args) override
     {
         ErThrow(Er::format("Unsupported request {}", request));
     }
@@ -45,12 +45,12 @@ public:
     }
 
 private:
-    Er::PropertyBag echo(std::string_view cookie, const Er::PropertyBag& args)
+    Er::PropertyBag echo(std::uint32_t clientId, const Er::PropertyBag& args)
     {
         return args;
     }
 
-    Er::PropertyBag throws(std::string_view cookie, const Er::PropertyBag& args)
+    Er::PropertyBag throws(std::uint32_t clientId, const Er::PropertyBag& args)
     {
         Er::Exception e(std::source_location::current(), "This is my exception");
         for (auto& prop : args)

@@ -35,10 +35,10 @@ public:
     void registerService(std::string_view request, Er::Ipc::IService::Ptr service) override;
     void unregisterService(Er::Ipc::IService* service) override;
 
-    const Er::PropertyInfo* mapProperty(std::uint32_t id, const std::string& context) override;
+    const Er::PropertyInfo* mapProperty(std::uint32_t id, std::uint32_t clientId) override;
 
-    std::pair<bool, std::uint32_t> propertyMappingValid(const std::string& context, std::uint32_t mappingVer);
-    void registerPropertyMapping(std::uint32_t version, std::uint32_t id, const std::string& context, Er::PropertyType type, const std::string& name, const std::string& readableName);
+    std::pair<bool, std::uint32_t> propertyMappingValid(std::uint32_t clientId, std::uint32_t mappingVer);
+    void registerPropertyMapping(std::uint32_t version, std::uint32_t id, std::uint32_t clientId, Er::PropertyType type, const std::string& name, const std::string& readableName);
 
 private:
     class ExceptionMarshaler
@@ -167,7 +167,7 @@ private:
             StartWriteAndFinish(&m_response, grpc::WriteOptions(), grpc::Status::OK);
         }
 
-        void Begin(Er::Ipc::IService::Ptr service, std::string_view request, std::string_view cookie, const Er::PropertyBag& args)
+        void Begin(Er::Ipc::IService::Ptr service, std::string_view request, std::uint32_t clientId, const Er::PropertyBag& args)
         {
             ServerTraceIndent2(m_log, "{}.ReplyStreamWriteReactor::Begin", Er::Format::ptr(this));
 
@@ -179,7 +179,7 @@ private:
 
             try
             {
-                m_streamId = service->beginStream(request, cookie, args);
+                m_streamId = service->beginStream(request, clientId, args);
             }
             catch (...)
             {
@@ -336,7 +336,7 @@ private:
                 m->set_id(pi->unique());
                 m->set_type(static_cast<std::uint32_t>(pi->type()));
                 m->set_name(pi->name());
-                m->set_readable_name(pi->readableName());
+                m->set_readablename(pi->readableName());
 
                 m_response.set_mappingver(m_version);
 
@@ -384,13 +384,13 @@ private:
             }
             else
             {
-                auto& cookie = m_request.cookie();
+                auto cookie = m_request.clientid();
                 auto& rawInfo = m_request.mapping();
 
                 auto type = static_cast<Er::PropertyType>(rawInfo.type());
                 auto id = rawInfo.id();
                 auto& name = rawInfo.name();
-                auto& readableName = rawInfo.readable_name();
+                auto& readableName = rawInfo.readablename();
 
                 auto version = m_request.mappingver();
 
@@ -426,7 +426,7 @@ private:
     };
 
     Er::Ipc::IService::Ptr findService(const std::string& id) const;
-    Er::PropertyBag unmarshalArgs(const erebus::ServiceRequest* request, const std::string& context);
+    Er::PropertyBag unmarshalArgs(const erebus::ServiceRequest* request, std::uint32_t clientId);
     static void marshalReplyProps(const Er::PropertyBag& props, erebus::ServiceReply* reply);
     static void marshalException(erebus::ServiceReply* reply, const std::exception& e);
     static void marshalException(erebus::ServiceReply* reply, const Er::Exception& e);
@@ -447,7 +447,7 @@ private:
         std::uint32_t mappingVersion = std::uint32_t(-1);
     };
 
-    Erp::SessionData<std::string, SessionData> m_sessions;
+    Erp::SessionData<std::uint32_t, SessionData> m_sessions;
 };
 
 } // namespace Erp::Ipc::Grpc {}

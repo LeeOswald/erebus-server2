@@ -10,7 +10,7 @@ message PropertyInfo {
   uint32 id = 1;
   uint32 type = 2;
   string name = 3;
-  string readable_name = 4;  
+  string readableName = 4;  
 }
 
 message Property {
@@ -48,7 +48,7 @@ service Erebus {
 }
 
 message PingRequest {
-    string cookie = 1;
+    uint32 clientId = 1;
     uint64 timestamp = 2;
     string payload = 3;
 }
@@ -59,7 +59,7 @@ message PingReply {
 }
 
 message PutPropertyMappingRequest {
-  string cookie = 1;
+  uint32 clientId = 1;
   uint32 mappingVer = 2;
   PropertyInfo mapping = 3;
 }
@@ -71,7 +71,7 @@ message GetPropertyMappingReply {
 
 message ServiceRequest {
   string request = 1;
-  optional string cookie = 2;
+  optional uint32 clientId = 2;
   uint32 mappingVer = 3;
   repeated Property args = 4;
 }

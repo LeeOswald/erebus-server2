@@ -31,15 +31,15 @@ public:
         container->unregisterService(this);
     }
 
-    Er::PropertyBag request(std::string_view request, std::string_view cookie, const Er::PropertyBag& args) override
+    Er::PropertyBag request(std::string_view request, std::uint32_t clientId, const Er::PropertyBag& args) override
     {
         ErThrow(Er::format("Unsupported request {}", request));
     }
 
-    StreamId beginStream(std::string_view request, std::string_view cookie, const Er::PropertyBag& args) override
+    StreamId beginStream(std::string_view request, std::uint32_t clientId, const Er::PropertyBag& args) override
     {
         if (request == "simple_stream")
-            return simpleStream(cookie, args);
+            return simpleStream(clientId, args);
 
         ErThrow(Er::format("Unsupported request {}", request));
     }
@@ -126,7 +126,7 @@ private:
             m_streams.erase(it);
     }
 
-    StreamId simpleStream(std::string_view cookie, const Er::PropertyBag& args)
+    StreamId simpleStream(std::uint32_t clientId, const Er::PropertyBag& args)
     {
         auto fc = Er::get<std::int32_t>(args, ReplyFrameCount);
         if (!fc)

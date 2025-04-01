@@ -70,12 +70,12 @@ public:
         , m_stub(erebus::Erebus::NewStub(channel))
         , m_logRef(log)
         , m_log(log.get())
-        , m_cookie(makeNoise(CookieLength))
+        , m_clientId(makeClientId())
     {
         ClientTrace2(m_log, "{}.ClientImpl::ClientImpl()", Er::Format::ptr(this));
     }
 
-    const Er::PropertyInfo* mapProperty(std::uint32_t id, const std::string& context) override
+    const Er::PropertyInfo* mapProperty(std::uint32_t id, std::uint32_t clientId) override
     {
         {
             std::shared_lock l(m_propertyMapping.lock);
@@ -84,7 +84,7 @@ public:
                 return m_propertyMapping.map[id];
         }
 
-        ErLogError2(m_log, "{}.ClientImpl::mapProperty({}.[{}]) -> NULL", Er::Format::ptr(this), id, context);
+        ErLogError2(m_log, "{}.ClientImpl::mapProperty({}) -> NULL", Er::Format::ptr(this), id);
         return nullptr;
     }
     
@@ -92,7 +92,7 @@ public:
     {
         ClientTraceIndent2(m_log, "{}.ClientImpl::ping()", Er::Format::ptr(this));
 
-        auto ctx = std::make_shared<PingContext>(m_cookie, payloadSize, handler);
+        auto ctx = std::make_shared<PingContext>(m_clientId, payloadSize, handler);
         ctx->context.set_deadline(std::chrono::system_clock::now() + m_params.callTimeout);
         
         m_stub->async()->Ping(
@@ -123,7 +123,7 @@ public:
     {
         ClientTraceIndent2(m_log, "{}.ClientImpl::call({})", Er::Format::ptr(this), request);
 
-        auto ctx = std::make_shared<CallContext>(request, args, m_cookie, handler);
+        auto ctx = std::make_shared<CallContext>(request, args, m_clientId, handler);
         ctx->context.set_deadline(std::chrono::system_clock::now() + m_params.callTimeout);
 
         m_stub->async()->GenericCall(
@@ -140,13 +140,13 @@ public:
     {
         ClientTraceIndent2(m_log, "{}.ClientImpl::stream({})", Er::Format::ptr(this), request);
 
-        new ServiceReplyStreamReader(this, m_logRef, m_stub.get(), request, args, m_cookie, handler);
+        new ServiceReplyStreamReader(this, m_logRef, m_stub.get(), request, args, m_clientId, handler);
     }
 
 private:
-    const std::string& cookie() const noexcept
+    std::uint32_t clientId() const noexcept
     {
-        return m_cookie;
+        return m_clientId;
     }
 
     bool grpcInit() noexcept
@@ -164,11 +164,11 @@ private:
         grpc::ClientContext context;
         erebus::PingReply reply;
 
-        PingContext(const std::string& cookie, std::size_t payloadSize, IClient::IPingCompletion::Ptr handler)
+        PingContext(std::uint32_t clientId, std::size_t payloadSize, IClient::IPingCompletion::Ptr handler)
             : handler(handler)
             , started(Er::System::PackedTime::now())
         {
-            request.set_cookie(cookie);
+            request.set_clientid(clientId);
             request.set_timestamp(started);
             if (payloadSize)
             {
@@ -187,12 +187,12 @@ private:
         grpc::ClientContext context;
         erebus::ServiceReply reply;
 
-        CallContext(std::string_view req, const Er::PropertyBag& args, const std::string& cookie, IClient::ICallCompletion::Ptr handler)
+        CallContext(std::string_view req, const Er::PropertyBag& args, std::uint32_t clientId, IClient::ICallCompletion::Ptr handler)
             : uri(req)
             , handler(handler)
         {
             request.set_request(std::string(req));
-            request.set_cookie(cookie);
+            request.set_clientid(clientId);
             request.set_mappingver(Erp::propertyMappingVersion());
 
             for (auto& arg: args)
@@ -212,7 +212,7 @@ private:
             ClientTraceIndent2(m_log.get(), "{}.ServiceReplyStreamReader::~ServiceReplyStreamReader()", Er::Format::ptr(this));
         }
 
-        ServiceReplyStreamReader(ClientImpl* owner, Er::Log2::ILogger::Ptr log, erebus::Erebus::Stub* stub, std::string_view req, const Er::PropertyBag& args, const std::string& cookie, IStreamCompletion::Ptr handler)
+        ServiceReplyStreamReader(ClientImpl* owner, Er::Log2::ILogger::Ptr log, erebus::Erebus::Stub* stub, std::string_view req, const Er::PropertyBag& args, std::uint32_t clientId, IStreamCompletion::Ptr handler)
             : m_owner(owner)
             , m_log(log)
             , m_uri(req)
@@ -221,7 +221,7 @@ private:
             ClientTraceIndent2(m_log.get(), "{}.ServiceReplyStreamReader::ServiceReplyStreamReader({})", Er::Format::ptr(this), m_uri);
 
             m_request.set_request(std::string(req));
-            m_request.set_cookie(cookie);
+            m_request.set_clientid(clientId);
             auto ver = Erp::propertyMappingVersion();
             m_request.set_mappingver(ver);
 
@@ -381,7 +381,7 @@ private:
                     auto id = m_reply.mapping().id();
                     auto type = static_cast<Er::PropertyType>(m_reply.mapping().type());
                     auto& name = m_reply.mapping().name();
-                    auto& readableName = m_reply.mapping().readable_name();
+                    auto& readableName = m_reply.mapping().readablename();
 
                     m_owner->putPropertyMapping(version, id, type, name, readableName);
                 }
@@ -510,7 +510,7 @@ private:
             {
                 ClientTraceIndent2(m_log.get(), "{}.PropertyMappingStreamWriter::nextWrite(#{} of {})", Er::Format::ptr(this), m_nextIndex, m_mapping.size());
 
-                m_request.set_cookie(m_owner->cookie());
+                m_request.set_clientid(m_owner->clientId());
                 m_request.set_mappingver(m_mappingVer);
 
                 auto prop = m_mapping[m_nextIndex++];
@@ -519,7 +519,7 @@ private:
                 m->set_id(prop->unique());
                 m->set_type(static_cast<std::uint32_t>(prop->type()));
                 m->set_name(prop->name());
-                m->set_readable_name(prop->readableName());
+                m->set_readablename(prop->readableName());
 
                 StartWrite(&m_request);
             }
@@ -654,7 +654,7 @@ private:
         for (int i = 0; i < propCount; ++i)
         {
             auto& prop = exception.props(i);
-            unmarshaledException.add(Erp::Protocol::getProperty(prop, this, m_cookie));
+            unmarshaledException.add(Erp::Protocol::getProperty(prop, this, m_clientId));
         }
 
         return unmarshaledException;
@@ -668,7 +668,7 @@ private:
         {
             auto& prop = reply.props(i);
 
-            bag.push_back(Erp::Protocol::getProperty(prop, this, m_cookie));
+            bag.push_back(Erp::Protocol::getProperty(prop, this, m_clientId));
         }
 
         return bag;
@@ -707,14 +707,18 @@ private:
         return cookie;
     }
 
-    static constexpr size_t CookieLength = 32;
+    static std::uint32_t makeClientId() noexcept
+    {
+        static std::atomic<std::uint32_t> nextId = 0;
+        return nextId.fetch_add(1, std::memory_order_relaxed);
+    }
 
     const ChannelSettings m_params;
     const bool m_grpcReady;
     const std::unique_ptr<erebus::Erebus::Stub> m_stub;
     Er::Log2::ILogger::Ptr m_logRef;
     Er::Log2::ILogger* const m_log;
-    const std::string m_cookie;
+    const std::uint32_t m_clientId;
 
     struct PropertyMapping
     {

@@ -129,7 +129,7 @@ private:
 
 struct IPropertyMapping
 {
-    virtual const Er::PropertyInfo* mapProperty(std::uint32_t id, const std::string& context) = 0;
+    virtual const Er::PropertyInfo* mapProperty(std::uint32_t id, std::uint32_t context) = 0;
 
 protected:
     virtual ~IPropertyMapping() {}

@@ -9,6 +9,6 @@ namespace Erp::Protocol
 
 void assignProperty(erebus::Property& out, const Er::Property& source);
 
-Er::Property getProperty(const erebus::Property& source, Er::IPropertyMapping* mapping, const std::string& context);
+Er::Property getProperty(const erebus::Property& source, Er::IPropertyMapping* mapping, std::uint32_t context);
 
 } // namespace Erp::Protocol {}
