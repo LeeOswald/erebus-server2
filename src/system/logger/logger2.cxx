@@ -2,19 +2,14 @@
 
 
 
+static Er::Log2::NullLogger s_null;
+static Er::Log2::ILogger::Ptr s_global;
+
 namespace Er::Log2
 {
 
-NullLogger* nullLogger() noexcept
-{
-    static NullLogger dummy;
-    return &dummy;
-}
-
-ER_SYSTEM_EXPORT ILogger* g_global = nullptr;
+ER_SYSTEM_EXPORT ILogger* g_global = &s_null;
 ER_SYSTEM_EXPORT bool g_verbose = false;
-
-static ILogger::Ptr s_global;
 
 
 ER_SYSTEM_EXPORT ILogger::Ptr global() noexcept
@@ -28,25 +23,20 @@ ER_SYSTEM_EXPORT ILogger::Ptr global() noexcept
 namespace Erp::Log2
 {
 
-ER_SYSTEM_EXPORT Er::Log2::ILogger* fallback() noexcept
-{
-    return Er::Log2::g_global ? Er::Log2::g_global : Er::Log2::nullLogger();
-}
-
 ER_SYSTEM_EXPORT void setGlobal(Er::Log2::ILogger::Ptr log) noexcept
 {
-    bool drainPending = (Er::Log2::g_global == nullptr) && !!log;
+    bool drainPending = (Er::Log2::g_global == &s_null) && !!log;
 
-    Er::Log2::s_global = log;
-    Er::Log2::g_global = log ? log.get() : Er::Log2::nullLogger();
+    s_global = log;
+    Er::Log2::g_global = log ? log.get() : &s_null;
 
     if (drainPending)
     {
-        auto r = Er::Log2::nullLogger()->pop();
+        auto r = s_null.pop();
         while (r)
         {
             Er::Log2::g_global->write(r);
-            r = Er::Log2::nullLogger()->pop();
+            r = s_null.pop();
         }
     }
 }

@@ -1,9 +1,10 @@
 #pragma once
 
+#include <erebus/erebus.grpc.pb.h>
+
 #include "protocol.hxx"
 #include "session_data.hxx"
-
-#include <erebus/erebus.grpc.pb.h>
+#include "trace.hxx"
 
 #include <erebus/ipc/grpc/grpc_server.hxx>
 #include <erebus/system/property_info.hxx>
@@ -110,26 +111,26 @@ private:
     public:
         ~ReplyUnaryReactor()
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.ReplyUnaryReactor::~ReplyUnaryReactor", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.ReplyUnaryReactor::~ReplyUnaryReactor", Er::Format::ptr(this));
         }
 
         ReplyUnaryReactor(Er::Log2::ILogger* log) noexcept
             : m_log(log)
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.ReplyUnaryReactor::ReplyUnaryReactor", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.ReplyUnaryReactor::ReplyUnaryReactor", Er::Format::ptr(this));
         }
 
     private:
         void OnDone() override 
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.ReplyUnaryReactor::OnDone", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.ReplyUnaryReactor::OnDone", Er::Format::ptr(this));
 
             delete this;
         }
 
         void OnCancel() override 
         { 
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.ReplyUnaryReactor::OnCancel", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.ReplyUnaryReactor::OnCancel", Er::Format::ptr(this));
         }
 
         Er::Log2::ILogger* const m_log;
@@ -141,7 +142,7 @@ private:
     public:
         ~ReplyStreamWriteReactor()
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.ReplyStreamWriteReactor::~ReplyStreamWriteReactor", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.ReplyStreamWriteReactor::~ReplyStreamWriteReactor", Er::Format::ptr(this));
 
             if (m_streamId)
             {
@@ -154,12 +155,12 @@ private:
             : m_log(log)
             , m_mappingVersion(Erp::propertyMappingVersion())
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.ReplyStreamWriteReactor::ReplyStreamWriteReactor", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.ReplyStreamWriteReactor::ReplyStreamWriteReactor", Er::Format::ptr(this));
         }
 
         void SendPropertyMappingExpired()
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.ReplyStreamWriteReactor::SendPropertyMappingExpired", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.ReplyStreamWriteReactor::SendPropertyMappingExpired", Er::Format::ptr(this));
 
             m_response.set_result(erebus::PROPERTY_MAPPING_EXPIRED);
             m_response.set_mappingver(m_mappingVersion);
@@ -168,7 +169,7 @@ private:
 
         void Begin(Er::Ipc::IService::Ptr service, std::string_view request, std::string_view cookie, const Er::PropertyBag& args)
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.ReplyStreamWriteReactor::Begin", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.ReplyStreamWriteReactor::Begin", Er::Format::ptr(this));
 
             ErAssert(!m_service);
             m_service = service;
@@ -200,7 +201,7 @@ private:
 
         void OnWriteDone(bool ok) override 
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.ReplyStreamWriteReactor::OnWriteDone", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.ReplyStreamWriteReactor::OnWriteDone", Er::Format::ptr(this));
 
             if (!ok) 
                 Finish(grpc::Status(grpc::StatusCode::INTERNAL, "Unexpected Failure"));
@@ -210,20 +211,20 @@ private:
 
         void OnDone() override 
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.ReplyStreamWriteReactor::OnDone", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.ReplyStreamWriteReactor::OnDone", Er::Format::ptr(this));
 
             delete this;
         }
 
         void OnCancel() override 
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.ReplyStreamWriteReactor::OnCancel", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.ReplyStreamWriteReactor::OnCancel", Er::Format::ptr(this));
         }
 
     private:
         void Continue()
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.ReplyStreamWriteReactor::Continue", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.ReplyStreamWriteReactor::Continue", Er::Format::ptr(this));
 
             m_response.Clear();
             bool error = false;
@@ -234,7 +235,7 @@ private:
                 auto item = m_service->next(m_streamId);
                 if (item.empty())
                 {
-                    ErLogDebug2(m_log, "End of stream");
+                    ServerTrace2(m_log, "End of stream");
                     // end of stream
                     Finish(grpc::Status::OK);
                     return;
@@ -272,18 +273,18 @@ private:
     public:
         ~PropertyInfoStreamWriteReactor()
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.PropertyInfoStreamWriteReactor::~PropertyInfoStreamWriteReactor", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.PropertyInfoStreamWriteReactor::~PropertyInfoStreamWriteReactor", Er::Format::ptr(this));
         }
 
         PropertyInfoStreamWriteReactor(Er::Log2::ILogger* log) noexcept
             : m_log(log)
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.PropertyInfoStreamWriteReactor::PropertyInfoStreamWriteReactor", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.PropertyInfoStreamWriteReactor::PropertyInfoStreamWriteReactor", Er::Format::ptr(this));
         }
 
         void Begin()
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.PropertyInfoStreamWriteReactor::Begin", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.PropertyInfoStreamWriteReactor::Begin", Er::Format::ptr(this));
 
             ErAssert(m_properties.empty());
             ErAssert(m_next == 0);
@@ -294,14 +295,14 @@ private:
                 return true;
             });
 
-            ErLogDebug2(m_log, "Found {} local properties ver {}", Er::Format::ptr(this), m_properties.size(), m_version);
+            ServerTrace2(m_log, "Found {} local properties ver {}", Er::Format::ptr(this), m_properties.size(), m_version);
 
             Continue();
         }
 
         void OnWriteDone(bool ok) override
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.PropertyInfoStreamWriteReactor::OnWriteDone", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.PropertyInfoStreamWriteReactor::OnWriteDone", Er::Format::ptr(this));
 
             if (!ok)
                 Finish(grpc::Status(grpc::StatusCode::INTERNAL, "Unexpected Failure"));
@@ -311,20 +312,20 @@ private:
 
         void OnDone() override
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.PropertyInfoStreamWriteReactor::OnDone", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.PropertyInfoStreamWriteReactor::OnDone", Er::Format::ptr(this));
 
             delete this;
         }
 
         void OnCancel() override
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.PropertyInfoStreamWriteReactor::OnCancel", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.PropertyInfoStreamWriteReactor::OnCancel", Er::Format::ptr(this));
         }
 
     private:
         void Continue()
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.PropertyInfoStreamWriteReactor::Continue", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.PropertyInfoStreamWriteReactor::Continue", Er::Format::ptr(this));
 
             if (m_next < m_properties.size())
             {
@@ -360,14 +361,14 @@ private:
     public:
         ~PutPropertyMappingStreamReadReactor()
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.PutPropertyMappingStreamReadReactor::~PutPropertyMappingStreamReadReactor", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.PutPropertyMappingStreamReadReactor::~PutPropertyMappingStreamReadReactor", Er::Format::ptr(this));
         }
 
         PutPropertyMappingStreamReadReactor(Er::Log2::ILogger* log, ErebusService* owner)
             : m_log(log)
             , m_owner(owner)
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.PutPropertyMappingStreamReadReactor::PutPropertyMappingStreamReadReactor", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.PutPropertyMappingStreamReadReactor::PutPropertyMappingStreamReadReactor", Er::Format::ptr(this));
 
             Continue();
         }
@@ -375,7 +376,7 @@ private:
     private:
         void OnReadDone(bool ok) override
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.PutPropertyMappingStreamReadReactor::OnReadDone({})", Er::Format::ptr(this), ok);
+            ServerTraceIndent2(m_log, "{}.PutPropertyMappingStreamReadReactor::OnReadDone({})", Er::Format::ptr(this), ok);
 
             if (!ok)
             {
@@ -401,7 +402,7 @@ private:
 
         void Continue()
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.PutPropertyMappingStreamReadReactor::Continue", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.PutPropertyMappingStreamReadReactor::Continue", Er::Format::ptr(this));
 
             m_request.Clear();
             StartRead(&m_request);
@@ -409,14 +410,14 @@ private:
 
         void OnDone() override
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.PutPropertyMappingStreamReadReactor::OnDone", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.PutPropertyMappingStreamReadReactor::OnDone", Er::Format::ptr(this));
 
             delete this;
         }
 
         void OnCancel() override
         {
-            ErLogIndent2(m_log, Er::Log2::Level::Debug, "{}.PutPropertyMappingStreamReadReactor::OnCancel", Er::Format::ptr(this));
+            ServerTraceIndent2(m_log, "{}.PutPropertyMappingStreamReadReactor::OnCancel", Er::Format::ptr(this));
         }
 
         Er::Log2::ILogger* const m_log;

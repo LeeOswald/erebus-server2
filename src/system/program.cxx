@@ -68,7 +68,7 @@ void Program::terminateHandler()
     std::ostringstream ss;
     ss << boost::stacktrace::stacktrace();
 
-    Log2::fatal(Erp::Log2::fallback(), "std::terminate() called from\n{}", ss.str());
+    Log2::fatal(Er::Log2::get(), "std::terminate() called from\n{}", ss.str());
 
     std::abort();
 }
@@ -87,7 +87,7 @@ void Program::staticPrintAssertFn(std::string_view message)
 
 void Program::printAssertFn(std::string_view message)
 {
-    Log2::writeln(Erp::Log2::fallback(), Log2::Level::Fatal, std::string(message));
+    Log2::writeln(Er::Log2::get(), Log2::Level::Fatal, std::string(message));
 }
 
 void Program::globalStartup(int argc, char** argv) noexcept

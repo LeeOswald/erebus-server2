@@ -26,6 +26,7 @@ add_library(erebus-grpc SHARED
     protocol.hxx
     protocol.cxx
     session_data.hxx
+    trace.hxx
     ${EREBUS_GENERATED_DIR}/erebus.pb.cc 
     ${EREBUS_GENERATED_DIR}/erebus.pb.h 
     ${EREBUS_GENERATED_DIR}/erebus.grpc.pb.cc 

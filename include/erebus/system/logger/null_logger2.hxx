@@ -23,18 +23,22 @@ struct NullLogger
 
     void write(Record::Ptr r) override
     {
-        std::lock_guard l(m_mutex);
-        m_pending.push(r);
+        auto& s = state();
+
+        std::lock_guard l(s.mutex);
+        s.pending.push(r);
     }
 
     Record::Ptr pop()
     {
-        std::lock_guard l(m_mutex);
-        if (m_pending.empty())
+        auto& s = state();
+
+        std::lock_guard l(s.mutex);
+        if (s.pending.empty())
             return {};
 
-        auto r = m_pending.front();
-        m_pending.pop();
+        auto r = s.pending.front();
+        s.pending.pop();
 
         return r;
     }
@@ -57,8 +61,17 @@ struct NullLogger
     }
 
 private:
-    std::mutex m_mutex;
-    std::queue<Record::Ptr> m_pending;
+    struct State
+    {
+        std::mutex mutex;
+        std::queue<Record::Ptr> pending;
+    };
+
+    static State& state() noexcept
+    {
+        static State s;
+        return s;
+    }
 };
 
 

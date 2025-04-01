@@ -362,8 +362,6 @@ ER_SYSTEM_EXPORT ILogger::Ptr global() noexcept;
 namespace Erp::Log2
 {
 
-ER_SYSTEM_EXPORT Er::Log2::ILogger* fallback() noexcept;
-
 //
 // not thread-safe
 //
