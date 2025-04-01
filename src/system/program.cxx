@@ -69,6 +69,7 @@ void Program::terminateHandler()
     ss << boost::stacktrace::stacktrace();
 
     Log2::fatal(Er::Log2::get(), "std::terminate() called from\n{}", ss.str());
+    Er::Log2::get()->flush();
 
     std::abort();
 }
@@ -88,6 +89,7 @@ void Program::staticPrintAssertFn(std::string_view message)
 void Program::printAssertFn(std::string_view message)
 {
     Log2::writeln(Er::Log2::get(), Log2::Level::Fatal, std::string(message));
+    Er::Log2::get()->flush();
 }
 
 void Program::globalStartup(int argc, char** argv) noexcept
@@ -286,7 +288,7 @@ void Program::globalMakeLogger()
     Erp::Log2::setGlobal(m_logger);
 }
 
-int Program::exec(int argc, char** argv) noexcept
+int Program::exec(int argc, char** argv)
 {
     int resut = EXIT_FAILURE;
     globalStartup(argc, argv);

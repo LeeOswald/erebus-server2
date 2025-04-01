@@ -60,7 +60,7 @@ public:
         return m_args;
     }
 
-    int exec(int argc, char** argv) noexcept;
+    int exec(int argc, char** argv);
 
 protected:
     static bool argPresent(int argc, char** argv, const char* longName, const char* shortName) noexcept;

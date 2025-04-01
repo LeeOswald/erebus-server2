@@ -248,9 +248,10 @@ TEST_F(TestCall, ConcurrentCall)
         Er::Ipc::IClient* client;
         long id;
         long callCount;
-        std::jthread worker;
         std::vector<std::string> requests;
         std::vector<std::shared_ptr<CallCompletion>> completions;
+        bool prepared;
+        std::jthread worker;
         
         ~ClientWorker()
         {
@@ -261,30 +262,10 @@ TEST_F(TestCall, ConcurrentCall)
             : client(client)
             , id(id)
             , callCount(callCount)
+            , prepared(prepare())
             , worker([this]() { run();  })
         {
             ErLogDebug("ClientWorker({})", id);
-        }
-
-        void run()
-        {
-            for (long i = 0; i < callCount; ++i)
-            {
-                auto c = std::make_shared<CallCompletion>();
-
-                auto s = Er::format("Call[{}][{}]", id, i);
-                
-                requests.push_back(std::move(s));
-                completions.push_back(c);
-            }
-
-            for (long i = 0; i < callCount; ++i)
-            {
-                Er::PropertyBag args;
-                args.push_back(Er::Property(requests[i], Er::Unspecified::String));
-
-                client->call("echo", args, completions[i]);
-            }
         }
 
         bool wait()
@@ -346,6 +327,33 @@ TEST_F(TestCall, ConcurrentCall)
             }
 
             return succeeded == callCount;
+        }
+
+    private:
+        bool prepare()
+        {
+            for (long i = 0; i < callCount; ++i)
+            {
+                auto c = std::make_shared<CallCompletion>();
+
+                auto s = Er::format("Call[{}][{}]", id, i);
+
+                requests.push_back(std::move(s));
+                completions.push_back(c);
+            }
+
+            return true;
+        }
+
+        void run()
+        {
+            for (long i = 0; i < callCount; ++i)
+            {
+                Er::PropertyBag args;
+                args.push_back(Er::Property(requests[i], Er::Unspecified::String));
+
+                client->call("echo", args, completions[i]);
+            }
         }
     };
 
