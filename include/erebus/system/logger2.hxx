@@ -244,6 +244,16 @@ struct IndentScope
             m_log->unindent();
     }
 
+    IndentScope(ILogger* log, Level level)
+        : m_log(log)
+        , m_enable(log->level() <= level)
+    {
+        ErAssert(log);
+
+        if (m_enable)
+            log->indent();
+    }
+
     template <class... Args>
     IndentScope(ILogger* log, Level level, std::string_view format, Args&&... args)
         : m_log(log)
@@ -409,8 +419,12 @@ ER_SYSTEM_EXPORT void setGlobal(Er::Log2::ILogger::Ptr log) noexcept;
 
 
 
-#define ErLogIndent(level, format, ...) \
-    ::Er::Log2::IndentScope __ids(::Er::Log2::get(), level, format, ##__VA_ARGS__)
+#define ErLogIndent(l, format, ...) \
+    if (::Er::Log2::get()->level() <= l) \
+        ::Er::Log2::write(::Er::Log2::get(), l, format, ##__VA_ARGS__); \
+    ::Er::Log2::IndentScope __ids(::Er::Log2::get(), l)
 
-#define ErLogIndent2(sink, level, format, ...) \
-    ::Er::Log2::IndentScope __ids(sink, level, format, ##__VA_ARGS__)
+#define ErLogIndent2(sink, l, format, ...) \
+    if (sink->level() <= l) \
+        ::Er::Log2::write(sink, l, format, ##__VA_ARGS__); \
+    ::Er::Log2::IndentScope __ids(sink, l)
