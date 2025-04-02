@@ -8,8 +8,7 @@ namespace
 struct PingCompletion
     : public CompletionBase<Er::Ipc::IClient::IPingCompletion>
 {
-    PingCompletion(long count)
-        : remainingCount(count)
+    PingCompletion()
     {
     }
 
@@ -17,14 +16,9 @@ struct PingCompletion
     {
         ErLogDebug("Pinged peer with {} bytes of data in {} ms", payloadSize, rtt.count());
 
-        --remainingCount;
         totalPayload += payloadSize;
-
-        if (remainingCount <= 0)
-            m_complete.setAndNotifyAll(true);
     }
 
-    long remainingCount;
     long totalPayload = 0;
 };
 
@@ -39,16 +33,27 @@ TEST_F(TestPing, FailToConnect)
     startClient(1);
 
     {
-        auto completion = std::make_shared<PingCompletion>(1);
+        auto completion = std::make_shared<PingCompletion>();
 
         m_clients.front()->ping(0, completion);
 
         ASSERT_TRUE(completion->wait());
 
-        EXPECT_TRUE(completion->error());
-        EXPECT_EQ(completion->remainingCount, 1);
+        EXPECT_TRUE(completion->transportError());
         EXPECT_EQ(completion->totalPayload, 0);
     }
+}
+
+static std::vector<std::shared_ptr<PingCompletion>> makeCompletions(long count)
+{
+    std::vector<std::shared_ptr<PingCompletion>> v;
+    v.reserve(count);
+    while (count--)
+    {
+        v.push_back(std::make_shared<PingCompletion>());
+    }
+
+    return v;
 }
 
 TEST_F(TestPing, Ping)
@@ -59,39 +64,48 @@ TEST_F(TestPing, Ping)
     // zero-length payload
     {
         const long pingCount = 10;
-        auto completion = std::make_shared<PingCompletion>(pingCount);
+        auto completions = makeCompletions(pingCount);
 
         for (long i = 0; i < pingCount; ++i)
         {
-            m_clients.front()->ping(0, completion);
+            m_clients.front()->ping(0, completions[i]);
         }
 
-        ASSERT_TRUE(completion->wait());
+        for (long i = 0; i < pingCount; ++i)
+        {
+            ASSERT_TRUE(completions[i]->wait());
+        }
 
-        EXPECT_FALSE(completion->error());
-        EXPECT_EQ(completion->remainingCount, 0);
-        EXPECT_EQ(completion->totalPayload, 0);
+        for (long i = 0; i < pingCount; ++i)
+        {
+            EXPECT_FALSE(completions[i]->transportError());
+            EXPECT_EQ(completions[i]->totalPayload, 0);
+        }
     }
 
     // nonzero-length payload
     {
         const long pingCount = 10;
-        long payloadSize = 0;
        
-        auto completion = std::make_shared<PingCompletion>(pingCount);
+        auto completions = makeCompletions(pingCount);
 
         for (long i = 0; i < pingCount; ++i)
         {
             long size = (i + 1) * 1024;
-            payloadSize += size;
-            m_clients.front()->ping(size, completion);
+            m_clients.front()->ping(size, completions[i]);
         }
 
-        ASSERT_TRUE(completion->wait());
+        for (long i = 0; i < pingCount; ++i)
+        {
+            ASSERT_TRUE(completions[i]->wait());
+        }
 
-        EXPECT_FALSE(completion->error());
-        EXPECT_EQ(completion->remainingCount, 0);
-        EXPECT_EQ(completion->totalPayload, payloadSize);
+        for (long i = 0; i < pingCount; ++i)
+        {
+            long size = (i + 1) * 1024;
+            EXPECT_FALSE(completions[i]->transportError());
+            EXPECT_EQ(completions[i]->totalPayload, size);
+        }
     }
 }
 
@@ -100,25 +114,61 @@ TEST_F(TestPing, ConcurrentPing)
     struct ClientWorker
     {
         Er::Ipc::IClient* client;
-        std::shared_ptr<PingCompletion> completion;
+        std::vector<std::shared_ptr<PingCompletion>> completions;
         const long pingCount;
         const long payloadSize;
         std::jthread worker;
 
         ClientWorker(Er::Ipc::IClient* client, long pingCount, long payloadSize)
             : client(client)
-            , completion(std::make_shared<PingCompletion>(pingCount))
+            , completions(makeCompletions(pingCount))
             , pingCount(pingCount)
             , payloadSize(payloadSize)
             , worker([this]() { run();  })
         {
         }
 
+        bool wait()
+        {
+            bool ok = true;
+            for (long i = 0; i < pingCount; ++i)
+            {
+                auto r = completions[i]->wait();
+                if (!r)
+                    ErLogError("Ping #{} did not complete", i);
+
+                ok = ok && r;
+            }
+
+            return ok;
+        }
+
+        bool check()
+        {
+            for (long i = 0; i < pingCount; ++i)
+            {
+                if (completions[i]->transportError())
+                {
+                    ErLogError("Ping #{} returned an error {}", i, completions[i]->errorMessage());
+                    return false;
+                }
+
+                if (completions[i]->totalPayload != payloadSize)
+                {
+                    ErLogError("Ping #{} returned {} bytes payload out of {}", i, completions[i]->totalPayload, payloadSize);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+    private:
         void run()
         {
             for (long i = 0; i < pingCount; ++i)
             {
-                client->ping(payloadSize, completion);
+                client->ping(payloadSize, completions[i]);
             }
         }
     };
@@ -139,16 +189,11 @@ TEST_F(TestPing, ConcurrentPing)
 
     for (auto& cli : clients)
     {
-        ASSERT_TRUE(cli->completion->wait());
+        ASSERT_TRUE(cli->wait());
     }
 
-    long i = 0;
     for (auto& cli : clients)
     {
-        EXPECT_FALSE(cli->completion->error());
-        EXPECT_EQ(cli->completion->remainingCount, 0);
-        EXPECT_EQ(cli->completion->totalPayload, clients[i]->payloadSize * pingCount);
-
-        ++i;
+        EXPECT_TRUE(cli->check());
     }
 }

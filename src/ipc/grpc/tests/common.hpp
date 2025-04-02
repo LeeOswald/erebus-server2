@@ -32,7 +32,7 @@ struct CompletionBase
         return m_complete.waitValueFor(true, timeout);
     }
 
-    const std::optional<Er::ResultCode>& error() const
+    const std::optional<Er::ResultCode>& transportError() const
     {
         return m_error;
     }
@@ -42,49 +42,42 @@ struct CompletionBase
         return m_errorMessage;
     }
 
-    bool serverPropertyMappingExpired() const
+    bool hasServerPropertyMappingExpired() const
     {
         return m_serverPropertyMappingExpired;
     }
 
-    bool clientPropertyMappingExpired() const
+    bool hasClientPropertyMappingExpired() const
     {
         return m_clientPropertyMappingExpired;
-    }
-
-    bool success() const
-    {
-        return m_success;
     }
 
     void handleServerPropertyMappingExpired() override
     {
         m_serverPropertyMappingExpired = true;
-        m_complete.setAndNotifyAll(true);
     }
 
     void handleClientPropertyMappingExpired() override
     {
         m_clientPropertyMappingExpired = true;
-        m_complete.setAndNotifyAll(true);
     }
 
     void handleTransportError(Er::ResultCode result, std::string&& message) override
     {
+        if (m_serverPropertyMappingExpired || m_clientPropertyMappingExpired)
+            return;
+
         m_error = result;
         m_errorMessage = std::move(message);
-        m_complete.setAndNotifyAll(true);
     }
 
-    void handleSuccess() override
+    void done() override
     {
-        m_success = true;
         m_complete.setAndNotifyAll(true);
     }
 
 protected:
     Er::Waitable<bool> m_complete;
-    bool m_success = false;
     bool m_serverPropertyMappingExpired = false;
     bool m_clientPropertyMappingExpired = false;
     std::optional<Er::ResultCode> m_error;
@@ -109,6 +102,8 @@ public:
         , m_serverLog(makeLogger("server", Er::Log2::g_verbose ? Er::Log2::Level::Debug : Er::Log2::Level::Warning))
         , m_clientLog(makeLogger("client", Er::Log2::g_verbose ? Er::Log2::Level::Debug : Er::Log2::Level::Warning))
     {
+        ErLogDebug("Server log {}", Er::Format::ptr(m_serverLog.get()));
+        ErLogDebug("Client log {}", Er::Format::ptr(m_clientLog.get()));
     }
 
     Er::Log2::ILogger* serverLog() noexcept
@@ -178,7 +173,7 @@ public:
         auto completion = std::make_shared<SimpleCompletion>();
 
         m_clients[client]->putPropertyMapping(completion);
-        return completion->wait() && completion->success();
+        return completion->wait();
     }
 
     bool getPropertyMapping(std::size_t client)
@@ -188,7 +183,7 @@ public:
         auto completion = std::make_shared<SimpleCompletion>();
 
         m_clients[client]->getPropertyMapping(completion);
-        return completion->wait() && completion->success();
+        return completion->wait();
     }
 
 protected:

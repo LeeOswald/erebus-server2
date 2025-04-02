@@ -89,13 +89,11 @@ struct CallCompletion
     void handleReply(Er::PropertyBag&& reply) override
     {
         this->reply = std::move(reply);
-        m_complete.setAndNotifyOne(true);
     }
 
     void handleException(Er::Exception&& exception) override
     {
         this->exception = std::move(exception);
-        m_complete.setAndNotifyOne(true);
     }
 
     std::optional<Er::PropertyBag> reply;
@@ -121,8 +119,8 @@ TEST_F(TestCall, NormalCall)
 
         ASSERT_TRUE(completion->wait());
 
-        EXPECT_FALSE(completion->error());
-        EXPECT_TRUE(completion->serverPropertyMappingExpired());
+        EXPECT_FALSE(completion->transportError());
+        EXPECT_TRUE(completion->hasServerPropertyMappingExpired());
     }
 
     ASSERT_TRUE(putPropertyMapping(0));
@@ -138,9 +136,9 @@ TEST_F(TestCall, NormalCall)
 
         ASSERT_TRUE(completion->wait());
 
-        EXPECT_FALSE(completion->error());
-        EXPECT_FALSE(completion->serverPropertyMappingExpired());
-        EXPECT_TRUE(completion->clientPropertyMappingExpired());
+        EXPECT_FALSE(completion->transportError());
+        EXPECT_FALSE(completion->hasServerPropertyMappingExpired());
+        EXPECT_TRUE(completion->hasClientPropertyMappingExpired());
     }
 
     ASSERT_TRUE(getPropertyMapping(0));
@@ -156,9 +154,9 @@ TEST_F(TestCall, NormalCall)
 
         ASSERT_TRUE(completion->wait());
 
-        EXPECT_FALSE(completion->error());
-        EXPECT_FALSE(completion->serverPropertyMappingExpired());
-        EXPECT_FALSE(completion->clientPropertyMappingExpired());
+        EXPECT_FALSE(completion->transportError());
+        EXPECT_FALSE(completion->hasServerPropertyMappingExpired());
+        EXPECT_FALSE(completion->hasClientPropertyMappingExpired());
 
         ASSERT_TRUE(completion->reply);
 
@@ -196,8 +194,8 @@ TEST_F(TestCall, NotImplemented)
 
     ASSERT_TRUE(completion->wait());
 
-    EXPECT_TRUE(completion->error());
-    EXPECT_EQ(*completion->error(), Er::Result::Unimplemented);
+    EXPECT_TRUE(completion->transportError());
+    EXPECT_EQ(*completion->transportError(), Er::Result::Unimplemented);
     
 }
 
@@ -218,7 +216,7 @@ TEST_F(TestCall, Exception)
 
     ASSERT_TRUE(completion->wait());
 
-    EXPECT_FALSE(completion->error());
+    EXPECT_FALSE(completion->transportError());
     EXPECT_TRUE(completion->exception);
 
     auto& e = *completion->exception;
@@ -291,7 +289,7 @@ TEST_F(TestCall, ConcurrentCall)
             long succeeded = 0;
             for (long i = 0; i < callCount; ++i)
             {
-                if (!completions[i]->error())
+                if (!completions[i]->transportError())
                 {
                     if (completions[i]->reply)
                     {
@@ -322,7 +320,7 @@ TEST_F(TestCall, ConcurrentCall)
                 }
                 else
                 {
-                    ErLogError("Call[{}][{}] failed: {} ({})", id, i, *completions[i]->error(), completions[i]->errorMessage());
+                    ErLogError("Call[{}][{}] failed: {} ({})", id, i, *completions[i]->transportError(), completions[i]->errorMessage());
                 }
             }
 

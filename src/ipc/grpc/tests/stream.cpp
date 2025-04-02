@@ -47,7 +47,8 @@ public:
     void endStream(StreamId id)
     {
         auto* s = findStream(id);
-        ErAssert(s);
+        if (!s)
+            return;
 
         if (s->type == SimpleStream::Type)
         {
@@ -110,7 +111,10 @@ private:
 
         auto it = m_streams.find(id);
         if (it == m_streams.end())
-            ErThrow(Er::format("Unknown stream {}", id));
+        {
+            ErLogError("Could not find Stream {}", id);
+            return nullptr;
+        }
 
         s = it->second.get();
         
@@ -123,7 +127,10 @@ private:
 
         auto it = m_streams.find(id);
         if (it != m_streams.end())
+        {
             m_streams.erase(it);
+            ErLogDebug("Removed Stream {}", id);
+        }
     }
 
     StreamId simpleStream(std::uint32_t clientId, const Er::PropertyBag& args)
@@ -145,12 +152,14 @@ private:
         auto stream = std::make_unique<SimpleStream>(id, args, *tf, *fc);
         m_streams.insert({ id, std::move(stream) });
 
+        ErLogDebug("Began SimpleStream {}", id);
+
         return id;
     }
 
     Er::PropertyBag nextSimpleStream(SimpleStream* s)
     {
-        if (s->throwInFrame == s->frameCount)
+        if (s->throwInFrame == s->nextFrame)
         {
             throw Er::Exception(std::source_location::current(), "No way you can continue a stream");
         }
@@ -193,7 +202,15 @@ class TestStream
     : public TestClientBase
 {
 public:
-    TestStream() = default;
+    ~TestStream()
+    {
+        ErLogDebug("{}.TestStream::~TestStream()", Er::Format::ptr(this));
+    }
+
+    TestStream()
+    {
+        ErLogDebug("{}.TestStream::TestStream()", Er::Format::ptr(this));
+    }
 
     void startServer()
     {
@@ -218,25 +235,23 @@ struct StreamCompletion
     Er::CallbackResult handleFrame(Er::PropertyBag&& frame) override
     {
         ++currentFrame;
+        ErLogDebug("{}.handleFrame #{}", Er::Format::ptr(this), currentFrame);
         frames[currentFrame] = std::move(frame);
         ++receivedFrames;
         
-        if (currentFrame + 1 >= std::int32_t(frameCount))
-            m_complete.setAndNotifyOne(true);
-
         return Er::CallbackResult::Continue;
     }
 
-    Er::CallbackResult handleException(Er::Exception&& exception) override
+    void handleException(Er::Exception&& exception) override
     {
         ++currentFrame;
+        ErLogDebug("{}.handleException #{}", Er::Format::ptr(this), currentFrame);
+        
+        if (exceptions.size() <= currentFrame)
+            exceptions.resize(currentFrame + 1);
+
         exceptions[currentFrame] = std::move(exception);
         ++receivedExceptions;
-        
-        if (currentFrame + 1 >= std::int32_t(frameCount))
-            m_complete.setAndNotifyOne(true);
-
-        return Er::CallbackResult::Continue;
     }
 
     const std::uint32_t frameCount;
@@ -249,6 +264,168 @@ struct StreamCompletion
 
 } // namespace {}
 
+
+TEST_F(TestStream, NotImplemented)
+{
+    startServer();
+    startClient(1);
+
+    {
+        auto completion = std::make_shared<StreamCompletion>(10);
+
+        Er::PropertyBag args;
+        args.push_back(Er::Property(int64_t(-12), Er::Unspecified::Int64));
+        args.push_back(Er::Property(std::string("Bye"), Er::Unspecified::String));
+        args.push_back(Er::Property(int32_t(10), ReplyFrameCount));
+        args.push_back(Er::Property(int32_t(ThrowNever), ThrowInFrame));
+
+        m_clients.front()->stream("ni_stream", args, completion);
+
+        ASSERT_TRUE(completion->wait());
+
+        EXPECT_TRUE(completion->transportError());
+        EXPECT_EQ(*completion->transportError(), Er::Result::Unimplemented);
+    }
+}
+
+TEST_F(TestStream, Exception)
+{
+    startServer();
+    startClient(1);
+    ASSERT_TRUE(putPropertyMapping(0));
+    ASSERT_TRUE(getPropertyMapping(0));
+
+    // in beginStream()
+    {
+        auto completion = std::make_shared<StreamCompletion>(10);
+
+        Er::PropertyBag args;
+        args.push_back(Er::Property(int64_t(-12), Er::Unspecified::Int64));
+        args.push_back(Er::Property(std::string("Bye"), Er::Unspecified::String));
+        args.push_back(Er::Property(int32_t(10), ReplyFrameCount));
+        args.push_back(Er::Property(int32_t(ThrowInBeginStream), ThrowInFrame));
+
+        m_clients.front()->stream("simple_stream", args, completion);
+
+        ASSERT_TRUE(completion->wait());
+
+        EXPECT_FALSE(completion->transportError());
+
+        EXPECT_EQ(completion->receivedFrames, 0);
+        EXPECT_EQ(completion->receivedExceptions, 1);
+        EXPECT_TRUE(completion->exceptions[0]);
+
+        auto& e = completion->exceptions[0];
+        EXPECT_STREQ(e.message().c_str(), "No way you can start a stream");
+    }
+
+    // in endStream()
+    {
+        const std::int32_t frameCount = 10;
+        auto completion = std::make_shared<StreamCompletion>(frameCount);
+
+        Er::PropertyBag args;
+        args.push_back(Er::Property(int64_t(-12), Er::Unspecified::Int64));
+        args.push_back(Er::Property(std::string("Bye"), Er::Unspecified::String));
+        args.push_back(Er::Property(int32_t(10), ReplyFrameCount));
+        args.push_back(Er::Property(int32_t(ThrowInEndStream), ThrowInFrame));
+
+        m_clients.front()->stream("simple_stream", args, completion);
+
+        ASSERT_TRUE(completion->wait());
+
+        EXPECT_FALSE(completion->transportError());
+
+        EXPECT_EQ(completion->receivedFrames, frameCount);
+
+        for (std::int32_t i = 0; i < frameCount; ++i)
+        {
+            auto& frame = completion->frames[i];
+            EXPECT_EQ(frame.size(), 5);
+
+            auto rfi = Er::get<std::int32_t>(frame, ReplyFrameIndex);
+            ASSERT_TRUE(!!rfi);
+            EXPECT_EQ(*rfi, i);
+
+            auto i64 = Er::get<std::int64_t>(frame, Er::Unspecified::Int64);
+            ASSERT_TRUE(!!i64);
+            EXPECT_EQ(*i64, -12);
+
+            auto s = Er::get<std::string>(frame, Er::Unspecified::String);
+            ASSERT_TRUE(!!s);
+            EXPECT_STREQ(s->c_str(), "Bye");
+
+            auto fc = Er::get<std::int32_t>(frame, ReplyFrameCount);
+            ASSERT_TRUE(!!fc);
+            EXPECT_EQ(*fc, frameCount);
+
+            auto tif = Er::get<std::int32_t>(frame, ThrowInFrame);
+            ASSERT_TRUE(!!tif);
+            EXPECT_EQ(*tif, ThrowInEndStream);
+        }
+    }
+
+    // in next()
+    {
+        const std::int32_t frameCount = 10;
+        const std::int32_t badFrame = 2;
+
+        auto completion = std::make_shared<StreamCompletion>(frameCount);
+
+        Er::PropertyBag args;
+        args.push_back(Er::Property(int64_t(-12), Er::Unspecified::Int64));
+        args.push_back(Er::Property(std::string("Bye"), Er::Unspecified::String));
+        args.push_back(Er::Property(int32_t(10), ReplyFrameCount));
+        args.push_back(Er::Property(badFrame, ThrowInFrame));
+
+        m_clients.front()->stream("simple_stream", args, completion);
+
+        ASSERT_TRUE(completion->wait());
+
+        EXPECT_FALSE(completion->transportError());
+
+        EXPECT_EQ(completion->receivedFrames, badFrame);
+        EXPECT_EQ(completion->receivedExceptions, 1);
+
+        for (std::int32_t i = 0; i < frameCount; ++i)
+        {
+            if (i != badFrame)
+            {
+                auto& frame = completion->frames[i];
+                EXPECT_EQ(frame.size(), 5);
+
+                auto rfi = Er::get<std::int32_t>(frame, ReplyFrameIndex);
+                ASSERT_TRUE(!!rfi);
+                EXPECT_EQ(*rfi, i);
+
+                auto i64 = Er::get<std::int64_t>(frame, Er::Unspecified::Int64);
+                ASSERT_TRUE(!!i64);
+                EXPECT_EQ(*i64, -12);
+
+                auto s = Er::get<std::string>(frame, Er::Unspecified::String);
+                ASSERT_TRUE(!!s);
+                EXPECT_STREQ(s->c_str(), "Bye");
+
+                auto fc = Er::get<std::int32_t>(frame, ReplyFrameCount);
+                ASSERT_TRUE(!!fc);
+                EXPECT_EQ(*fc, frameCount);
+
+                auto tif = Er::get<std::int32_t>(frame, ThrowInFrame);
+                ASSERT_TRUE(!!tif);
+                EXPECT_EQ(*tif, badFrame);
+            }
+            else
+            {
+                auto& e = completion->exceptions[i];
+                ASSERT_TRUE(e);
+
+                EXPECT_STREQ(e.message().c_str(), "No way you can continue a stream");
+
+                break;
+            }
+        }
+    }
+}
 
 TEST_F(TestStream, NormalStream)
 {
@@ -268,8 +445,8 @@ TEST_F(TestStream, NormalStream)
 
         ASSERT_TRUE(completion->wait());
 
-        EXPECT_FALSE(completion->error());
-        EXPECT_TRUE(completion->serverPropertyMappingExpired());
+        EXPECT_FALSE(completion->transportError());
+        EXPECT_TRUE(completion->hasServerPropertyMappingExpired());
     }
 
     ASSERT_TRUE(putPropertyMapping(0));
@@ -287,9 +464,9 @@ TEST_F(TestStream, NormalStream)
 
         ASSERT_TRUE(completion->wait());
 
-        EXPECT_FALSE(completion->error());
-        EXPECT_FALSE(completion->serverPropertyMappingExpired());
-        EXPECT_TRUE(completion->clientPropertyMappingExpired());
+        EXPECT_FALSE(completion->transportError());
+        EXPECT_FALSE(completion->hasServerPropertyMappingExpired());
+        EXPECT_TRUE(completion->hasClientPropertyMappingExpired());
     }
 
     ASSERT_TRUE(getPropertyMapping(0));
@@ -309,9 +486,9 @@ TEST_F(TestStream, NormalStream)
 
         ASSERT_TRUE(completion->wait());
 
-        EXPECT_FALSE(completion->error());
-        EXPECT_FALSE(completion->serverPropertyMappingExpired());
-        EXPECT_FALSE(completion->clientPropertyMappingExpired());
+        EXPECT_FALSE(completion->transportError());
+        EXPECT_FALSE(completion->hasServerPropertyMappingExpired());
+        EXPECT_FALSE(completion->hasClientPropertyMappingExpired());
 
         EXPECT_EQ(completion->receivedFrames, frameCount);
         EXPECT_EQ(completion->receivedExceptions, 0);
@@ -395,19 +572,19 @@ TEST_F(TestStream, ConcurrentStreams)
 
         bool check()
         {
-            if (completion->error())
+            if (completion->transportError())
             {
-                ErLogError("Stream {} completed with an error {} ({})", id, *completion->error(), completion->errorMessage());
+                ErLogError("Stream {} completed with an error {} ({})", id, *completion->transportError(), completion->errorMessage());
                 return false;
             }
 
-            if (completion->serverPropertyMappingExpired())
+            if (completion->hasServerPropertyMappingExpired())
             {
                 ErLogError("Stream {} has server mapping expired", id);
                 return false;
             }
 
-            if (completion->clientPropertyMappingExpired())
+            if (completion->hasClientPropertyMappingExpired())
             {
                 ErLogError("Stream {} has client mapping expired", id);
                 return false;
