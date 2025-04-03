@@ -232,22 +232,32 @@ void Program::addLoggers(Log2::ITee* main)
 bool Program::globalLoadConfiguration(int argc, char** argv)
 {
     boost::program_options::options_description options("Command line options");
-    options.add_options()
-        ("help,?", "show help")
-        ("verbose,v", "verbose logging")
-        ("logthreshold", boost::program_options::value<unsigned>(&m_loggerThreshold)->default_value(unsigned(1000)), "lt");
+    
+    try
+    {
+        options.add_options()
+            ("help,?", "show help")
+            ("verbose,v", "verbose logging")
+            ("logthreshold", boost::program_options::value<unsigned>(&m_loggerThreshold)->default_value(unsigned(1000)), "lt");
 
 
 #if ER_POSIX
-    if (m_options & CanBeDaemonized)
-        options.add_options()
+        if (m_options & CanBeDaemonized)
+            options.add_options()
             ("daemon,d", "run as a daemon");
 #endif
 
-    addCmdLineOptions(options);
+        addCmdLineOptions(options);
 
-    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, options), m_args);
-    boost::program_options::notify(m_args);
+        boost::program_options::store(boost::program_options::command_line_parser(argc, argv).options(options).allow_unregistered().run(), m_args);
+        boost::program_options::notify(m_args);
+    }
+    catch (boost::program_options::error& e)
+    {
+        std::cerr << e.what() << std::endl;
+        displayHelp(options);
+        return false;
+    }
 
     if (m_args.count("help"))
     {

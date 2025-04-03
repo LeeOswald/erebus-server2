@@ -32,14 +32,6 @@ TestApplication::TestApplication(int options) noexcept
 #endif
 }
 
-void TestApplication::addCmdLineOptions(boost::program_options::options_description& options)
-{
-    options.add_options()
-        ("gtest_list_tests", "list all tests")
-        ("gtest_filter", boost::program_options::value<std::string>(), "run specific tests")
-        ;
-}
-
 void TestApplication::addLoggers(Er::Log2::ITee* main)
 {
 #if ER_DEBUG

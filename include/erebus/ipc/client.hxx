@@ -49,7 +49,7 @@ struct IClient
         virtual void handleException(Er::Exception&& exception) = 0;
     };
 
-    using Ptr = std::shared_ptr<IClient>;
+    using Ptr = std::unique_ptr<IClient>;
 
     virtual void ping(std::size_t payloadSize, IPingCompletion::Ptr handler) = 0;
     virtual void getPropertyMapping(ICompletion::Ptr handler) = 0;
