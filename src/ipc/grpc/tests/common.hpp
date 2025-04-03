@@ -16,7 +16,7 @@
 #include <thread>
 #include <vector>
 
-extern std::uint16_t g_serverPort;
+extern std::string g_serverEndpoint;
 extern std::chrono::milliseconds g_operationTimeout;
 
 
@@ -98,12 +98,10 @@ public:
     }
 
     TestClientBase()
-        : m_port(g_serverPort)
+        : m_endpoint(g_serverEndpoint)
         , m_serverLog(makeLogger("server", Er::Log2::g_verbose ? Er::Log2::Level::Debug : Er::Log2::Level::Warning))
         , m_clientLog(makeLogger("client", Er::Log2::g_verbose ? Er::Log2::Level::Debug : Er::Log2::Level::Warning))
     {
-        ErLogDebug("Server log {}", Er::Format::ptr(m_serverLog.get()));
-        ErLogDebug("Client log {}", Er::Format::ptr(m_clientLog.get()));
     }
 
     Er::Log2::ILogger* serverLog() noexcept
@@ -119,7 +117,7 @@ public:
     void startServer()
     {
         Er::Ipc::Grpc::ServerArgs args(m_serverLog);
-        args.endpoints.push_back(Er::Ipc::Grpc::ServerArgs::Endpoint(Er::format("127.0.0.1:{}", m_port)));
+        args.endpoints.push_back(Er::Ipc::Grpc::ServerArgs::Endpoint(m_endpoint));
 
         m_server = Er::Ipc::Grpc::create(args);
     }
@@ -133,7 +131,7 @@ public:
     {
         ErAssert(count);
 
-        Er::Ipc::Grpc::ChannelSettings args(Er::format("127.0.0.1:{}", m_port));
+        Er::Ipc::Grpc::ChannelSettings args(m_endpoint);
 
         auto channel = Er::Ipc::Grpc::createChannel(args);
 
@@ -190,7 +188,7 @@ protected:
     Er::Log2::ILogger::Ptr m_serverLog;
     Er::Log2::ILogger::Ptr m_clientLog;
 
-    std::uint16_t m_port;
+    std::string m_endpoint;
     Er::Ipc::IServer::Ptr m_server;
     std::vector<Er::Ipc::IClient::Ptr> m_clients;
 };

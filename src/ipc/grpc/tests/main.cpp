@@ -2,7 +2,7 @@
 
 #include "common.hpp"
 
-std::uint16_t g_serverPort = 998;
+std::string g_serverEndpoint = "127.0.0.1:998";
 std::chrono::milliseconds g_operationTimeout{ 60 * 1000 };
 
 
@@ -23,7 +23,7 @@ private:
         Base::addCmdLineOptions(options);
 
         options.add_options()
-            ("port", boost::program_options::value<std::uint16_t>(&g_serverPort)->default_value(998), "TCP port to use")
+            ("endpoint", boost::program_options::value<std::string>(&g_serverEndpoint)->default_value("127.0.0.1:998"), "Temporary endpoint address")
             ;
     }
 };
