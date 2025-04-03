@@ -13,6 +13,7 @@ public:
     {
         container->registerService("echo", shared_from_this());
         container->registerService("throws", shared_from_this());
+        container->registerService("slow", shared_from_this());
     }
 
     void unregisterService(Er::Ipc::IServer* container) override
@@ -26,6 +27,8 @@ public:
             return echo(clientId, args);
         else if (request == "throws")
             return throws(clientId, args);
+        else if (request == "slow")
+            return slow(clientId, args);
 
         ErThrow(Er::format("Unsupported request {}", request));
     }
@@ -59,6 +62,12 @@ private:
         }
 
         throw e;
+    }
+
+    Er::PropertyBag slow(std::uint32_t clientId, const Er::PropertyBag& args)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(g_callTimeout * 2));
+        return {};
     }
 };
 
@@ -115,9 +124,9 @@ TEST_F(TestCall, NormalCall)
         args.push_back(Er::Property(uint64_t(12), Er::Unspecified::UInt64));
         args.push_back(Er::Property(std::string("Hello"), Er::Unspecified::String));
 
-        m_clients.front()->call("echo", args, completion);
+        m_clients.front()->call("echo", args, completion, g_callTimeout);
 
-        ASSERT_TRUE(completion->wait());
+        ASSERT_TRUE(completion->wait(g_callTimeout));
 
         EXPECT_FALSE(completion->transportError());
         EXPECT_TRUE(completion->hasServerPropertyMappingExpired());
@@ -132,9 +141,9 @@ TEST_F(TestCall, NormalCall)
         args.push_back(Er::Property(uint64_t(12), Er::Unspecified::UInt64));
         args.push_back(Er::Property(std::string("Hello"), Er::Unspecified::String));
 
-        m_clients.front()->call("echo", args, completion);
+        m_clients.front()->call("echo", args, completion, g_callTimeout);
 
-        ASSERT_TRUE(completion->wait());
+        ASSERT_TRUE(completion->wait(g_callTimeout));
 
         EXPECT_FALSE(completion->transportError());
         EXPECT_FALSE(completion->hasServerPropertyMappingExpired());
@@ -150,9 +159,9 @@ TEST_F(TestCall, NormalCall)
         args.push_back(Er::Property(uint64_t(12), Er::Unspecified::UInt64));
         args.push_back(Er::Property(std::string("Hello"), Er::Unspecified::String));
 
-        m_clients.front()->call("echo", args, completion);
+        m_clients.front()->call("echo", args, completion, g_callTimeout);
 
-        ASSERT_TRUE(completion->wait());
+        ASSERT_TRUE(completion->wait(g_callTimeout));
 
         EXPECT_FALSE(completion->transportError());
         EXPECT_FALSE(completion->hasServerPropertyMappingExpired());
@@ -179,6 +188,32 @@ TEST_F(TestCall, NormalCall)
     }
 }
 
+TEST_F(TestCall, Timeout)
+{
+    startServer();
+    startClient(1);
+
+    ASSERT_TRUE(putPropertyMapping(0));
+    ASSERT_TRUE(getPropertyMapping(0));
+
+    {
+        auto completion = std::make_shared<CallCompletion>();
+
+        Er::PropertyBag args;
+        m_clients.front()->call("slow", args, completion, g_callTimeout);
+
+        EXPECT_TRUE(completion->wait(g_callTimeout * 3));
+
+        EXPECT_TRUE(completion->transportError());
+        EXPECT_EQ(*completion->transportError(), Er::Result::Timeout);
+        EXPECT_FALSE(completion->hasServerPropertyMappingExpired());
+        EXPECT_FALSE(completion->hasClientPropertyMappingExpired());
+
+        EXPECT_FALSE(completion->reply);
+        EXPECT_FALSE(completion->exception);
+    }
+}
+
 TEST_F(TestCall, NotImplemented)
 {
     startServer();
@@ -190,9 +225,9 @@ TEST_F(TestCall, NotImplemented)
     args.push_back(Er::Property(uint64_t(12), Er::Unspecified::UInt64));
     args.push_back(Er::Property(std::string("Hello"), Er::Unspecified::String));
 
-    m_clients.front()->call("bark", args, completion);
+    m_clients.front()->call("bark", args, completion, g_callTimeout);
 
-    ASSERT_TRUE(completion->wait());
+    ASSERT_TRUE(completion->wait(g_callTimeout));
 
     EXPECT_TRUE(completion->transportError());
     EXPECT_EQ(*completion->transportError(), Er::Result::Unimplemented);
@@ -212,9 +247,9 @@ TEST_F(TestCall, Exception)
     args.push_back(Er::Property(uint64_t(12), Er::Unspecified::UInt64));
     args.push_back(Er::Property(std::string("Hello"), Er::Unspecified::String));
 
-    m_clients.front()->call("throws", args, completion);
+    m_clients.front()->call("throws", args, completion, g_callTimeout);
 
-    ASSERT_TRUE(completion->wait());
+    ASSERT_TRUE(completion->wait(g_callTimeout));
 
     EXPECT_FALSE(completion->transportError());
     EXPECT_TRUE(completion->exception);
@@ -271,7 +306,7 @@ TEST_F(TestCall, ConcurrentCall)
             long succeeded = 0;
             for (long i = 0; i < callCount; ++i)
             {
-                if (completions[i]->wait())
+                if (completions[i]->wait(g_callTimeout))
                 {
                     ++succeeded;
                 }
@@ -350,7 +385,7 @@ TEST_F(TestCall, ConcurrentCall)
                 Er::PropertyBag args;
                 args.push_back(Er::Property(requests[i], Er::Unspecified::String));
 
-                client->call("echo", args, completions[i]);
+                client->call("echo", args, completions[i], g_callTimeout);
             }
         }
     };

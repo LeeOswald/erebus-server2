@@ -281,7 +281,7 @@ TEST_F(TestStream, NotImplemented)
 
         m_clients.front()->stream("ni_stream", args, completion);
 
-        ASSERT_TRUE(completion->wait());
+        ASSERT_TRUE(completion->wait(g_streamTimeout));
 
         EXPECT_TRUE(completion->transportError());
         EXPECT_EQ(*completion->transportError(), Er::Result::Unimplemented);
@@ -307,7 +307,7 @@ TEST_F(TestStream, Exception)
 
         m_clients.front()->stream("simple_stream", args, completion);
 
-        ASSERT_TRUE(completion->wait());
+        ASSERT_TRUE(completion->wait(g_streamTimeout));
 
         EXPECT_FALSE(completion->transportError());
 
@@ -332,7 +332,7 @@ TEST_F(TestStream, Exception)
 
         m_clients.front()->stream("simple_stream", args, completion);
 
-        ASSERT_TRUE(completion->wait());
+        ASSERT_TRUE(completion->wait(g_streamTimeout));
 
         EXPECT_FALSE(completion->transportError());
 
@@ -380,7 +380,7 @@ TEST_F(TestStream, Exception)
 
         m_clients.front()->stream("simple_stream", args, completion);
 
-        ASSERT_TRUE(completion->wait());
+        ASSERT_TRUE(completion->wait(g_streamTimeout));
 
         EXPECT_FALSE(completion->transportError());
 
@@ -443,7 +443,7 @@ TEST_F(TestStream, NormalStream)
 
         m_clients.front()->stream("simple_stream", args, completion);
 
-        ASSERT_TRUE(completion->wait());
+        ASSERT_TRUE(completion->wait(g_streamTimeout));
 
         EXPECT_FALSE(completion->transportError());
         EXPECT_TRUE(completion->hasServerPropertyMappingExpired());
@@ -462,7 +462,7 @@ TEST_F(TestStream, NormalStream)
 
         m_clients.front()->stream("simple_stream", args, completion);
 
-        ASSERT_TRUE(completion->wait());
+        ASSERT_TRUE(completion->wait(g_streamTimeout));
 
         EXPECT_FALSE(completion->transportError());
         EXPECT_FALSE(completion->hasServerPropertyMappingExpired());
@@ -484,7 +484,7 @@ TEST_F(TestStream, NormalStream)
 
         m_clients.front()->stream("simple_stream", args, completion);
 
-        ASSERT_TRUE(completion->wait());
+        ASSERT_TRUE(completion->wait(g_streamTimeout));
 
         EXPECT_FALSE(completion->transportError());
         EXPECT_FALSE(completion->hasServerPropertyMappingExpired());
@@ -561,7 +561,7 @@ TEST_F(TestStream, ConcurrentStreams)
 
         bool wait()
         {
-            if (!completion->wait())
+            if (!completion->wait(g_streamTimeout))
             {
                 ErLogError("Stream {} did not complete", id);
                 return false;

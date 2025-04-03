@@ -205,7 +205,7 @@ private:
             ServerTraceIndent2(m_log, "{}.ReplyStreamWriteReactor::OnWriteDone", Er::Format::ptr(this));
 
             if (!ok) 
-                Finish(grpc::Status(grpc::StatusCode::INTERNAL, "Unexpected Failure"));
+                Finish(grpc::Status(grpc::StatusCode::CANCELLED, "Operation canceled"));
             else
                 Continue();
         }
@@ -313,7 +313,7 @@ private:
             ServerTraceIndent2(m_log, "{}.PropertyInfoStreamWriteReactor::OnWriteDone", Er::Format::ptr(this));
 
             if (!ok)
-                Finish(grpc::Status(grpc::StatusCode::INTERNAL, "Unexpected Failure"));
+                Finish(grpc::Status(grpc::StatusCode::CANCELLED, "Operation canceled"));
             else
                 Continue();
         }
@@ -388,7 +388,7 @@ private:
 
             if (!ok)
             {
-                Finish(grpc::Status::OK);
+                Finish(grpc::Status(grpc::StatusCode::CANCELLED, "Operation canceled"));
             }
             else
             {

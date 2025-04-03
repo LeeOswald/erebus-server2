@@ -9,7 +9,9 @@ static constexpr std::string_view DefaultEnpoint = "127.0.0.1:998";
 #endif
 
 std::string g_serverEndpoint;
-std::chrono::milliseconds g_operationTimeout{ 60 * 1000 };
+
+std::chrono::milliseconds g_callTimeout{ 5 * 1000 };
+std::chrono::milliseconds g_streamTimeout{ 30 * 1000 };
 
 
 class App final

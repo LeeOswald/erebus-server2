@@ -26,7 +26,6 @@ enum : std::int32_t
     NotFound = -11,
     InsufficientResources = -12,
     SharingViolation = -13,
-    DeadlineExceeded = -14,
     Unauthenticated = -15,
     ResourceExhausted = -16,
     FailedPrecondition = -17,

@@ -34,7 +34,7 @@ static Er::ResultCode mapGrpcStatus(grpc::StatusCode status) noexcept
     case grpc::CANCELLED: return Result::Canceled;
     case grpc::UNKNOWN: return Result::Failure;
     case grpc::INVALID_ARGUMENT: return Result::InvalidArgument;
-    case grpc::DEADLINE_EXCEEDED: return Result::DeadlineExceeded;
+    case grpc::DEADLINE_EXCEEDED: return Result::Timeout;
     case grpc::NOT_FOUND: return Result::NotFound;
     case grpc::ALREADY_EXISTS: return Result::AlreadyExists;
     case grpc::PERMISSION_DENIED: return Result::AccessDenied;
@@ -67,9 +67,8 @@ public:
         ::grpc_shutdown();
     }
 
-    explicit ClientImpl(const ChannelSettings& params, std::shared_ptr<grpc::Channel> channel, Er::Log2::ILogger::Ptr log)
-        : m_params(params)
-        , m_grpcReady(grpcInit())
+    explicit ClientImpl(std::shared_ptr<grpc::Channel> channel, Er::Log2::ILogger::Ptr log)
+        : m_grpcReady(grpcInit())
         , m_stub(erebus::Erebus::NewStub(channel))
         , m_logRef(log)
         , m_log(log.get())
@@ -523,12 +522,12 @@ private:
         return nullptr;
     }
 
-    void ping(std::size_t payloadSize, IPingCompletion::Ptr handler) override
+    void ping(std::size_t payloadSize, IPingCompletion::Ptr handler, std::chrono::milliseconds timeout) override
     {
         ClientTraceIndent2(m_log, "{}.ClientImpl::ping()", Er::Format::ptr(this));
 
         auto ctx = std::make_shared<PingContext>(this, m_log, m_clientId, payloadSize, handler);
-        ctx->context.set_deadline(std::chrono::system_clock::now() + m_params.callTimeout);
+        ctx->context.set_deadline(std::chrono::system_clock::now() + timeout);
 
         m_stub->async()->Ping(
             &ctx->context,
@@ -554,12 +553,12 @@ private:
         new PropertyMappingStreamWriter(this, m_log, m_stub.get(), m_clientId, handler);
     }
 
-    void call(std::string_view request, const Er::PropertyBag& args, ICallCompletion::Ptr handler) override
+    void call(std::string_view request, const Er::PropertyBag& args, ICallCompletion::Ptr handler, std::chrono::milliseconds timeout) override
     {
         ClientTraceIndent2(m_log, "{}.ClientImpl::call({})", Er::Format::ptr(this), request);
 
         auto ctx = std::make_shared<CallContext>(this, m_log, request, args, m_clientId, handler);
-        ctx->context.set_deadline(std::chrono::system_clock::now() + m_params.callTimeout);
+        ctx->context.set_deadline(std::chrono::system_clock::now() + timeout);
 
         m_stub->async()->GenericCall(
             &ctx->context,
@@ -790,7 +789,6 @@ private:
         }
     }
 
-    const ChannelSettings m_params;
     const bool m_grpcReady;
     const std::unique_ptr<erebus::Erebus::Stub> m_stub;
     Er::Log2::ILogger::Ptr m_logRef;
@@ -848,9 +846,9 @@ ER_GRPC_CLIENT_EXPORT ChannelPtr createChannel(const ChannelSettings& params)
     }
 }
 
-ER_GRPC_CLIENT_EXPORT IClient::Ptr createClient(const ChannelSettings& params, ChannelPtr channel, Er::Log2::ILogger::Ptr log)
+ER_GRPC_CLIENT_EXPORT IClient::Ptr createClient(ChannelPtr channel, Er::Log2::ILogger::Ptr log)
 {
-    return std::make_unique<ClientImpl>(params, std::static_pointer_cast<grpc::Channel>(channel), log);
+    return std::make_unique<ClientImpl>(std::static_pointer_cast<grpc::Channel>(channel), log);
 }
 
 } // namespace Er::Ipc::Grpc {}

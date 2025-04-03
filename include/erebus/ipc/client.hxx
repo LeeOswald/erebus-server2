@@ -51,10 +51,10 @@ struct IClient
 
     using Ptr = std::unique_ptr<IClient>;
 
-    virtual void ping(std::size_t payloadSize, IPingCompletion::Ptr handler) = 0;
+    virtual void ping(std::size_t payloadSize, IPingCompletion::Ptr handler, std::chrono::milliseconds timeout) = 0;
     virtual void getPropertyMapping(ICompletion::Ptr handler) = 0;
     virtual void putPropertyMapping(ICompletion::Ptr handler) = 0;
-    virtual void call(std::string_view request, const Er::PropertyBag& args, ICallCompletion::Ptr handler) = 0;
+    virtual void call(std::string_view request, const Er::PropertyBag& args, ICallCompletion::Ptr handler, std::chrono::milliseconds timeout) = 0;
     virtual void stream(std::string_view request, const Er::PropertyBag& args, IStreamCompletion::Ptr handler) = 0;
 
     virtual ~IClient() {};

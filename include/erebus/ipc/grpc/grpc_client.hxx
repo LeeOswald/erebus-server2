@@ -29,7 +29,6 @@ struct ChannelSettings
     std::string certificate;
     std::string privateKey;
     bool keepAlive = true;
-    std::chrono::milliseconds callTimeout = std::chrono::milliseconds(60 * 1000);
 
     explicit ChannelSettings(std::string_view endpoint)
         : endpoint(endpoint)
@@ -58,6 +57,6 @@ using ChannelPtr = std::shared_ptr<void>;
 
 ER_GRPC_CLIENT_EXPORT ChannelPtr createChannel(const ChannelSettings& params);
 
-ER_GRPC_CLIENT_EXPORT IClient::Ptr createClient(const ChannelSettings& params, ChannelPtr channel, Er::Log2::ILogger::Ptr log);
+ER_GRPC_CLIENT_EXPORT IClient::Ptr createClient(ChannelPtr channel, Er::Log2::ILogger::Ptr log);
 
 } // namespace Er::Ipc::Grpc {}

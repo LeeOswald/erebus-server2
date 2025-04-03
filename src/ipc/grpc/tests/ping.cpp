@@ -35,9 +35,9 @@ TEST_F(TestPing, FailToConnect)
     {
         auto completion = std::make_shared<PingCompletion>();
 
-        m_clients.front()->ping(0, completion);
+        m_clients.front()->ping(0, completion, g_callTimeout);
 
-        ASSERT_TRUE(completion->wait());
+        ASSERT_TRUE(completion->wait(g_callTimeout));
 
         EXPECT_TRUE(completion->transportError());
         EXPECT_EQ(completion->totalPayload, 0);
@@ -68,12 +68,12 @@ TEST_F(TestPing, Ping)
 
         for (long i = 0; i < pingCount; ++i)
         {
-            m_clients.front()->ping(0, completions[i]);
+            m_clients.front()->ping(0, completions[i], g_callTimeout);
         }
 
         for (long i = 0; i < pingCount; ++i)
         {
-            ASSERT_TRUE(completions[i]->wait());
+            ASSERT_TRUE(completions[i]->wait(g_callTimeout));
         }
 
         for (long i = 0; i < pingCount; ++i)
@@ -92,12 +92,12 @@ TEST_F(TestPing, Ping)
         for (long i = 0; i < pingCount; ++i)
         {
             long size = (i + 1) * 1024;
-            m_clients.front()->ping(size, completions[i]);
+            m_clients.front()->ping(size, completions[i], g_callTimeout);
         }
 
         for (long i = 0; i < pingCount; ++i)
         {
-            ASSERT_TRUE(completions[i]->wait());
+            ASSERT_TRUE(completions[i]->wait(g_callTimeout));
         }
 
         for (long i = 0; i < pingCount; ++i)
@@ -133,7 +133,7 @@ TEST_F(TestPing, ConcurrentPing)
             bool ok = true;
             for (long i = 0; i < pingCount; ++i)
             {
-                auto r = completions[i]->wait();
+                auto r = completions[i]->wait(g_callTimeout);
                 if (!r)
                     ErLogError("Ping #{} did not complete", i);
 
@@ -168,7 +168,7 @@ TEST_F(TestPing, ConcurrentPing)
         {
             for (long i = 0; i < pingCount; ++i)
             {
-                client->ping(payloadSize, completions[i]);
+                client->ping(payloadSize, completions[i], g_callTimeout);
             }
         }
     };

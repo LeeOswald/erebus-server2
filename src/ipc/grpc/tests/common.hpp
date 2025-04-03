@@ -17,7 +17,9 @@
 #include <vector>
 
 extern std::string g_serverEndpoint;
-extern std::chrono::milliseconds g_operationTimeout;
+
+extern std::chrono::milliseconds g_callTimeout;
+extern std::chrono::milliseconds g_streamTimeout;
 
 
 
@@ -27,7 +29,7 @@ struct CompletionBase
 {
     CompletionBase() = default;
 
-    bool wait(std::chrono::milliseconds timeout = g_operationTimeout)
+    bool wait(std::chrono::milliseconds timeout)
     {
         return m_complete.waitValueFor(true, timeout);
     }
@@ -140,7 +142,7 @@ public:
 
         for (std::size_t i = 0; i < count; ++i)
         {
-            m_clients.push_back(Er::Ipc::Grpc::createClient(args, channel, m_clientLog));
+            m_clients.push_back(Er::Ipc::Grpc::createClient(channel, m_clientLog));
         }
     }
 
@@ -171,7 +173,7 @@ public:
         auto completion = std::make_shared<SimpleCompletion>();
 
         m_clients[client]->putPropertyMapping(completion);
-        return completion->wait();
+        return completion->wait(g_streamTimeout);
     }
 
     bool getPropertyMapping(std::size_t client)
@@ -181,7 +183,7 @@ public:
         auto completion = std::make_shared<SimpleCompletion>();
 
         m_clients[client]->getPropertyMapping(completion);
-        return completion->wait();
+        return completion->wait(g_streamTimeout);
     }
 
 protected:
