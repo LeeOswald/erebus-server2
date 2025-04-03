@@ -225,8 +225,9 @@ public:
 struct StreamCompletion
     : public CompletionBase<Er::Ipc::IClient::IStreamCompletion>
 {
-    StreamCompletion(std::uint32_t frameCount)
+    StreamCompletion(std::uint32_t frameCount, std::uint32_t cancelAt = std::uint32_t(-1))
         : frameCount(frameCount)
+        , cancelAt(cancelAt)
     {
         frames.resize(frameCount);
         exceptions.resize(frameCount);
@@ -239,7 +240,7 @@ struct StreamCompletion
         frames[currentFrame] = std::move(frame);
         ++receivedFrames;
         
-        return Er::CallbackResult::Continue;
+        return (currentFrame == cancelAt) ? Er::CallbackResult::Cancel : Er::CallbackResult::Continue;
     }
 
     void handleException(Er::Exception&& exception) override
@@ -255,6 +256,7 @@ struct StreamCompletion
     }
 
     const std::uint32_t frameCount;
+    const std::uint32_t cancelAt;
     std::int32_t currentFrame = -1;
     std::uint32_t receivedFrames = 0;
     std::uint32_t receivedExceptions = 0;
@@ -523,6 +525,71 @@ TEST_F(TestStream, NormalStream)
         }
     }
 }
+
+TEST_F(TestStream, Cancel)
+{
+    startServer();
+    startClient(1);
+
+    ASSERT_TRUE(putPropertyMapping(0));
+    ASSERT_TRUE(getPropertyMapping(0));
+
+    {
+        const std::uint32_t frameCount = 10;
+        const std::uint32_t cancelAt = 2;
+
+        auto completion = std::make_shared<StreamCompletion>(frameCount, cancelAt);
+
+        Er::PropertyBag args;
+        args.push_back(Er::Property(int64_t(-12), Er::Unspecified::Int64));
+        args.push_back(Er::Property(std::string("Bye"), Er::Unspecified::String));
+        args.push_back(Er::Property(int32_t(frameCount), ReplyFrameCount));
+        args.push_back(Er::Property(int32_t(ThrowNever), ThrowInFrame));
+
+        m_clients.front()->stream("simple_stream", args, completion);
+
+        ASSERT_TRUE(completion->wait(g_streamTimeout));
+
+        ASSERT_TRUE(completion->transportError());
+        EXPECT_EQ(*completion->transportError(), Er::Result::Canceled);
+
+        EXPECT_FALSE(completion->hasServerPropertyMappingExpired());
+        EXPECT_FALSE(completion->hasClientPropertyMappingExpired());
+
+        EXPECT_EQ(completion->receivedFrames, cancelAt + 1);
+        EXPECT_EQ(completion->receivedExceptions, 0);
+
+        for (std::uint32_t i = 0; i < completion->receivedFrames; ++i)
+        {
+            ASSERT_FALSE(completion->frames[i].empty());
+            EXPECT_FALSE(completion->exceptions[i]);
+
+            auto& props = completion->frames[i];
+            EXPECT_EQ(props.size(), 5);
+
+            auto rfi = Er::get<std::int32_t>(props, ReplyFrameIndex);
+            ASSERT_TRUE(!!rfi);
+            EXPECT_EQ(*rfi, i);
+
+            auto i64 = Er::get<std::int64_t>(props, Er::Unspecified::Int64);
+            ASSERT_TRUE(!!i64);
+            EXPECT_EQ(*i64, -12);
+
+            auto s = Er::get<std::string>(props, Er::Unspecified::String);
+            ASSERT_TRUE(!!s);
+            EXPECT_STREQ(s->c_str(), "Bye");
+
+            auto fc = Er::get<std::int32_t>(props, ReplyFrameCount);
+            ASSERT_TRUE(!!fc);
+            EXPECT_EQ(*fc, frameCount);
+
+            auto tif = Er::get<std::int32_t>(props, ThrowInFrame);
+            ASSERT_TRUE(!!tif);
+            EXPECT_EQ(*tif, ThrowNever);
+        }
+    }
+}
+
 
 TEST_F(TestStream, ConcurrentStreams)
 {
