@@ -2,7 +2,13 @@
 
 #include "common.hpp"
 
-std::string g_serverEndpoint = "127.0.0.1:998";
+#if ER_LINUX
+static constexpr std::string_view DefaultEnpoint = "unix:///tmp/erebus_grpc_test";
+#else
+static constexpr std::string_view DefaultEnpoint = "127.0.0.1:998";
+#endif
+
+std::string g_serverEndpoint;
 std::chrono::milliseconds g_operationTimeout{ 60 * 1000 };
 
 
@@ -23,7 +29,7 @@ private:
         Base::addCmdLineOptions(options);
 
         options.add_options()
-            ("endpoint", boost::program_options::value<std::string>(&g_serverEndpoint)->default_value("127.0.0.1:998"), "Temporary endpoint address")
+            ("endpoint", boost::program_options::value<std::string>(&g_serverEndpoint)->default_value(std::string(DefaultEnpoint)), "Temporary endpoint address")
             ;
     }
 };

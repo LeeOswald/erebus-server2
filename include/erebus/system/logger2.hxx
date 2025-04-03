@@ -426,3 +426,4 @@ ER_SYSTEM_EXPORT void setGlobal(Er::Log2::ILogger::Ptr log) noexcept;
     if (sink->level() <= l) \
         ::Er::Log2::write(sink, l, format, ##__VA_ARGS__); \
     ::Er::Log2::IndentScope __ids(sink, l)
+

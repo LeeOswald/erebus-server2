@@ -451,6 +451,8 @@ private:
 
     struct SessionData
     {
+        SessionData() noexcept = default;
+
         std::vector<const Er::PropertyInfo*> propertyMapping;
         std::uint32_t mappingVersion = std::uint32_t(-1);
     };
