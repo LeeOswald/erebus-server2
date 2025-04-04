@@ -3,7 +3,7 @@
 #include <erebus/system/erebus.hxx>
 
 #if ER_DEBUG
-#include <erebus/system/system/thread.hxx>
+    #include <atomic>
 #endif
 
 namespace Er::Util
@@ -16,16 +16,14 @@ struct NullMutex
     void lock() noexcept
     {
 #if ER_DEBUG
-        ErAssert(m_owner == System::Tid{});
-        m_owner = System::CurrentThread::id();
+        ErAssert(m_locks.fetch_add(1, std::memory_order_relaxed) == 0);
 #endif
     }
 
     bool try_lock() noexcept
     {
 #if ER_DEBUG
-        ErAssert(m_owner == System::Tid{});
-        m_owner = System::CurrentThread::id();
+        ErAssert(m_locks.fetch_add(1, std::memory_order_relaxed) == 0);
 #endif
         return true;
     }
@@ -33,14 +31,13 @@ struct NullMutex
     void unlock() noexcept
     {
 #if ER_DEBUG
-        ErAssert(m_owner == System::CurrentThread::id());
-        m_owner = System::Tid{};
+        ErAssert(m_locks.fetch_sub(1, std::memory_order_relaxed) == 1);
 #endif
     }
 
 #if ER_DEBUG
 private:
-    System::Tid m_owner = {}; // check if we're really running single-threaded
+    std::atomic<long> m_locks = 0; // check if we're really running single-threaded
 #endif
 };
 
@@ -52,16 +49,14 @@ struct NullSharedMutex
     void lock() noexcept
     {
 #if ER_DEBUG
-        ErAssert(m_owner == System::Tid{});
-        m_owner = System::CurrentThread::id();
+        ErAssert(m_locks.fetch_add(1, std::memory_order_relaxed) == 0);
 #endif
     }
 
     bool try_lock() noexcept
     {
 #if ER_DEBUG
-        ErAssert(m_owner == System::Tid{});
-        m_owner = System::CurrentThread::id();
+        ErAssert(m_locks.fetch_add(1, std::memory_order_relaxed) == 0);
 #endif
         return true;
     }
@@ -69,24 +64,21 @@ struct NullSharedMutex
     void unlock() noexcept
     {
 #if ER_DEBUG
-        ErAssert(m_owner == System::CurrentThread::id());
-        m_owner = System::Tid{};
+        ErAssert(m_locks.fetch_sub(1, std::memory_order_relaxed) == 1);
 #endif
     }
 
     void lock_shared() noexcept
     {
 #if ER_DEBUG
-        ErAssert(m_owner == System::Tid{});
-        m_owner = System::CurrentThread::id();
+        ErAssert(m_locks.fetch_add(1, std::memory_order_relaxed) == 0);
 #endif
     }
 
     bool try_lock_shared() noexcept
     {
 #if ER_DEBUG
-        ErAssert(m_owner == System::Tid{});
-        m_owner = System::CurrentThread::id();
+        ErAssert(m_locks.fetch_add(1, std::memory_order_relaxed) == 0);
 #endif
         return true;
     }
@@ -94,14 +86,13 @@ struct NullSharedMutex
     void unlock_shared() noexcept
     {
 #if ER_DEBUG
-        ErAssert(m_owner == System::CurrentThread::id());
-        m_owner = System::Tid{};
+        ErAssert(m_locks.fetch_sub(1, std::memory_order_relaxed) == 1);
 #endif
     }
 
 #if ER_DEBUG
 private:
-    System::Tid m_owner = {}; // check if we're really running single-threaded
+    std::atomic<long> m_locks = 0; // check if we're really running single-threaded
 #endif
 };
 

@@ -16,6 +16,8 @@ add_custom_command(
 
 add_library(erebus-grpc SHARED
     ../../../include/erebus/ipc/client.hxx
+    ../../../include/erebus/ipc/client_base.hxx
+    ../../../include/erebus/ipc/ipc.hxx
     ../../../include/erebus/ipc/server.hxx
     ../../../include/erebus/ipc/service.hxx
     ../../../include/erebus/ipc/grpc/grpc_server.hxx
@@ -23,6 +25,7 @@ add_library(erebus-grpc SHARED
     erebus_service.hxx
     erebus_service.cxx
     grpc_client.cxx
+    property_mapping.hxx
     protocol.hxx
     protocol.cxx
     session_data.hxx

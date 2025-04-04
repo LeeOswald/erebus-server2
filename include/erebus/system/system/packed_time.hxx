@@ -56,6 +56,21 @@ struct ER_SYSTEM_EXPORT PackedTime
     [[nodiscard]] std::tm toLocalTime() const noexcept;
     [[nodiscard]] std::tm toUtc() const noexcept;
 
+    [[nodiscard]] constexpr std::uint64_t microseconds() const noexcept
+    {
+        return value;
+    }
+
+    [[nodiscard]] constexpr std::uint64_t milliseconds() const noexcept
+    {
+        return value / 1000UL;
+    }
+
+    [[nodiscard]] constexpr std::uint64_t seconds() const noexcept
+    {
+        return value / 1000000UL;
+    }
+
     [[nodiscard]] constexpr std::uint32_t subSecond() const noexcept
     {
         return static_cast<std::uint32_t>(value % 1000000UL);

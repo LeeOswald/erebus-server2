@@ -58,7 +58,7 @@ ErebusService::ErebusService(const Er::Ipc::Grpc::ServerArgs& params)
     m_server.swap(server);
 }
 
-Er::Ipc::IService::Ptr ErebusService::findService(const std::string& id) const
+Er::Ipc::IService::Ptr ErebusService::findService(const std::string& id) noexcept
 {
     std::shared_lock l(m_services.lock);
 
@@ -71,7 +71,44 @@ Er::Ipc::IService::Ptr ErebusService::findService(const std::string& id) const
     return {};
 }
 
-Er::PropertyBag ErebusService::unmarshalArgs(const erebus::ServiceRequest* request, std::uint32_t clientId)
+Er::PropertyInfo const* ErebusService::unmarshalPropertyInfo(const erebus::PropertyInfo& source, SessionRef& session)
+{
+    auto& remoteProps = session.get().remoteMapping;
+
+    auto id = source.id();
+    if (id > HighestPropertyId)
+        ErThrow(Er::format("Property ID {} exceeds limit", id));
+
+    auto info = remoteProps.lookup(id);
+    if (!info)
+    {
+        auto type = static_cast<Er::PropertyType>(source.type());
+        auto& name = source.name();
+        auto& readableName = source.readablename();
+
+        info = Erp::allocateTransientProperty(type, name, readableName);
+
+        remoteProps.add(id, info);
+    }
+
+    return info;
+}
+
+void ErebusService::unmarshalPropertyInfos(const erebus::ServiceRequest* request, SessionRef& session)
+{
+    auto count = request->mapping_size();
+    if (!count)
+        return;
+
+    for (decltype(count) i = 0; i < count; ++i)
+    {
+        auto& pi = request->mapping(i);
+
+        unmarshalPropertyInfo(pi, session);
+    }
+}
+
+Er::PropertyBag ErebusService::unmarshalArgs(const erebus::ServiceRequest* request, SessionRef& session)
 {
     Er::PropertyBag bag;
 
@@ -79,25 +116,43 @@ Er::PropertyBag ErebusService::unmarshalArgs(const erebus::ServiceRequest* reque
     if (count > 0)
     {
         bag.reserve(count);
-        
+
+        auto& remoteProps = session.get().remoteMapping;
+                
         for (int i = 0; i < count; ++i)
         {
             auto& arg = request->args(i);
-            bag.push_back(Erp::Protocol::getProperty(arg, this, clientId));
+            auto info = remoteProps.lookup(arg.id());
+            if (!info)
+                ErThrow(Er::format("Unknown property id {} of type {} in client request", arg.id(), Erp::Protocol::propTypeToString(arg)));
+
+            bag.push_back(Erp::Protocol::getProperty(arg, info));
         }
     }
 
     return bag;
 }
 
-void ErebusService::marshalReplyProps(const Er::PropertyBag& props, erebus::ServiceReply* reply)
+void ErebusService::marshalReplyProps(const Er::PropertyBag& props, erebus::ServiceReply* reply, SessionRef& session)
 {
     if (props.empty())
         return;
 
+    auto& localProps = session.get().localMapping;
+
     auto out = reply->mutable_props();
     for (auto& prop : props)
     {
+        // send PropertyInfo if necessary
+        auto id = prop.unique();
+        auto info = prop.info();
+        if (localProps.addIfMissing(id, info))
+        {
+            auto m = reply->add_mapping();
+            Erp::Protocol::assignPropertyInfo(*m, info);
+        }
+
+        // send actual property
         auto mutableProp = out->Add();
         Erp::Protocol::assignProperty(*mutableProp, prop);
     }
@@ -116,7 +171,7 @@ void ErebusService::marshalException(erebus::ServiceReply* reply, const std::exc
     *exception->mutable_message() = std::string_view(e.what());
 }
 
-void ErebusService::marshalException(erebus::ServiceReply* reply, const Er::Exception& e)
+void ErebusService::marshalException(erebus::ServiceReply* reply, const Er::Exception& e, SessionRef& session)
 {
     std::string_view what;
     auto msg = e.message();
@@ -131,49 +186,39 @@ void ErebusService::marshalException(erebus::ServiceReply* reply, const Er::Exce
     auto properties = e.properties();
     if (!properties.empty())
     {
+        auto& localProps = session.get().localMapping;
+
         auto mutableProps = exception->mutable_props();
         mutableProps->Reserve(properties.size());
 
         for (auto& property : properties)
         {
+            // send PropertyInfo if necessary
+            auto id = property.unique();
+            auto info = property.info();
+            if (localProps.addIfMissing(id, info))
+            {
+                auto m = reply->add_mapping();
+                Erp::Protocol::assignPropertyInfo(*m, info);
+            }
+
             auto mutableProp = mutableProps->Add();
             Erp ::Protocol::assignProperty(*mutableProp, property);
         }
     }
 }
 
-grpc::ServerUnaryReactor* ErebusService::Ping(grpc::CallbackServerContext* context, const erebus::PingRequest* request, erebus::PingReply* reply)
-{
-    ServerTraceIndent2(m_log, "{}.ErebusService::Ping", Er::Format::ptr(this));
-
-    auto reactor = std::make_unique<ReplyUnaryReactor>(m_log);
-    if (context->IsCancelled()) [[unlikely]]
-    {
-        ErLogWarning2(m_log, "Request cancelled");
-        return reactor.release();
-    }
-
-    auto timestamp = request->timestamp();
-    reply->set_timestamp(timestamp);
-
-    auto& payload = request->payload();
-    reply->set_payload(payload);
-    
-    auto clientId = request->clientid();
-    ErLogInfo2(m_log, "Ping with {} bytes of data from {}:{}", payload.length(), context->peer(), clientId);
-
-    // touch session data
-    [[maybe_unused]] auto session = m_sessions.get(clientId);
-
-    reactor->Finish(grpc::Status::OK);
-    return reactor.release();
-}
-
 grpc::ServerUnaryReactor* ErebusService::GenericCall(grpc::CallbackServerContext* context, const erebus::ServiceRequest* request, erebus::ServiceReply* reply)
 {
     ServerTraceIndent2(m_log, "{}.ErebusService::GenericCall", Er::Format::ptr(this));
 
-    auto reactor = std::make_unique<ReplyUnaryReactor>(m_log);
+    std::optional<Er::System::PackedTime::ValueType> timestamp;
+    if (request->has_timestamp())
+        timestamp = request->timestamp();
+
+    auto timeStarted = Er::System::PackedTime::now();
+
+    auto reactor = std::make_unique<CallReplyReactor>(m_log);
     if (context->IsCancelled()) [[unlikely]]
     {
         ErLogWarning2(m_log, "Request cancelled");
@@ -191,38 +236,35 @@ grpc::ServerUnaryReactor* ErebusService::GenericCall(grpc::CallbackServerContext
         return reactor.release();
     }
 
-    reply->set_mappingver(Erp::propertyMappingVersion());
-
-    std::uint32_t clientId = request->has_clientid() ? request->clientid() : std::uint32_t(-1);
-
+    ClientId clientId = request->clientid();
     ErLogInfo2(m_log, "Req [{}] from {}:{}", requestStr, context->peer(), clientId);
 
-    auto mappingVer = request->mappingver();
+    auto session = m_sessions.get(clientId);
+    if (!session)
+    {
+        Er::Log2::writeln(m_log, Er::Log2::Level::Error, "No session found for call");
+        reactor->Finish(grpc::Status(grpc::UNAUTHENTICATED, "No session found for call"));
+        return reactor.release();
+    }
 
-    ExceptionMarshaler xcptHandler(m_log, *reply);
+    ExceptionMarshaler xcptHandler(m_log, *reply, session);
     try
     {
-        auto valid = propertyMappingValid(clientId, mappingVer);
-        if ((request->args_size() > 0) && ((clientId == std::uint32_t(-1)) || !valid.first))
-        {
-            ErLogDebug2(m_log, "Property mapping expired: remote v.{} local v.{}", mappingVer, valid.second);
-            reply->set_result(erebus::CallResult::PROPERTY_MAPPING_EXPIRED);
-            
-        }
-        else
-        {
-            auto args = unmarshalArgs(request, clientId);
-            auto result = service->request(requestStr, clientId, args);
-            marshalReplyProps(result, reply);
+        unmarshalPropertyInfos(request, session);
 
-            reply->set_result(erebus::SUCCESS);
-        }
+        auto args = unmarshalArgs(request, session);
+        auto result = service->request(requestStr, clientId, std::move(args));
+        marshalReplyProps(result, reply, session);
+
+        if (timestamp)
+            reply->set_timestamp(*timestamp);
+
+        auto timeFinished = Er::System::PackedTime::now();
+        reply->set_duration(timeFinished - timeStarted);
     }
     catch (...)
     {
         Er::dispatchException(std::current_exception(), xcptHandler);
-
-        reply->set_result(erebus::FAILURE);
     }
 
     reactor->Finish(grpc::Status::OK);
@@ -233,11 +275,10 @@ grpc::ServerWriteReactor<erebus::ServiceReply>* ErebusService::GenericStream(grp
 {
     ServerTraceIndent2(m_log, "{}.ErebusService::GenericStream", Er::Format::ptr(this));
 
-    auto reactor = std::make_unique<ReplyStreamWriteReactor>(m_log);
+    auto reactor = std::make_unique<StreamReplyWriteReactor>(m_log);
 
     auto& requestStr = request->request();
-    ErLogInfo2(m_log, "Strm [{}] to {}", requestStr, context->peer());
-
+    
     auto service = findService(requestStr);
     if (!service)
     {
@@ -247,25 +288,26 @@ grpc::ServerWriteReactor<erebus::ServiceReply>* ErebusService::GenericStream(grp
         return reactor.release();
     }
 
-    std::uint32_t clientId = request->has_clientid() ? request->clientid() : std::uint32_t(-1);
-    
-    auto mappingVer = request->mappingver();
+    ClientId clientId = request->clientid();
+    ErLogInfo2(m_log, "Strm [{}] to {}:{}", requestStr, context->peer(), clientId);
+
+    auto session = m_sessions.get(clientId);
+    if (!session)
+    {
+        Er::Log2::writeln(m_log, Er::Log2::Level::Error, "No session found for call");
+        reactor->Finish(grpc::Status(grpc::UNAUTHENTICATED, "No session found for call"));
+        return reactor.release();
+    }
 
     std::string errorMsg;
     Er::Util::ExceptionLogger xcptLogger(m_log);
     try
     {
-        auto valid = propertyMappingValid(clientId, mappingVer);
-        if ((request->args_size() > 0) && ((clientId == std::uint32_t(-1)) || !valid.first))
-        {
-            ErLogDebug2(m_log, "Property mapping expired: remote v.{} vs local v.{}", mappingVer, valid.second);
-            reactor->SendPropertyMappingExpired();
-        }
-        else
-        {
-            auto args = unmarshalArgs(request, clientId);
-            reactor->Begin(service, requestStr, clientId, args);
-        }
+        unmarshalPropertyInfos(request, session);
+
+        auto args = unmarshalArgs(request, session);
+        reactor->Begin(service, requestStr, clientId, std::move(args), std::move(session));
+        
         return reactor.release();
     }
     catch (...)
@@ -276,24 +318,6 @@ grpc::ServerWriteReactor<erebus::ServiceReply>* ErebusService::GenericStream(grp
     }
 
     reactor->Finish(grpc::Status(grpc::INTERNAL, errorMsg));
-    return reactor.release();
-}
-
-grpc::ServerWriteReactor<erebus::GetPropertyMappingReply>* ErebusService::GetPropertyMapping(grpc::CallbackServerContext* context, const erebus::Void* request)
-{
-    ServerTraceIndent2(m_log, "{}.ErebusService::GetPropertyMapping(peer={})", Er::Format::ptr(this), context->peer());
-
-    auto reactor = std::make_unique<PropertyInfoStreamWriteReactor>(m_log);
-    reactor->Begin();
-    
-    return reactor.release();
-}
-
-grpc::ServerReadReactor<erebus::PutPropertyMappingRequest>* ErebusService::PutPropertyMapping(grpc::CallbackServerContext* context, ::erebus::Void* response)
-{
-    ServerTraceIndent2(m_log, "{}.ErebusService::PutPropertyMapping(peer={})", Er::Format::ptr(this), context->peer());
-
-    auto reactor = std::make_unique<PutPropertyMappingStreamReadReactor>(m_log, this);
     return reactor.release();
 }
 
@@ -338,46 +362,6 @@ void ErebusService::unregisterService(Er::Ipc::IService* service)
         ErLogError2(m_log, "Service {} is not registered", Er::Format::ptr(service));
 }
 
-const Er::PropertyInfo* ErebusService::mapProperty(std::uint32_t id, std::uint32_t clientId)
-{
-    auto session = m_sessions.get(clientId);
-    ErAssert(session);
-
-    auto& mapping = session.get();
-
-    if (id < mapping.propertyMapping.size())
-        return mapping.propertyMapping[id];
-
-    return nullptr;
-}
-
-std::pair<bool, std::uint32_t> ErebusService::propertyMappingValid(std::uint32_t clientId, std::uint32_t mappingVer)
-{
-    auto session = m_sessions.get(clientId);
-    ErAssert(session);
-
-    auto& mapping = session.get();
-    if (mapping.propertyMapping.empty())
-        return std::make_pair(false, std::uint32_t(-1));
-
-    return std::make_pair((mapping.mappingVersion == mappingVer), mapping.mappingVersion);
-}
-
-void ErebusService::registerPropertyMapping(std::uint32_t version, std::uint32_t id, std::uint32_t clientId, Er::PropertyType type, const std::string& name, const std::string& readableName)
-{
-    ServerTraceIndent2(m_log, "{}.ErebusService::registerPropertyMapping(v.{} {}.{} -> {}[{}])", Er::Format::ptr(this), version, clientId, id, name, readableName);
-
-    auto session = m_sessions.get(clientId);
-    ErAssert(session);
-
-    auto& mapping = session.get();
-    mapping.mappingVersion = version;
-    auto& m = mapping.propertyMapping;
-    if (id >= m.size())
-        m.resize(id + 1);
-
-    m[id] = Erp::allocateTransientProperty(type, name, readableName);
-}
 
 } // namespace Erp::Ipc::Grpc {}
 

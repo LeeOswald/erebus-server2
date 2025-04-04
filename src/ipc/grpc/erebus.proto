@@ -3,9 +3,6 @@ syntax = "proto3";
 package erebus;
 
 
-message Void {
-}
-
 message PropertyInfo {
   uint32 id = 1;
   uint32 type = 2;
@@ -16,22 +13,15 @@ message PropertyInfo {
 message Property {
   uint32 id = 1;
   oneof value {
-    Void v_void = 2;
-    bool v_bool = 3;
-    int32 v_int32 = 4;
-    uint32 v_uint32 = 5;
-    int64 v_int64 = 6;
-    uint64 v_uint64 = 7;
-    double v_double = 8;
-    string v_string = 9;
-    bytes v_binary = 10;
+    bool v_bool = 2;
+    int32 v_int32 = 3;
+    uint32 v_uint32 = 4;
+    int64 v_int64 = 5;
+    uint64 v_uint64 = 6;
+    double v_double = 7;
+    string v_string = 8;
+    bytes v_binary = 9;
   }
-}
-
-enum CallResult {
-    SUCCESS = 0;
-    PROPERTY_MAPPING_EXPIRED = 1;
-    FAILURE = 2;
 }
 
 message Exception {
@@ -40,45 +30,22 @@ message Exception {
 }
 
 service Erebus {
-  rpc Ping(PingRequest) returns(PingReply) {}
-  rpc GetPropertyMapping(Void) returns(stream GetPropertyMappingReply) {}
-  rpc PutPropertyMapping(stream PutPropertyMappingRequest) returns(Void) {}
   rpc GenericCall(ServiceRequest) returns(ServiceReply) {}
   rpc GenericStream(ServiceRequest) returns(stream ServiceReply) {}
 }
 
-message PingRequest {
-    uint32 clientId = 1;
-    uint64 timestamp = 2;
-    string payload = 3;
-}
-
-message PingReply {
-    uint64 timestamp = 1;
-    string payload = 2;
-}
-
-message PutPropertyMappingRequest {
-  uint32 clientId = 1;
-  uint32 mappingVer = 2;
-  PropertyInfo mapping = 3;
-}
-
-message GetPropertyMappingReply {
-  uint32 mappingVer = 1;
-  PropertyInfo mapping = 2;
-}
-
 message ServiceRequest {
   string request = 1;
-  optional uint32 clientId = 2;
-  uint32 mappingVer = 3;
-  repeated Property args = 4;
+  uint32 clientId = 2;
+  repeated Property args = 3;
+  repeated PropertyInfo mapping = 4;
+  optional uint64 timestamp = 5;
 }
 
 message ServiceReply {
-  CallResult result = 1;
-  optional Exception exception = 2;  
-  uint32 mappingVer = 3;
-  repeated Property props = 4;
+  optional Exception exception = 1;  
+  repeated Property props = 2;
+  repeated PropertyInfo mapping = 3;
+  optional uint64 timestamp = 4;         // unchanged timestamp from ServiceRequest
+  optional uint64 duration = 5;          // real request processing time
 }

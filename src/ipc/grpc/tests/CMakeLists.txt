@@ -3,8 +3,8 @@ add_executable(
     erebus-grpc-tests
     common.hpp
     call.cpp
+    client_base.cpp
     main.cpp
-    ping.cpp
     stream.cpp
 )
 

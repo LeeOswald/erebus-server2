@@ -9,18 +9,6 @@
 
 namespace
 {
-
-struct Registration
-{
-    using Ptr = std::unique_ptr<Registration>;
-
-    const Er::PropertyInfo* info;
-
-    constexpr Registration(const Er::PropertyInfo* info) noexcept
-        : info(info)
-    {}
-};
-
 struct Registry
 {
     std::shared_mutex mutex;
@@ -80,15 +68,6 @@ ER_SYSTEM_EXPORT std::string formatProperty(const Er::PropertyInfo* info, const 
         return prop.str();
 
     return f(prop);
-}
-
-ER_SYSTEM_EXPORT std::uint32_t propertyMappingVersion() noexcept
-{
-    auto& r = registry();
-
-    std::shared_lock l(r.mutex);
-
-    return r.unique;
 }
 
 ER_SYSTEM_EXPORT const Er::PropertyInfo* allocateTransientProperty(Er::PropertyType type, const std::string& name, const std::string& readableName)

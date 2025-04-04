@@ -38,7 +38,6 @@ namespace Erp
 
 ER_SYSTEM_EXPORT std::uint32_t registerPersistentProperty(const Er::PropertyInfo* info);
 ER_SYSTEM_EXPORT std::string formatProperty(const Er::PropertyInfo* info, const Er::Property& prop);
-ER_SYSTEM_EXPORT std::uint32_t propertyMappingVersion() noexcept;
 ER_SYSTEM_EXPORT const Er::PropertyInfo* allocateTransientProperty(Er::PropertyType type, const std::string& name, const std::string& readableName);
 
 } // namespace Erp {}
@@ -59,14 +58,15 @@ struct alignas(16) PropertyInfo
 {
     using Formatter = std::function<std::string(const Property&)>;
 
-    static constexpr std::uint32_t InvalidUnique = std::uint32_t(-1);
+    using Unique = std::uint32_t;
+    static constexpr Unique InvalidUnique = Unique(-1);
 
     constexpr void* self()
     {
         return this;
     }
 
-    constexpr std::uint32_t unique() const noexcept
+    constexpr Unique unique() const noexcept
     {
         return m_unique;
     }
@@ -104,7 +104,7 @@ struct alignas(16) PropertyInfo
 
     struct Transient {};
 
-    PropertyInfo(Transient tag, std::uint32_t id, PropertyType type, std::string_view name, std::string_view readableName)
+    PropertyInfo(Transient tag, Unique id, PropertyType type, std::string_view name, std::string_view readableName)
         : m_type(type)
         , m_name(name)
         , m_readableName(readableName)
@@ -123,16 +123,7 @@ private:
     std::string m_name;
     std::string m_readableName;
     Formatter m_formatter;
-    std::uint32_t m_unique;
-};
-
-
-struct IPropertyMapping
-{
-    virtual const Er::PropertyInfo* mapProperty(std::uint32_t id, std::uint32_t context) = 0;
-
-protected:
-    virtual ~IPropertyMapping() {}
+    Unique m_unique;
 };
 
 
