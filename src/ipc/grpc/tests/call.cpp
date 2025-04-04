@@ -95,12 +95,12 @@ struct CallCompletion
     {
     }
 
-    void handleReply(Er::PropertyBag&& reply) override
+    void onReply(Er::PropertyBag&& reply) override
     {
         this->reply = std::move(reply);
     }
 
-    void handleException(Er::Exception&& exception) override
+    void onException(Er::Exception&& exception) override
     {
         this->exception = std::move(exception);
     }

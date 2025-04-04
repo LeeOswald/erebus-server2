@@ -18,9 +18,9 @@ struct IClient
         virtual ~ICompletion() {}
 
         virtual void done() = 0;
-        virtual void handleServerPropertyMappingExpired() = 0;
-        virtual void handleClientPropertyMappingExpired() = 0;
-        virtual void handleTransportError(Er::ResultCode result, std::string&& message) = 0;
+        virtual void onServerPropertyMappingExpired() = 0;
+        virtual void onClientPropertyMappingExpired() = 0;
+        virtual void onTransportError(Er::ResultCode result, std::string&& message) = 0;
     };
 
     struct IPingCompletion
@@ -28,7 +28,7 @@ struct IClient
     {
         using Ptr = std::shared_ptr<IPingCompletion>;
 
-        virtual void handleReply(std::size_t payloadSize, std::chrono::milliseconds rtt) = 0;
+        virtual void onReply(std::size_t payloadSize, std::chrono::milliseconds rtt) = 0;
     };
 
     struct ICallCompletion
@@ -36,8 +36,8 @@ struct IClient
     {
         using Ptr = std::shared_ptr<ICallCompletion>;
 
-        virtual void handleReply(Er::PropertyBag&& reply) = 0;
-        virtual void handleException(Er::Exception&& exception) = 0;
+        virtual void onReply(Er::PropertyBag&& reply) = 0;
+        virtual void onException(Er::Exception&& exception) = 0;
     };
 
     struct IStreamCompletion
@@ -45,8 +45,8 @@ struct IClient
     {
         using Ptr = std::shared_ptr<IStreamCompletion>;
 
-        virtual CallbackResult handleFrame(Er::PropertyBag&& frame) = 0;
-        virtual void handleException(Er::Exception&& exception) = 0;
+        virtual CallbackResult onFrame(Er::PropertyBag&& frame) = 0;
+        virtual void onException(Er::Exception&& exception) = 0;
     };
 
     using Ptr = std::unique_ptr<IClient>;

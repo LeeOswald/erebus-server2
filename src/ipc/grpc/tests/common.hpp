@@ -54,17 +54,17 @@ struct CompletionBase
         return m_clientPropertyMappingExpired;
     }
 
-    void handleServerPropertyMappingExpired() override
+    void onServerPropertyMappingExpired() override
     {
         m_serverPropertyMappingExpired = true;
     }
 
-    void handleClientPropertyMappingExpired() override
+    void onClientPropertyMappingExpired() override
     {
         m_clientPropertyMappingExpired = true;
     }
 
-    void handleTransportError(Er::ResultCode result, std::string&& message) override
+    void onTransportError(Er::ResultCode result, std::string&& message) override
     {
         if (m_serverPropertyMappingExpired || m_clientPropertyMappingExpired)
             return;

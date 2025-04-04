@@ -223,7 +223,7 @@ private:
                     if (code == erebus::CallResult::PROPERTY_MAPPING_EXPIRED)
                     {
                         ClientTrace2(m_log, "Server property mapping expired for {}:{}", m_context.peer(), m_uri);
-                        m_handler->handleServerPropertyMappingExpired();
+                        m_handler->onServerPropertyMappingExpired();
                         
                         m_context.TryCancel();
                         return StartRead(&m_reply);
@@ -231,7 +231,7 @@ private:
                     else if (!m_reply.has_exception())
                     {
                         auto message = Er::format("Unexpected error streaming from {}:{}: {}", m_context.peer(), m_uri, static_cast<int>(code));
-                        m_handler->handleTransportError(Er::Result::Failure, std::move(message));
+                        m_handler->onTransportError(Er::Result::Failure, std::move(message));
 
                         m_context.TryCancel();
                         return StartRead(&m_reply);
@@ -243,7 +243,7 @@ private:
                 if (remoteMappingVer != localMappingVer)
                 {
                     ClientTrace2(m_log, "Client property mapping expired for {}:{} (remote v.{} local v.{})", m_context.peer(), m_uri, remoteMappingVer, localMappingVer);
-                    m_handler->handleClientPropertyMappingExpired();
+                    m_handler->onClientPropertyMappingExpired();
 
                     m_context.TryCancel();
                     return StartRead(&m_reply);
@@ -254,14 +254,14 @@ private:
                     auto e = m_owner->unmarshalException(m_reply);
                     ErLogError2(m_log, "Exception while streaming from {}:{}: {}", m_context.peer(), m_uri, e.what());
 
-                    m_handler->handleException(std::move(e));
+                    m_handler->onException(std::move(e));
                     
                     m_context.TryCancel();
                     return StartRead(&m_reply);
                 }
                 
                 auto reply = m_owner->unmarshal(m_reply);
-                if (m_handler->handleFrame(std::move(reply)) == Er::CallbackResult::Cancel)
+                if (m_handler->onFrame(std::move(reply)) == Er::CallbackResult::Cancel)
                 {
                     m_context.TryCancel();
                 }
@@ -291,7 +291,7 @@ private:
                         auto errorMsg = status.error_message();
                         ErLogError2(m_log, "Stream from {} terminated with an error: {} ({})", m_context.peer(), resultCode, errorMsg);
 
-                        m_handler->handleTransportError(resultCode, std::move(errorMsg));
+                        m_handler->onTransportError(resultCode, std::move(errorMsg));
                     }
 
                     m_handler->done();
@@ -378,7 +378,7 @@ private:
                         auto errorMsg = status.error_message();
                         ErLogError2(m_log, "Stream from {} terminated with an error: {} ({})", m_context.peer(), resultCode, errorMsg);
 
-                        m_handler->handleTransportError(resultCode, std::move(errorMsg));
+                        m_handler->onTransportError(resultCode, std::move(errorMsg));
                     }
 
                     m_handler->done();
@@ -456,7 +456,7 @@ private:
                         auto errorMsg = status.error_message();
                         ErLogError2(m_log, "Stream to {} terminated with an error: {} ({})", m_context.peer(), resultCode, errorMsg);
 
-                        m_handler->handleTransportError(resultCode, std::move(errorMsg));
+                        m_handler->onTransportError(resultCode, std::move(errorMsg));
                     }
 
                     m_handler->done();
@@ -591,14 +591,14 @@ private:
                 auto errorMsg = status.error_message();
                 ErLogError2(m_log, "Failed to ping {}: {} ({})", ctx->context.peer(), static_cast<int>(status.error_code()), errorMsg);
 
-                ctx->handler->handleTransportError(resultCode, std::move(errorMsg));
+                ctx->handler->onTransportError(resultCode, std::move(errorMsg));
             }
             else
             {
                 auto finished = Er::System::PackedTime::now();
                 auto milliseconds = (finished - ctx->started) / 1000;
 
-                ctx->handler->handleReply(payloadSize, std::chrono::milliseconds(milliseconds));
+                ctx->handler->onReply(payloadSize, std::chrono::milliseconds(milliseconds));
             }
 
             ctx->handler->done();
@@ -623,7 +623,7 @@ private:
                 auto errorMsg = status.error_message();
                 ErLogError2(m_log, "Failed to call {}:{}: {} ({})", ctx->context.peer(), ctx->uri, resultCode, errorMsg);
 
-                ctx->handler->handleTransportError(resultCode, std::move(errorMsg));
+                ctx->handler->onTransportError(resultCode, std::move(errorMsg));
 
                 return ctx->handler->done();
             }
@@ -634,13 +634,13 @@ private:
                 if (code == erebus::CallResult::PROPERTY_MAPPING_EXPIRED)
                 {
                     ClientTrace2(m_log, "Server property mapping expired for {}:{}", ctx->context.peer(), ctx->uri);
-                    ctx->handler->handleServerPropertyMappingExpired();
+                    ctx->handler->onServerPropertyMappingExpired();
                     return ctx->handler->done();
                 }
                 else if (!ctx->reply.has_exception())
                 {
                     auto message = Er::format("Unexpected error calling {}:{}: {}", ctx->context.peer(), ctx->uri, static_cast<int>(code));
-                    ctx->handler->handleTransportError(Er::Result::Failure, std::move(message));
+                    ctx->handler->onTransportError(Er::Result::Failure, std::move(message));
                     return ctx->handler->done();
                 }
             }
@@ -650,7 +650,7 @@ private:
             if (remoteMappingVer != localMappingVer)
             {
                 ClientTrace2(m_log, "Client property mapping expired for {}:{} (remote v.{} local v.{})", ctx->context.peer(), ctx->uri, remoteMappingVer, localMappingVer);
-                ctx->handler->handleClientPropertyMappingExpired();
+                ctx->handler->onClientPropertyMappingExpired();
                 return ctx->handler->done();
             }
 
@@ -659,12 +659,12 @@ private:
                 auto e = unmarshalException(ctx->reply);
                 ErLogError2(m_log, "Failed to call {}:{}: {}", ctx->context.peer(), ctx->uri, e.what());
 
-                ctx->handler->handleException(std::move(e));
+                ctx->handler->onException(std::move(e));
                 return ctx->handler->done();
             }
                         
             auto reply = unmarshal(ctx->reply);
-            ctx->handler->handleReply(std::move(reply));
+            ctx->handler->onReply(std::move(reply));
             ctx->handler->done();
         }
         catch (...)

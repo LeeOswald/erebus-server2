@@ -233,20 +233,20 @@ struct StreamCompletion
         exceptions.resize(frameCount);
     }
 
-    Er::CallbackResult handleFrame(Er::PropertyBag&& frame) override
+    Er::CallbackResult onFrame(Er::PropertyBag&& frame) override
     {
         ++currentFrame;
-        ErLogDebug("{}.handleFrame #{}", Er::Format::ptr(this), currentFrame);
+        ErLogDebug("{}.onFrame #{}", Er::Format::ptr(this), currentFrame);
         frames[currentFrame] = std::move(frame);
         ++receivedFrames;
         
         return (currentFrame == cancelAt) ? Er::CallbackResult::Cancel : Er::CallbackResult::Continue;
     }
 
-    void handleException(Er::Exception&& exception) override
+    void onException(Er::Exception&& exception) override
     {
         ++currentFrame;
-        ErLogDebug("{}.handleException #{}", Er::Format::ptr(this), currentFrame);
+        ErLogDebug("{}.onException #{}", Er::Format::ptr(this), currentFrame);
         
         if (exceptions.size() <= currentFrame)
             exceptions.resize(currentFrame + 1);
